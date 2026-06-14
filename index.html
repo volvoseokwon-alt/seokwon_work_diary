@@ -159,7 +159,7 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
   <aside>
     <h3>📁 프로젝트</h3>
     <div id="project-list"></div>
-    <button class="add-proj-btn" onclick="openModal('modal-proj')">+ 프로젝트 추가</button>
+    <button class="add-proj-btn" onclick="openModal_proj_add()">+ 프로젝트 추가</button>
 
     <div class="sidebar-note">
       <h3 style="margin-top:0;">📝 메모</h3>
@@ -285,17 +285,17 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 </div>
 
 
-<!-- 프로젝트 추가 -->
+<!-- 프로젝트 추가/수정 -->
 <div class="modal" id="modal-proj">
   <div class="modal-box">
-    <h3>📁 새 프로젝트 추가</h3>
+    <h3 id="proj-modal-title">📁 새 프로젝트 추가</h3>
     <input type="text" id="new-proj-name" placeholder="프로젝트명">
     <div style="display:flex;align-items:center;gap:8px;font-size:0.85rem;">
       색상 <input type="color" id="new-proj-color" value="#4f46e5" style="width:40px;height:32px;padding:2px;border:1px solid var(--border);border-radius:4px;cursor:pointer;">
     </div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal('modal-proj')">취소</button>
-      <button class="btn-primary" onclick="addProject()">추가</button>
+      <button class="btn-primary" id="proj-modal-btn" onclick="submitProject()">추가</button>
     </div>
   </div>
 </div>
@@ -464,11 +464,14 @@ function renderSidebar(){
     const days = inactiveDays(p);
     const ic   = inactiveColor(days);
     const dot  = ic ? `<span class="inactive-dot" style="background:${ic}" title="${days}일 미활동"></span>` : '';
-    html += `<div class="project-item ${currentFilter===p.id?'active':''}" style="padding-right:4px;">
+    const isAct=currentFilter===p.id;
+    const iconCol=isAct?'rgba(255,255,255,0.65)':'#cbd5e1';
+    html += `<div class="project-item ${isAct?'active':''}" style="padding-right:2px;">
       <span class="proj-dot" style="background:${p.color};flex-shrink:0;cursor:pointer" onclick="setFilter('${p.id}')"></span>
       <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="setFilter('${p.id}')">${p.name}</span>
       ${dot}
-      <span onclick="deleteProject('${p.id}')" title="프로젝트 삭제" style="margin-left:2px;color:${currentFilter===p.id?'rgba(255,255,255,0.6)':'#cbd5e1'};font-size:0.8rem;cursor:pointer;line-height:1;padding:2px 3px;border-radius:3px;flex-shrink:0;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='${currentFilter===p.id?'rgba(255,255,255,0.6)':'#cbd5e1'}'">&times;</span>
+      <span onclick="openEditProject('${p.id}')" title="이름 수정" style="color:${iconCol};font-size:0.75rem;cursor:pointer;padding:2px 3px;flex-shrink:0;line-height:1;" onmouseover="this.style.color='#a5b4fc'" onmouseout="this.style.color='${iconCol}'">✏</span>
+      <span onclick="deleteProject('${p.id}')" title="삭제" style="color:${iconCol};font-size:0.85rem;cursor:pointer;padding:2px 3px;flex-shrink:0;line-height:1;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='${iconCol}'">&times;</span>
     </div>`;
   });
   el.innerHTML = html;
@@ -896,11 +899,35 @@ function saveEdit(){
 /* ══════════════════════════════════════
    PROJECT CRUD
 ══════════════════════════════════════ */
-function addProject(){
+let editingProjId=null;
+
+function openModal_proj_add(){
+  editingProjId=null;
+  document.getElementById('proj-modal-title').textContent='📁 새 프로젝트 추가';
+  document.getElementById('proj-modal-btn').textContent='추가';
+  document.getElementById('new-proj-name').value='';
+  document.getElementById('new-proj-color').value='#4f46e5';
+  openModal('modal-proj');
+}
+function openEditProject(pid){
+  const p=projects.find(x=>x.id===pid); if(!p) return;
+  editingProjId=pid;
+  document.getElementById('proj-modal-title').textContent='✏️ 프로젝트 수정';
+  document.getElementById('proj-modal-btn').textContent='저장';
+  document.getElementById('new-proj-name').value=p.name;
+  document.getElementById('new-proj-color').value=p.color;
+  openModal('modal-proj');
+}
+function submitProject(){
   const name=document.getElementById('new-proj-name').value.trim();
   const color=document.getElementById('new-proj-color').value;
   if(!name) return;
-  projects.push({id:'p'+Date.now(),name,color,lastAction:TODAY_STR});
+  if(editingProjId){
+    projects=projects.map(p=>p.id===editingProjId?{...p,name,color}:p);
+  } else {
+    projects.push({id:'p'+Date.now(),name,color,lastAction:TODAY_STR});
+  }
+  editingProjId=null;
   document.getElementById('new-proj-name').value='';
   closeModal('modal-proj'); render();
 }
