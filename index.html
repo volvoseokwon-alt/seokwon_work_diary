@@ -165,7 +165,6 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
   <div class="hdr-right">
     <span class="week-badge" id="hdr-week">W?</span>
     <span class="score-badge">효율 <span id="efficiency-score">0</span>%</span>
-    <button class="cheer-btn" onclick="showCheer()">🎉 Cheer Up!</button>
   </div>
 </header>
 
@@ -490,10 +489,12 @@ function renderSidebar(){
     const days = inactiveDays(p);
     const ic   = inactiveColor(days);
     const dot  = ic ? `<span class="inactive-dot" style="background:${ic}" title="${days}일 미활동"></span>` : '';
-    html += `<div class="project-item ${currentFilter===p.id?'active':''}" onclick="setFilter('${p.id}')">
-      <span class="proj-dot" style="background:${p.color}"></span>
-      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name}</span>
-      ${dot}</div>`;
+    html += `<div class="project-item ${currentFilter===p.id?'active':''}" style="padding-right:4px;">
+      <span class="proj-dot" style="background:${p.color};flex-shrink:0;cursor:pointer" onclick="setFilter('${p.id}')"></span>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="setFilter('${p.id}')">${p.name}</span>
+      ${dot}
+      <span onclick="deleteProject('${p.id}')" title="프로젝트 삭제" style="margin-left:2px;color:${currentFilter===p.id?'rgba(255,255,255,0.6)':'#cbd5e1'};font-size:0.8rem;cursor:pointer;line-height:1;padding:2px 3px;border-radius:3px;flex-shrink:0;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='${currentFilter===p.id?'rgba(255,255,255,0.6)':'#cbd5e1'}'">&times;</span>
+    </div>`;
   });
   el.innerHTML = html;
 
@@ -849,10 +850,28 @@ function renderWeekly(){
 /* ══════════════════════════════════════
    SCORE
 ══════════════════════════════════════ */
+let lastCheerScore = -1;  // 마지막으로 cheer를 보여준 점수
+let cheerCooldown = false; // 연속 팝업 방지
+
 function calcScore(){
   const ft=filteredTasks();
   const total=ft.length, done=ft.filter(t=>t.done).length;
-  document.getElementById('efficiency-score').textContent=total?Math.round(done/total*100):0;
+  const score=total?Math.round(done/total*100):0;
+  document.getElementById('efficiency-score').textContent=score;
+
+  // 자동 Cheer Up 트리거 조건:
+  // - 50% 첫 도달, 75% 첫 도달, 100% 도달
+  // - 방금 완료(done 수 증가)로 인한 점수 변화일 때만
+  if(!cheerCooldown && total>0 && score>lastCheerScore){
+    const milestones=[50,75,100];
+    const hit=milestones.find(m=>score>=m && lastCheerScore<m);
+    if(hit){
+      cheerCooldown=true;
+      showCheerAuto(score, hit);
+      setTimeout(()=>{ cheerCooldown=false; },5000);
+    }
+  }
+  lastCheerScore=score;
 }
 
 /* ══════════════════════════════════════
@@ -928,6 +947,20 @@ function addProject(){
   document.getElementById('new-proj-name').value='';
   closeModal('modal-proj'); render();
 }
+function deleteProject(pid){
+  const p=projects.find(x=>x.id===pid);
+  if(!p) return;
+  const taskCount=tasks.filter(t=>t.project===pid).length;
+  const msg=taskCount>0
+    ? `"${p.name}" 프로젝트를 삭제하면 연결된 업무 ${taskCount}개도 함께 삭제됩니다.\n계속하시겠습니까?`
+    : `"${p.name}" 프로젝트를 삭제하시겠습니까?`;
+  if(!confirm(msg)) return;
+  tasks=tasks.filter(t=>t.project!==pid);
+  weeklyLogs=weeklyLogs.filter(l=>l.project!==pid);
+  projects=projects.filter(x=>x.id!==pid);
+  if(currentFilter===pid) currentFilter='all';
+  render();
+}
 function touchProject(pid){
   projects=projects.map(p=>p.id===pid?{...p,lastAction:TODAY_STR}:p);
 }
@@ -981,13 +1014,21 @@ const cheerMsgs = [
 ];
 
 let confettiAnim=null;
-function showCheer(){
-  const msg=cheerMsgs[Math.floor(Math.random()*cheerMsgs.length)];
-  document.getElementById('cheer-emoji').textContent=msg.e;
-  document.getElementById('cheer-msg').textContent=msg.m;
-  document.getElementById('cheer-sub').textContent=msg.s;
+function showCheerAuto(score, milestone){
+  // 마일스톤별 특별 메시지
+  const milestoneMsg={
+    50:{e:'🔥',m:'절반을 돌파했어, 석원!',     s:`효율 ${score}% 달성 · 이 기세로 끝까지!`},
+    75:{e:'🚀',m:'75% 완료! 거의 다 왔어!',     s:`효율 ${score}% · 마지막 스퍼트만 남았다.`},
+   100:{e:'🏆',m:'완벽해! 오늘 모든 업무 완료!',s:'100% 달성 · 최고의 엔지니어!'},
+  };
+  const base=milestoneMsg[milestone]||cheerMsgs[Math.floor(Math.random()*cheerMsgs.length)];
+  document.getElementById('cheer-emoji').textContent=base.e;
+  document.getElementById('cheer-msg').textContent=base.m;
+  document.getElementById('cheer-sub').textContent=base.s;
   document.getElementById('cheer-overlay').classList.add('open');
   startConfetti();
+  // 100% 달성은 5초 후 자동 닫힘, 나머지는 8초
+  setTimeout(closeCheer, milestone===100?8000:6000);
 }
 function closeCheer(){
   document.getElementById('cheer-overlay').classList.remove('open');
