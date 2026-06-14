@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ContextSync PM</title>
+<title>석원이의 업무 다이어리</title>
 <style>
 :root {
   --bg:#f4f6f9;--card:#fff;--text:#1e293b;
@@ -161,7 +161,7 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 </head>
 <body>
 <header>
-  <h1>🎯 ContextSync PM</h1>
+  <h1>📔 석원이의 업무 다이어리</h1>
   <div class="hdr-right">
     <span class="week-badge" id="hdr-week">W?</span>
     <span class="score-badge">효율 <span id="efficiency-score">0</span>%</span>
@@ -217,6 +217,11 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
         <div class="input-row">
           <input type="text" id="task-input" placeholder="새 업무 입력...">
           <select id="project-select"></select>
+          <select id="task-priority" style="padding:6px 7px;border:1.5px solid var(--border);border-radius:6px;font-size:0.8rem;background:white;font-weight:700;">
+            <option value="A1" style="color:#ef4444">A1</option><option value="A2" style="color:#ef4444">A2</option><option value="A3" style="color:#ef4444">A3</option>
+            <option value="B1" style="color:#f59e0b">B1</option><option value="B2" style="color:#f59e0b" selected>B2</option><option value="B3" style="color:#f59e0b">B3</option>
+            <option value="C1" style="color:#10b981">C1</option><option value="C2" style="color:#10b981">C2</option><option value="C3" style="color:#10b981">C3</option>
+          </select>
           <div class="date-grp"><label>시작</label><input type="date" id="start-date"></div>
           <div class="date-grp"><label>종료</label><input type="date" id="end-date"></div>
           <button class="btn-primary" onclick="addTask()">추가</button>
@@ -344,7 +349,14 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
   <div class="modal-box">
     <h3>✏️ 업무 수정</h3>
     <input type="text" id="edit-text" placeholder="업무명">
-    <select id="edit-project" style="padding:8px;border:1.5px solid var(--border);border-radius:6px;"></select>
+    <div style="display:flex;gap:8px;">
+      <select id="edit-project" style="flex:1;padding:8px;border:1.5px solid var(--border);border-radius:6px;"></select>
+      <select id="edit-priority" style="width:80px;padding:8px;border:1.5px solid var(--border);border-radius:6px;font-weight:700;">
+        <option value="A1">A1</option><option value="A2">A2</option><option value="A3">A3</option>
+        <option value="B1">B1</option><option value="B2">B2</option><option value="B3">B3</option>
+        <option value="C1">C1</option><option value="C2">C2</option><option value="C3">C3</option>
+      </select>
+    </div>
     <div style="display:flex;gap:8px;">
       <div class="date-grp" style="flex:1;"><label>시작</label><input type="date" id="edit-start" style="flex:1;padding:7px;border:1.5px solid var(--border);border-radius:6px;font-size:0.8rem;"></div>
       <div class="date-grp" style="flex:1;"><label>종료</label><input type="date" id="edit-end" style="flex:1;padding:7px;border:1.5px solid var(--border);border-radius:6px;font-size:0.8rem;"></div>
@@ -368,11 +380,20 @@ let projects = [
   {id:'p2',name:'B사 기능 안전', color:'#0284c7',lastAction:'2026-05-10'},
   {id:'p3',name:'개인 역량 개발',color:'#10b981',lastAction:'2026-06-02'},
 ];
+/* priority: A1>A2>A3>B1>B2>B3>C1>C2>C3 */
+const PRIORITY_ORDER=['A1','A2','A3','B1','B2','B3','C1','C2','C3'];
+const PRIORITY_COLOR={A:'#ef4444',B:'#f59e0b',C:'#10b981'};
+function prioColor(p){ return p?PRIORITY_COLOR[p[0]]||'#94a3b8':'#cbd5e1'; }
+function prioSort(a,b){
+  const ai=PRIORITY_ORDER.indexOf(a.priority||'C3');
+  const bi=PRIORITY_ORDER.indexOf(b.priority||'C3');
+  return (ai<0?99:ai)-(bi<0?99:bi);
+}
 let tasks = [
-  {id:1,text:'제어 알고리즘 코드 리뷰', project:'p1',done:false,start:'2026-06-01',end:'2026-06-12',actualEnd:null},
-  {id:2,text:'안전 프로토콜 문서 수정', project:'p2',done:true, start:'2026-06-02',end:'2026-06-15',actualEnd:'2026-06-10'},
-  {id:3,text:'영어 기술 문서 1챕터 읽기',project:'p3',done:false,start:'2026-06-10',end:'2026-06-25',actualEnd:null},
-  {id:4,text:'기능 검증 체크리스트 작성',project:'p2',done:true, start:'2026-06-05',end:'2026-06-10',actualEnd:'2026-06-10'},
+  {id:1,text:'제어 알고리즘 코드 리뷰', project:'p1',done:false,start:'2026-06-01',end:'2026-06-12',actualEnd:null,priority:'A1'},
+  {id:2,text:'안전 프로토콜 문서 수정', project:'p2',done:true, start:'2026-06-02',end:'2026-06-15',actualEnd:'2026-06-10',priority:'A2'},
+  {id:3,text:'영어 기술 문서 1챕터 읽기',project:'p3',done:false,start:'2026-06-10',end:'2026-06-25',actualEnd:null,priority:'C1'},
+  {id:4,text:'기능 검증 체크리스트 작성',project:'p2',done:true, start:'2026-06-05',end:'2026-06-10',actualEnd:'2026-06-10',priority:'B2'},
 ];
 let weeklyLogs = [
   {id:1,project:'p1',task:'CAN 신호 매핑 분석',    date:'2026-06-02',hours:3,  memo:'조이스틱 매핑 완료'},
@@ -541,32 +562,44 @@ function switchTab(name,el){
 function renderGantt(list){
   const container = document.getElementById('chart-rows');
   container.innerHTML='';
-  const mStart = new Date(TODAY.getFullYear(),TODAY.getMonth(),1);
-  const mEnd   = new Date(TODAY.getFullYear(),TODAY.getMonth()+1,0);
+
+  // 오늘 기준 -15일 ~ +15일 (총 31일 윈도우)
+  const mStart = new Date(TODAY); mStart.setDate(TODAY.getDate()-15);
+  const mEnd   = new Date(TODAY); mEnd.setDate(TODAY.getDate()+15);
   const mDur   = mEnd.getTime()-mStart.getTime();
-  const y=mStart.getFullYear(), m=mStart.getMonth()+1;
-  const pad=n=>String(n).padStart(2,'0');
-  document.getElementById('gantt-title').textContent=`📅 ${y}년 ${m}월 타임라인`;
-  document.getElementById('g-d1').textContent=`${m}/01`;
-  document.getElementById('g-d2').textContent=`${m}/${pad(Math.round(mEnd.getDate()*.33))}`;
-  document.getElementById('g-d3').textContent=`${m}/${pad(Math.round(mEnd.getDate()*.66))}`;
-  document.getElementById('g-d4').textContent=`${m}/${mEnd.getDate()}`;
-  const todayPct = Math.max(0,Math.min(100,((todayMs-mStart.getTime())/mDur)*100));
+
+  const fmtD = dt => `${dt.getMonth()+1}/${dt.getDate()}`;
+  const q1 = new Date(mStart); q1.setDate(mStart.getDate()+Math.round(30*.25));
+  const q2 = new Date(mStart); q2.setDate(mStart.getDate()+15); // 오늘
+  const q3 = new Date(mStart); q3.setDate(mStart.getDate()+Math.round(30*.75));
+
+  document.getElementById('gantt-title').textContent=`📅 타임라인 (${fmtD(mStart)} ~ ${fmtD(mEnd)})`;
+  document.getElementById('g-d1').textContent=fmtD(mStart);
+  document.getElementById('g-d2').textContent=fmtD(q1);
+  document.getElementById('g-d3').textContent=`오늘(${fmtD(q2)})`;
+  document.getElementById('g-d4').textContent=fmtD(mEnd);
+
+  const todayPct = 50; // 오늘은 항상 중앙(50%)
+
   if(!list.length){ container.innerHTML='<div style="color:var(--muted);font-size:0.82rem;padding:10px 0">표시할 업무가 없습니다.</div>'; return; }
-  list.forEach(t=>{
+  list.sort(prioSort).forEach(t=>{
     const s=d(t.start).getTime();
     const eAct=t.actualEnd?d(t.actualEnd).getTime():d(t.end).getTime();
     const eChart=t.done?eAct:d(t.end).getTime();
     let left=Math.max(0,((s-mStart.getTime())/mDur)*100);
     let width=Math.min(100-left,((eChart-s)/mDur)*100);
-    if(width<=0) width=4;
+    if(width<=0) width=3;
     const over=isOverdue(t), erly=isEarly(t);
+    const prio=t.priority||'';
+    const pc=prioColor(prio);
     let cls='bar-running',lbl='진행중';
     if(t.done){ cls=erly?'bar-early':'bar-done'; lbl=erly?'🚀 조기':'✓'; }
     else if(over){ cls='bar-overdue'; lbl='⚠ 초과'; }
     const row=document.createElement('div');
     row.className='chart-row';
-    row.innerHTML=`<div class="chart-label" title="${t.text}">${t.text}</div>
+    row.innerHTML=`<div class="chart-label" title="${t.text}">
+        ${prio?`<span style="background:${pc};color:white;font-size:0.65rem;font-weight:800;padding:1px 5px;border-radius:3px;margin-right:4px;">${prio}</span>`:''}${t.text}
+      </div>
       <div class="chart-timeline">
         <div class="chart-today-line" style="left:${todayPct}%"></div>
         <div class="chart-bar ${cls}" style="left:${left}%;width:${width}%">${lbl}</div>
@@ -582,13 +615,17 @@ function renderTaskList(list){
   const el=document.getElementById('task-list');
   el.innerHTML='';
   if(!list.length){ el.innerHTML='<div style="color:var(--muted);font-size:0.83rem;text-align:center;padding:18px">업무 없음. 위에서 추가하세요.</div>'; return; }
-  list.forEach(t=>{
+  const sorted=[...list].sort(prioSort);
+  sorted.forEach(t=>{
     const p=proj(t.project), over=isOverdue(t), erly=isEarly(t);
+    const prio=t.priority||'';
+    const pc=prioColor(prio);
     const item=document.createElement('div');
     item.className=`task-item ${t.done?'completed':''} ${over?'overdue':''}`;
     item.innerHTML=`
       <div class="task-left">
         <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask(${t.id})">
+        ${prio?`<span style="background:${pc};color:white;font-size:0.7rem;font-weight:800;padding:2px 6px;border-radius:4px;min-width:26px;text-align:center">${prio}</span>`:''}
         <span class="p-badge" style="background:${p.color}22;color:${p.color}">${p.name}</span>
         <span class="task-text" style="font-size:0.85rem">${t.text}</span>
         <span class="date-badge">📅 ${fmt(t.start)} ~ ${fmt(t.end)}</span>
@@ -733,18 +770,65 @@ function renderWeekly(){
   const {week}=(() =>{ const[y,w]=selectedWeekKey.split('-W'); return{week:parseInt(w)}; })();
   const wLabel=weekLabel(selectedWeekKey);
 
-  document.getElementById('weekly-summary').innerHTML=`
-    <div style="background:var(--pri-light);border-radius:8px;padding:12px 14px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;">
-      <div>
-        <div style="font-size:1.05rem;font-weight:800;color:var(--primary)">${wLabel}</div>
-        <div style="font-size:0.75rem;color:var(--muted);margin-top:2px;">총 <strong>${totalH}시간</strong> · ${logs.length}건 기록</div>
+  // 날짜별 합산 (Mon~Sun of selected week)
+  const mon = weekMonday(selectedWeekKey);
+  const dayNames=['월','화','수','목','금','토','일'];
+  const dayKeys=Array.from({length:7},(_,i)=>{
+    const dt=new Date(mon); dt.setUTCDate(mon.getUTCDate()+i);
+    return dt.toISOString().slice(0,10);
+  });
+  const byDay={}; dayKeys.forEach(k=>byDay[k]={h:0,logs:[]});
+  logs.forEach(l=>{ if(byDay[l.date]){ byDay[l.date].h+=l.hours; byDay[l.date].logs.push(l); }});
+  const maxDayH=Math.max(1,...dayKeys.map(k=>byDay[k].h));
+
+  // 날짜별 바 차트 빌드
+  const dayBarHTML=dayKeys.map((k,i)=>{
+    const h=byDay[k].h;
+    const dayLogs=byDay[k].logs;
+    const isToday=k===TODAY_STR;
+    const pct=((h/maxDayH)*100).toFixed(1);
+    // 프로젝트별 색상 스택 (비율로)
+    let stackHTML='';
+    if(h>0){
+      const projH={};
+      dayLogs.forEach(l=>{ projH[l.project]=(projH[l.project]||0)+l.hours; });
+      let cum=0;
+      Object.entries(projH).forEach(([pid,ph])=>{
+        const pw=(ph/h*100).toFixed(1);
+        const pc=proj(pid).color;
+        stackHTML+=`<div style="height:100%;width:${pw}%;background:${pc};"></div>`;
+        cum+=ph;
+      });
+    }
+    return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;">
+      <div style="font-size:0.7rem;color:${isToday?'var(--primary)':'var(--muted)'};font-weight:${isToday?'700':'400'}">${h>0?h+'h':''}</div>
+      <div style="width:100%;height:70px;background:#f1f5f9;border-radius:5px;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden;border:${isToday?'2px solid var(--primary)':'1px solid var(--border)'};position:relative;" title="${dayNames[i]}: ${h}h">
+        <div style="display:flex;height:${pct}%;width:100%;transition:height .4s;">${stackHTML}</div>
       </div>
-      <div style="flex:1;min-width:160px;">
-        ${projects.map(p=>`<div class="week-bar-row">
-          <div class="week-bar-name">${p.name}</div>
-          <div class="week-bar-track"><div class="week-bar-fill" style="width:${(byProj[p.id]/maxH*100).toFixed(1)}%;background:${p.color}"></div></div>
-          <div class="week-bar-val">${byProj[p.id]>0?byProj[p.id]+'h':'—'}</div>
-        </div>`).join('')}
+      <div style="font-size:0.72rem;font-weight:${isToday?'700':'400'};color:${isToday?'var(--primary)':'var(--muted)'}">${dayNames[i]}</div>
+      <div style="font-size:0.62rem;color:#a0aec0">${k.slice(5).replace('-','/')}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('weekly-summary').innerHTML=`
+    <div style="background:var(--pri-light);border-radius:8px;padding:12px 14px;display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start;">
+      <div style="min-width:130px;">
+        <div style="font-size:1.05rem;font-weight:800;color:var(--primary)">${wLabel}</div>
+        <div style="font-size:0.75rem;color:var(--muted);margin-top:2px;">총 <strong>${totalH}시간</strong> · ${logs.length}건</div>
+        <div style="margin-top:10px;">
+          ${projects.map(p=>`<div class="week-bar-row" style="margin-bottom:5px;">
+            <div class="week-bar-name">${p.name}</div>
+            <div class="week-bar-track"><div class="week-bar-fill" style="width:${(byProj[p.id]/maxH*100).toFixed(1)}%;background:${p.color}"></div></div>
+            <div class="week-bar-val">${byProj[p.id]>0?byProj[p.id]+'h':'—'}</div>
+          </div>`).join('')}
+        </div>
+      </div>
+      <div style="flex:1;min-width:200px;">
+        <div style="font-size:0.75rem;font-weight:700;color:var(--muted);margin-bottom:6px;">📅 날짜별 업무 시간</div>
+        <div style="display:flex;gap:4px;align-items:flex-end;height:100px;">${dayBarHTML}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
+          ${projects.filter(p=>byProj[p.id]>0).map(p=>`<span style="font-size:0.68rem;display:flex;align-items:center;gap:3px;"><span style="width:8px;height:8px;border-radius:50%;background:${p.color};display:inline-block"></span>${p.name}</span>`).join('')}
+        </div>
       </div>
     </div>`;
 
@@ -794,8 +878,9 @@ function addTask(){
   const projId=document.getElementById('project-select').value;
   const start=document.getElementById('start-date').value;
   const end=document.getElementById('end-date').value;
+  const priority=document.getElementById('task-priority').value;
   if(!text||!start||!end) return;
-  tasks.push({id:Date.now(),text,project:projId,done:false,start,end,actualEnd:null});
+  tasks.push({id:Date.now(),text,project:projId,done:false,start,end,actualEnd:null,priority});
   touchProject(projId);
   document.getElementById('task-input').value='';
   render();
@@ -818,6 +903,7 @@ function openEdit(id){
   sel.value=t.project;
   document.getElementById('edit-start').value=t.start;
   document.getElementById('edit-end').value=t.end;
+  document.getElementById('edit-priority').value=t.priority||'B2';
   openModal('modal-edit');
 }
 function saveEdit(){
@@ -825,8 +911,9 @@ function saveEdit(){
   const projId=document.getElementById('edit-project').value;
   const start=document.getElementById('edit-start').value;
   const end=document.getElementById('edit-end').value;
+  const priority=document.getElementById('edit-priority').value;
   if(!text||!start||!end) return;
-  tasks=tasks.map(t=>t.id===editingId?{...t,text,project:projId,start,end}:t);
+  tasks=tasks.map(t=>t.id===editingId?{...t,text,project:projId,start,end,priority}:t);
   closeModal('modal-edit'); render();
 }
 
