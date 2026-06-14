@@ -351,12 +351,64 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
   </div>
 </div>
 
-<script>
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAG_ZlGUuWDORpHX1RiD68EDjuSCi2pUwE",
+  authDomain: "seokwon-s-workdiary.firebaseapp.com",
+  projectId: "seokwon-s-workdiary",
+  storageBucket: "seokwon-s-workdiary.firebasestorage.app",
+  messagingSenderId: "1043487427411",
+  appId: "1:1043487427411:web:2dc2d22217f3bc5daf2fa6",
+  measurementId: "G-28EXZLLP8J"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+/* ══════════════════════════════════════
+   FIREBASE HELPERS
+══════════════════════════════════════ */
+const MAIN_DOC = 'userData/main';
+
+async function saveToFirebase() {
+  try {
+    await setDoc(doc(db, 'userData', 'main'), {
+      projects,
+      tasks,
+      weeklyLogs,
+      sidebarNote: document.getElementById('sidebar-note')?.value || '',
+      updatedAt: new Date().toISOString()
+    });
+  } catch(e) { console.warn('Firebase save error:', e); }
+}
+
+async function loadFromFirebase() {
+  try {
+    const snap = await getDoc(doc(db, 'userData', 'main'));
+    if (snap.exists()) {
+      const data = snap.data();
+      if (data.projects?.length)   projects    = data.projects;
+      if (data.tasks?.length)      tasks       = data.tasks;
+      if (data.weeklyLogs?.length) weeklyLogs  = data.weeklyLogs;
+      if (data.sidebarNote) {
+        const noteEl = document.getElementById('sidebar-note');
+        if (noteEl) noteEl.value = data.sidebarNote;
+      }
+    }
+  } catch(e) { console.warn('Firebase load error:', e); }
+}
+
+/* 자동 저장 래퍼 — 기존 render() 뒤에 항상 저장 */
+function saveAndRender() { render(); saveToFirebase(); }
+
 /* ══════════════════════════════════════
    DATA
 ══════════════════════════════════════ */
-const TODAY = new Date('2026-06-15');
-const TODAY_STR = '2026-06-15';
+const TODAY = new Date();
+const TODAY_STR = TODAY.toISOString().slice(0,10);
 
 let projects = [
   {id:'p1',name:'A 시스템 제어', color:'#4f46e5',lastAction:'2026-06-14'},
@@ -892,7 +944,7 @@ function projDrop(e,targetPid){
   if(fromIdx<0||toIdx<0) return;
   const [moved]=projects.splice(fromIdx,1);
   projects.splice(toIdx,0,moved);
-  render();
+  saveAndRender();
 }
 function projDragEnd(e){ e.currentTarget.classList.remove('dragging','drag-over'); dragProjId=null; }
 
@@ -923,6 +975,7 @@ function taskDrop(e, targetTid, targetPrio){
   samePrio.splice(toIdx,0,moved);
   // subOrder 재부여
   samePrio.forEach((t,i)=>{ const idx=tasks.findIndex(x=>x.id===t.id); if(idx>=0) tasks[idx].subOrder=i; });
+  saveToFirebase();
   renderTaskList(filteredTasks());
 }
 
@@ -960,16 +1013,16 @@ function addTask(){
   tasks.push({id:Date.now(),text,project:projId,done:false,start,end,actualEnd:null,priority});
   touchProject(projId);
   document.getElementById('task-input').value='';
-  render();
+  saveAndRender();
 }
-function deleteTask(id){ tasks=tasks.filter(t=>t.id!==id); render(); }
+function deleteTask(id){ tasks=tasks.filter(t=>t.id!==id); saveAndRender(); }
 function toggleTask(id){
   tasks=tasks.map(t=>{ if(t.id!==id) return t; touchProject(t.project); return{...t,done:!t.done,actualEnd:!t.done?TODAY_STR:null}; });
-  render();
+  saveAndRender();
 }
 function completeEarly(id){
   tasks=tasks.map(t=>{ if(t.id!==id) return t; touchProject(t.project); return{...t,done:true,actualEnd:TODAY_STR}; });
-  render();
+  saveAndRender();
 }
 function openEdit(id){
   const t=tasks.find(x=>x.id===id); if(!t) return;
@@ -991,7 +1044,7 @@ function saveEdit(){
   const priority=document.getElementById('edit-priority').value;
   if(!text||!start||!end) return;
   tasks=tasks.map(t=>t.id===editingId?{...t,text,project:projId,start,end,priority}:t);
-  closeModal('modal-edit'); render();
+  closeModal('modal-edit'); saveAndRender();
 }
 
 /* ══════════════════════════════════════
@@ -1027,7 +1080,7 @@ function submitProject(){
   }
   editingProjId=null;
   document.getElementById('new-proj-name').value='';
-  closeModal('modal-proj'); render();
+  closeModal('modal-proj'); saveAndRender();
 }
 function deleteProject(pid){
   const p=projects.find(x=>x.id===pid);
@@ -1041,7 +1094,7 @@ function deleteProject(pid){
   weeklyLogs=weeklyLogs.filter(l=>l.project!==pid);
   projects=projects.filter(x=>x.id!==pid);
   if(currentFilter===pid) currentFilter='all';
-  render();
+  saveAndRender();
 }
 function touchProject(pid){
   projects=projects.map(p=>p.id===pid?{...p,lastAction:TODAY_STR}:p);
@@ -1070,9 +1123,9 @@ function addWeeklyLog(){
   document.getElementById('w-task').value='';
   document.getElementById('w-hours').value='';
   document.getElementById('w-memo').value='';
-  closeModal('modal-weekly'); render();
+  closeModal('modal-weekly'); saveAndRender();
 }
-function deleteWeekly(id){ weeklyLogs=weeklyLogs.filter(l=>l.id!==id); renderWeekly(); }
+function deleteWeekly(id){ weeklyLogs=weeklyLogs.filter(l=>l.id!==id); saveToFirebase(); renderWeekly(); }
 
 /* ══════════════════════════════════════
    MODAL
@@ -1084,12 +1137,27 @@ document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{ i
 /* ══════════════════════════════════════
    INIT
 ══════════════════════════════════════ */
-const now=new Date();
-document.getElementById('start-date').value=now.toISOString().slice(0,10);
-const endDef=new Date(now); endDef.setDate(endDef.getDate()+7);
-document.getElementById('end-date').value=endDef.toISOString().slice(0,10);
+// 날짜 기본값
+const _now=new Date();
+document.getElementById('start-date').value=_now.toISOString().slice(0,10);
+const _endDef=new Date(_now); _endDef.setDate(_endDef.getDate()+7);
+document.getElementById('end-date').value=_endDef.toISOString().slice(0,10);
 
-render();
+// 메모 자동 저장
+document.getElementById('sidebar-note')?.addEventListener('input', ()=>{
+  clearTimeout(window._noteTimer);
+  window._noteTimer = setTimeout(saveToFirebase, 1000);
+});
+
+// Firebase에서 불러온 후 렌더링
+(async () => {
+  // 로딩 표시
+  document.querySelector('main').insertAdjacentHTML('afterbegin',
+    '<div id="fb-loading" style="text-align:center;padding:30px;color:var(--muted);font-size:0.9rem;">🔄 데이터 불러오는 중...</div>');
+  await loadFromFirebase();
+  document.getElementById('fb-loading')?.remove();
+  render();
+})();
 </script>
 </body>
 </html>
