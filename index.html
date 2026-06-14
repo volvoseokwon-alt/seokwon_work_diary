@@ -77,6 +77,15 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 .task-item.overdue{border-left:3px solid var(--warn);}
 .task-left{display:flex;flex-wrap:wrap;align-items:center;gap:7px;flex:1;}
 .task-right{display:flex;align-items:center;gap:5px;flex-shrink:0;}
+/* drag */
+.drag-handle{cursor:grab;color:#cbd5e1;font-size:0.85rem;padding:0 3px;user-select:none;flex-shrink:0;}
+.drag-handle:hover{color:var(--muted);}
+.drag-handle:active{cursor:grabbing;}
+.task-item.dragging{opacity:.4;border:2px dashed var(--primary);}
+.task-item.drag-over{border-top:3px solid var(--primary);}
+.project-item.dragging{opacity:.35;}
+.project-item.drag-over{border-top:2px solid var(--primary);}
+.prio-group-label{font-size:0.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:4px 2px 2px;margin-top:4px;}
 .p-badge{font-size:0.7rem;padding:2px 6px;border-radius:4px;font-weight:600;}
 .date-badge{font-size:0.7rem;color:var(--muted);background:#f8fafc;padding:2px 6px;border-radius:4px;border:1px solid var(--border);}
 .status-chip{font-size:0.68rem;padding:2px 6px;border-radius:10px;color:white;font-weight:700;}
@@ -466,7 +475,15 @@ function renderSidebar(){
     const dot  = ic ? `<span class="inactive-dot" style="background:${ic}" title="${days}일 미활동"></span>` : '';
     const isAct=currentFilter===p.id;
     const iconCol=isAct?'rgba(255,255,255,0.65)':'#cbd5e1';
-    html += `<div class="project-item ${isAct?'active':''}" style="padding-right:2px;">
+    html += `<div class="project-item ${isAct?'active':''}" style="padding-right:2px;"
+        draggable="true"
+        data-pid="${p.id}"
+        ondragstart="projDragStart(event,'${p.id}')"
+        ondragover="projDragOver(event)"
+        ondragleave="projDragLeave(event)"
+        ondrop="projDrop(event,'${p.id}')"
+        ondragend="projDragEnd(event)">
+      <span class="drag-handle" title="드래그로 순서 변경">⠿</span>
       <span class="proj-dot" style="background:${p.color};flex-shrink:0;cursor:pointer" onclick="setFilter('${p.id}')"></span>
       <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="setFilter('${p.id}')">${p.name}</span>
       ${dot}
@@ -594,14 +611,36 @@ function renderTaskList(list){
   const el=document.getElementById('task-list');
   el.innerHTML='';
   if(!list.length){ el.innerHTML='<div style="color:var(--muted);font-size:0.83rem;text-align:center;padding:18px">업무 없음. 위에서 추가하세요.</div>'; return; }
-  const sorted=[...list].sort(prioSort);
+
+  // 우선순위 그룹별로 묶기 (같은 priority끼리 subOrder로 순서 유지)
+  const sorted=[...list].sort((a,b)=>{
+    const ai=PRIORITY_ORDER.indexOf(a.priority||'C3');
+    const bi=PRIORITY_ORDER.indexOf(b.priority||'C3');
+    if(ai!==bi) return (ai<0?99:ai)-(bi<0?99:bi);
+    return (a.subOrder||0)-(b.subOrder||0);
+  });
+
+  let lastPrio=null;
   sorted.forEach(t=>{
-    const p=proj(t.project), over=isOverdue(t), erly=isEarly(t);
     const prio=t.priority||'';
+    // 그룹 라벨
+    if(prio && prio!==lastPrio){
+      const lbl=document.createElement('div');
+      lbl.className='prio-group-label';
+      const groupColor=prioColor(prio);
+      lbl.innerHTML=`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${groupColor};margin-right:4px;vertical-align:middle;"></span>${prio[0]==='A'?'긴급':prio[0]==='B'?'중요':'일반'} (${prio[0]})`;
+      el.appendChild(lbl);
+      lastPrio=prio;
+    }
+    const p=proj(t.project), over=isOverdue(t), erly=isEarly(t);
     const pc=prioColor(prio);
     const item=document.createElement('div');
     item.className=`task-item ${t.done?'completed':''} ${over?'overdue':''}`;
+    item.setAttribute('draggable','true');
+    item.setAttribute('data-tid', t.id);
+    item.setAttribute('data-prio', prio);
     item.innerHTML=`
+      <span class="drag-handle" title="같은 우선순위 내 순서 변경">⠿</span>
       <div class="task-left">
         <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask(${t.id})">
         ${prio?`<span style="background:${pc};color:white;font-size:0.7rem;font-weight:800;padding:2px 6px;border-radius:4px;min-width:26px;text-align:center">${prio}</span>`:''}
@@ -616,6 +655,12 @@ function renderTaskList(list){
         <button class="btn-sm" style="background:var(--pri-light);color:var(--primary)" onclick="openEdit(${t.id})">수정</button>
         <button class="btn-sm" style="background:#fee2e2;color:var(--warn)" onclick="deleteTask(${t.id})">삭제</button>
       </div>`;
+    // task drag events
+    item.addEventListener('dragstart', e=>taskDragStart(e, t.id, prio));
+    item.addEventListener('dragover',  e=>taskDragOver(e, prio));
+    item.addEventListener('dragleave', e=>e.currentTarget.classList.remove('drag-over'));
+    item.addEventListener('drop',      e=>taskDrop(e, t.id, prio));
+    item.addEventListener('dragend',   e=>e.currentTarget.classList.remove('dragging'));
     el.appendChild(item);
   });
 }
@@ -828,6 +873,59 @@ function renderWeekly(){
 /* ══════════════════════════════════════
    SCORE
 ══════════════════════════════════════ */
+/* ══════════════════════════════════════
+   DRAG & DROP — 프로젝트 순서
+══════════════════════════════════════ */
+let dragProjId=null;
+function projDragStart(e,pid){ dragProjId=pid; e.currentTarget.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; }
+function projDragOver(e){
+  e.preventDefault(); e.dataTransfer.dropEffect='move';
+  e.currentTarget.classList.add('drag-over');
+}
+function projDragLeave(e){ e.currentTarget.classList.remove('drag-over'); }
+function projDrop(e,targetPid){
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if(!dragProjId||dragProjId===targetPid) return;
+  const fromIdx=projects.findIndex(p=>p.id===dragProjId);
+  const toIdx=projects.findIndex(p=>p.id===targetPid);
+  if(fromIdx<0||toIdx<0) return;
+  const [moved]=projects.splice(fromIdx,1);
+  projects.splice(toIdx,0,moved);
+  render();
+}
+function projDragEnd(e){ e.currentTarget.classList.remove('dragging','drag-over'); dragProjId=null; }
+
+/* ══════════════════════════════════════
+   DRAG & DROP — 업무 순서 (같은 priority 내)
+══════════════════════════════════════ */
+let dragTaskId=null, dragTaskPrio=null;
+function taskDragStart(e,tid,prio){
+  dragTaskId=tid; dragTaskPrio=prio;
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed='move';
+}
+function taskDragOver(e, targetPrio){
+  if(targetPrio!==dragTaskPrio){ e.dataTransfer.dropEffect='none'; return; }
+  e.preventDefault(); e.dataTransfer.dropEffect='move';
+  e.currentTarget.classList.add('drag-over');
+}
+function taskDrop(e, targetTid, targetPrio){
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if(!dragTaskId || dragTaskId===targetTid || dragTaskPrio!==targetPrio) return;
+  // 같은 priority 그룹 내에서 subOrder 재정렬
+  const samePrio=tasks.filter(t=>(t.priority||'')===(dragTaskPrio||'')).sort((a,b)=>(a.subOrder||0)-(b.subOrder||0));
+  const fromIdx=samePrio.findIndex(t=>t.id===dragTaskId);
+  const toIdx=samePrio.findIndex(t=>t.id===targetTid);
+  if(fromIdx<0||toIdx<0) return;
+  const [moved]=samePrio.splice(fromIdx,1);
+  samePrio.splice(toIdx,0,moved);
+  // subOrder 재부여
+  samePrio.forEach((t,i)=>{ const idx=tasks.findIndex(x=>x.id===t.id); if(idx>=0) tasks[idx].subOrder=i; });
+  renderTaskList(filteredTasks());
+}
+
 function calcScore(){
   const ft=filteredTasks();
   const total=ft.length, done=ft.filter(t=>t.done).length;
