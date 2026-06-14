@@ -18,8 +18,6 @@ header h1{font-size:1.05rem;font-weight:700;white-space:nowrap;}
 .hdr-right{display:flex;align-items:center;gap:8px;}
 .score-badge{background:rgba(255,255,255,.18);padding:4px 12px;border-radius:20px;font-size:0.8rem;white-space:nowrap;}
 .week-badge{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);padding:4px 10px;border-radius:20px;font-size:0.78rem;white-space:nowrap;font-weight:600;}
-.cheer-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:white;padding:4px 12px;border-radius:20px;cursor:pointer;font-size:0.8rem;transition:.15s;white-space:nowrap;}
-.cheer-btn:hover{background:rgba(255,255,255,.28);}
 /* Layout */
 .container{display:flex;flex:1;overflow:hidden;}
 /* Sidebar */
@@ -138,17 +136,6 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 .modal-box h3{font-size:1rem;font-weight:700;}
 .modal-box input,.modal-box select,.modal-box textarea{padding:8px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:0.85rem;width:100%;font-family:inherit;}
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;}
-/* Cheer overlay */
-.cheer-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;align-items:center;justify-content:center;flex-direction:column;gap:0;}
-.cheer-overlay.open{display:flex;}
-.cheer-box{background:white;border-radius:20px;padding:36px 40px;text-align:center;max-width:420px;width:90%;display:flex;flex-direction:column;gap:16px;box-shadow:0 20px 60px rgba(0,0,0,.25);animation:popIn .35s cubic-bezier(.34,1.56,.64,1);}
-@keyframes popIn{from{opacity:0;transform:scale(.7);}to{opacity:1;transform:scale(1);}}
-.cheer-emoji{font-size:3.5rem;line-height:1;}
-.cheer-msg{font-size:1.15rem;font-weight:700;color:var(--text);line-height:1.5;}
-.cheer-sub{font-size:0.85rem;color:var(--muted);}
-.cheer-close{background:var(--primary);color:white;border:none;padding:10px 28px;border-radius:8px;cursor:pointer;font-size:0.9rem;font-weight:600;margin-top:4px;}
-/* Confetti canvas */
-#confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:199;}
 /* Week heatmap */
 .heat-row{display:flex;gap:3px;align-items:center;font-size:0.75rem;margin-bottom:3px;}
 .heat-cell{width:20px;height:20px;border-radius:3px;border:1px solid var(--border);}
@@ -297,18 +284,6 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
   </main>
 </div>
 
-<!-- confetti canvas -->
-<canvas id="confetti-canvas"></canvas>
-
-<!-- Cheer overlay -->
-<div class="cheer-overlay" id="cheer-overlay">
-  <div class="cheer-box">
-    <div class="cheer-emoji" id="cheer-emoji">💪</div>
-    <div class="cheer-msg" id="cheer-msg">Loading...</div>
-    <div class="cheer-sub" id="cheer-sub"></div>
-    <button class="cheer-close" onclick="closeCheer()">계속 달려보자! 🚀</button>
-  </div>
-</div>
 
 <!-- 프로젝트 추가 -->
 <div class="modal" id="modal-proj">
@@ -850,28 +825,10 @@ function renderWeekly(){
 /* ══════════════════════════════════════
    SCORE
 ══════════════════════════════════════ */
-let lastCheerScore = -1;  // 마지막으로 cheer를 보여준 점수
-let cheerCooldown = false; // 연속 팝업 방지
-
 function calcScore(){
   const ft=filteredTasks();
   const total=ft.length, done=ft.filter(t=>t.done).length;
-  const score=total?Math.round(done/total*100):0;
-  document.getElementById('efficiency-score').textContent=score;
-
-  // 자동 Cheer Up 트리거 조건:
-  // - 50% 첫 도달, 75% 첫 도달, 100% 도달
-  // - 방금 완료(done 수 증가)로 인한 점수 변화일 때만
-  if(!cheerCooldown && total>0 && score>lastCheerScore){
-    const milestones=[50,75,100];
-    const hit=milestones.find(m=>score>=m && lastCheerScore<m);
-    if(hit){
-      cheerCooldown=true;
-      showCheerAuto(score, hit);
-      setTimeout(()=>{ cheerCooldown=false; },5000);
-    }
-  }
-  lastCheerScore=score;
+  document.getElementById('efficiency-score').textContent=total?Math.round(done/total*100):0;
 }
 
 /* ══════════════════════════════════════
@@ -998,82 +955,6 @@ function deleteWeekly(id){ weeklyLogs=weeklyLogs.filter(l=>l.id!==id); renderWee
 function openModal(id){ document.getElementById(id).classList.add('open'); }
 function closeModal(id){ document.getElementById(id).classList.remove('open'); }
 document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{ if(e.target===m) m.classList.remove('open'); }));
-
-/* ══════════════════════════════════════
-   CHEER UP
-══════════════════════════════════════ */
-const cheerMsgs = [
-  {e:'💪',m:'오늘도 최고야, 엔지니어!',  s:'굴삭기보다 강한 집중력으로 밀어붙여!'},
-  {e:'🔥',m:'불꽃같이 달리고 있어!',      s:'이 속도라면 목표는 반드시 달성된다.'},
-  {e:'🚀',m:'이미 궤도 진입 완료!',        s:'작은 진전도 진전이다. 멈추지 마.'},
-  {e:'🏆',m:'챔피언의 루틴을 지키고 있어!',s:'매일 꾸준함이 결국 차이를 만든다.'},
-  {e:'⚙️',m:'시스템처럼 정확하게!',        s:'엔지니어답게 하나씩 클리어해 나가자.'},
-  {e:'🌟',m:'오늘 한 일이 내일의 기반!',   s:'지금 이 순간도 성장 중이야.'},
-  {e:'🎯',m:'목표에 눈 똑바로 맞추고 있어!',s:'디테일을 놓치지 않는 당신이 최고.'},
-  {e:'😎',m:'프로는 기분에 상관없이 한다!', s:'오늘도 프로답게 — 잘하고 있어.'},
-];
-
-let confettiAnim=null;
-function showCheerAuto(score, milestone){
-  // 마일스톤별 특별 메시지
-  const milestoneMsg={
-    50:{e:'🔥',m:'절반을 돌파했어, 석원!',     s:`효율 ${score}% 달성 · 이 기세로 끝까지!`},
-    75:{e:'🚀',m:'75% 완료! 거의 다 왔어!',     s:`효율 ${score}% · 마지막 스퍼트만 남았다.`},
-   100:{e:'🏆',m:'완벽해! 오늘 모든 업무 완료!',s:'100% 달성 · 최고의 엔지니어!'},
-  };
-  const base=milestoneMsg[milestone]||cheerMsgs[Math.floor(Math.random()*cheerMsgs.length)];
-  document.getElementById('cheer-emoji').textContent=base.e;
-  document.getElementById('cheer-msg').textContent=base.m;
-  document.getElementById('cheer-sub').textContent=base.s;
-  document.getElementById('cheer-overlay').classList.add('open');
-  startConfetti();
-  // 100% 달성은 5초 후 자동 닫힘, 나머지는 8초
-  setTimeout(closeCheer, milestone===100?8000:6000);
-}
-function closeCheer(){
-  document.getElementById('cheer-overlay').classList.remove('open');
-  stopConfetti();
-}
-document.getElementById('cheer-overlay').addEventListener('click',e=>{ if(e.target===document.getElementById('cheer-overlay')) closeCheer(); });
-
-/* confetti */
-function startConfetti(){
-  const canvas=document.getElementById('confetti-canvas');
-  canvas.width=window.innerWidth; canvas.height=window.innerHeight;
-  const ctx=canvas.getContext('2d');
-  const colors=['#4f46e5','#10b981','#f59e0b','#ef4444','#0284c7','#a855f7','#ec4899'];
-  const particles=Array.from({length:100},()=>({
-    x:Math.random()*canvas.width,
-    y:Math.random()*canvas.height-canvas.height,
-    r:Math.random()*6+3,
-    color:colors[Math.floor(Math.random()*colors.length)],
-    speed:Math.random()*3+1.5,
-    angle:Math.random()*360,
-    spin:Math.random()*.2-.1,
-    wobble:Math.random()*2,
-    wobbleSpeed:Math.random()*.05+.02,
-    wobbleAngle:Math.random()*Math.PI*2,
-  }));
-  function draw(){
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    particles.forEach(p=>{
-      p.y+=p.speed; p.angle+=p.spin; p.wobbleAngle+=p.wobbleSpeed;
-      p.x+=Math.sin(p.wobbleAngle)*p.wobble;
-      if(p.y>canvas.height) p.y=-10;
-      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.angle*(Math.PI/180));
-      ctx.fillStyle=p.color; ctx.fillRect(-p.r/2,-p.r/2,p.r,p.r);
-      ctx.restore();
-    });
-    confettiAnim=requestAnimationFrame(draw);
-  }
-  if(confettiAnim) cancelAnimationFrame(confettiAnim);
-  draw();
-}
-function stopConfetti(){
-  if(confettiAnim){ cancelAnimationFrame(confettiAnim); confettiAnim=null; }
-  const canvas=document.getElementById('confetti-canvas');
-  canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
-}
 
 /* ══════════════════════════════════════
    INIT
