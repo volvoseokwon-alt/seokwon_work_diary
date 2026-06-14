@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ContextSync - 엔지니어 PM 대시보드</title>
+    <style>
+        :root {
+            --bg-color: #f4f6f9;
+            --card-color: #ffffff;
+            --text-color: #333333;
+            --primary-color: #4f46e5;
+            --accent-color: #10b981;
+            --early-color: #0284c7; /* 조기 완료 색상 (하늘색) */
+            --warning-color: #ef4444; /* 경고 색상 */
+            --border-color: #e5e7eb;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-color); display: flex; flex-direction: column; height: 100vh; }
+
+        header { background: var(--primary-color); color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
+        header h1 { font-size: 1.2rem; }
+        .score-badge { background: rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 20px; font-size: 0.9rem; }
+
+        .container { display: flex; flex: 1; overflow: hidden; }
+
+        /* 사이드바 */
+        aside { width: 250px; background: var(--card-color); border-right: 1px solid var(--border-color); padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+        .project-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+        .project-item { padding: 10px; border-radius: 6px; cursor: pointer; background: var(--bg-color); font-size: 0.9rem; transition: 0.2s; }
+        .project-item.active { background: var(--primary-color); color: white; font-weight: bold; }
+
+        /* 메인 영역 */
+        main { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
+        
+        .tabs { display: flex; gap: 10px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px; }
+        .tab-btn { background: none; border: none; padding: 8px 16px; cursor: pointer; font-size: 1rem; color: #666; }
+        .tab-btn.active { color: var(--primary-color); font-weight: bold; border-bottom: 2px solid var(--primary-color); margin-bottom: -12px; }
+
+        /* 🚨 알림/경고 영역 (장기 미활동 프로젝트 알림용) */
+        .alert-section { background: #fef2f2; border-left: 4px solid var(--warning-color); padding: 12px; border-radius: 4px; font-size: 0.9rem; display: flex; flex-direction: column; gap: 5px; }
+        .alert-title { font-weight: bold; color: #991b1b; }
+        .alert-item { color: #7f1d1d; list-style-type: slot; margin-left: 15px; }
+
+        /* 입력 폼 */
+        .input-box { display: flex; flex-wrap: wrap; gap: 10px; background: var(--card-color); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); }
+        .input-box input, .input-box select { padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; }
+        .input-box input[type="text"] { flex: 2; min-width: 200px; }
+        .date-group { display: flex; align-items: center; gap: 5px; font-size: 0.85rem; color: #555; }
+        .input-box button { background: var(--primary-color); color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+
+        /* 월간 차트 (간트 차트 스타일) */
+        .chart-section { background: var(--card-color); padding: 20px; border-radius: 8px; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 15px; }
+        .chart-header { display: flex; border-bottom: 2px solid var(--border-color); padding-bottom: 5px; font-weight: bold; font-size: 0.85rem; }
+        .chart-row { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border-color); }
+        .chart-label { width: 30%; font-size: 0.9rem; padding-right: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .chart-timeline { width: 70%; background: #f3f4f6; height: 24px; border-radius: 4px; position: relative; }
+        .chart-bar { height: 100%; border-radius: 4px; position: absolute; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.72rem; font-weight: bold; }
+        
+        /* 차트 바 색상 세분화 */
+        .bar-running { background: var(--primary-color); }
+        .bar-completed { background: #cbd5e1; }
+        .bar-early { background: var(--early-color); }
+
+        /* 할 일 리스트 */
+        .task-list { display: flex; flex-direction: column; gap: 10px; }
+        .task-item { background: var(--card-color); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; }
+        .task-item.completed .task-text { text-decoration: line-through; color: #888; }
+        .task-info { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+        .p-badge { font-size: 0.75rem; padding: 2px 6px; background: #eee; border-radius: 4px; color: #555; }
+        .date-badge { font-size: 0.75rem; color: #666; background: #f0fdf4; padding: 2px 6px; border-radius: 4px; }
+        .status-badge { font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; color: white; font-weight: bold; }
+        .status-early { background: var(--early-color); }
+
+        /* 캘린더 */
+        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+        .cal-head { text-align: center; font-size: 0.75rem; font-weight: bold; padding: 6px 0; color: #888; }
+        .cal-cell { min-height: 72px; border: 1px solid var(--border-color); border-radius: 4px; padding: 4px; font-size: 0.72rem; background: white; position: relative; }
+        .cal-cell.today { background: #fffbeb; border-color: #f59e0b; }
+        .cal-cell.other-month { background: #f9fafb; color: #ccc; }
+        .cal-day-num { font-size: 0.78rem; font-weight: bold; margin-bottom: 3px; }
+        .cal-today-dot { display: inline-block; background: #f59e0b; color: white; border-radius: 50%; width: 18px; height: 18px; text-align: center; line-height: 18px; }
+        .cal-task-chip { border-radius: 3px; padding: 1px 4px; margin-bottom: 2px; color: white; font-size: 0.68rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+        .cal-task-chip.running { background: var(--primary-color); }
+        .cal-task-chip.completed { background: #94a3b8; }
+        .cal-task-chip.early { background: var(--early-color); }
+        .cal-task-chip.start-dot { border-left: 3px solid #fbbf24; }
+        /* 진행현황 상태 카드 */
+        .stat-card { background: var(--bg-color); border-radius: 6px; padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; }
+        .stat-card .num { font-size: 1.5rem; font-weight: bold; }
+        .stat-card .lbl { font-size: 0.75rem; color: #888; }
+
+        @media (max-width: 768px) {
+            .container { flex-direction: column; }
+            aside { width: 100%; }
+            .project-list { flex-direction: row; overflow-x: auto; }
+            .chart-row { flex-direction: column; align-items: flex-start; gap: 5px; }
+            .chart-label { width: 100%; }
+            .chart-timeline { width: 100%; }
+            .cal-cell { min-height: 54px; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>🎯 ContextSync PM</h1>
+        <div class="score-badge">오늘 나의 성과 효율: <span id="efficiency-score">0</span>%</div>
+    </header>
+
+    <div class="container">
+        <aside>
+            <h3>📁 프로젝트</h3>
+            <ul class="project-list" id="project-list">
+                <li class="project-item active" onclick="filterProject('all')">전체 보기</li>
+                <li class="project-item" onclick="filterProject('A 시스템 제어')">A 시스템 제어</li>
+                <li class="project-item" onclick="filterProject('B사 기능 안전')">B사 기능 안전</li>
+                <li class="project-item" onclick="filterProject('개인 역량 개발')">개인 역량 개발</li>
+            </ul>
+        </aside>
+
+        <main>
+            <div class="alert-section" id="alert-section">
+                <div class="alert-title">⚠️ 시스템 진단: 오랫동안 액션이 없는 프로젝트</div>
+                <div id="alert-list"></div>
+            </div>
+
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('today', this)">📋 할 일 & 간트</button>
+                <button class="tab-btn" onclick="switchTab('calendar', this)">📅 캘린더</button>
+                <button class="tab-btn" onclick="switchTab('progress', this)">📊 진행 현황</button>
+                <button class="tab-btn" onclick="switchTab('weekly', this)">📝 주간 회고</button>
+            </div>
+
+            <!-- 캘린더 섹션 -->
+            <div class="chart-section" id="calendar-section" style="display:none;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <strong>📅 업무 일정 캘린더</strong>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <button onclick="prevMonth()" style="background:var(--primary-color);color:white;border:none;border-radius:4px;padding:4px 10px;cursor:pointer;">◀</button>
+                        <span id="cal-title" style="font-weight:bold;min-width:100px;text-align:center;"></span>
+                        <button onclick="nextMonth()" style="background:var(--primary-color);color:white;border:none;border-radius:4px;padding:4px 10px;cursor:pointer;">▶</button>
+                    </div>
+                </div>
+                <div id="calendar-grid"></div>
+                <div style="display:flex;gap:12px;font-size:0.78rem;flex-wrap:wrap;margin-top:4px;">
+                    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--primary-color);margin-right:4px;"></span>진행중</span>
+                    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--early-color);margin-right:4px;"></span>조기완료</span>
+                    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#cbd5e1;margin-right:4px;"></span>완료</span>
+                    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#f59e0b;margin-right:4px;"></span>오늘</span>
+                </div>
+            </div>
+
+            <!-- 진행 현황 섹션 -->
+            <div class="chart-section" id="progress-section" style="display:none; gap:20px;">
+                <strong>📊 전체 업무 진행 현황</strong>
+                <div style="display:flex; gap:20px; flex-wrap:wrap;">
+                    <!-- 도넛 차트 -->
+                    <div style="flex:1; min-width:220px; display:flex; flex-direction:column; align-items:center; gap:8px;">
+                        <div style="font-size:0.9rem; font-weight:bold; color:#555;">전체 완료율</div>
+                        <div style="position:relative; width:160px; height:160px;">
+                            <canvas id="donut-canvas" width="160" height="160"></canvas>
+                            <div id="donut-center" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;">
+                                <div style="font-size:1.6rem;font-weight:bold;color:var(--primary-color);" id="donut-pct">0%</div>
+                                <div style="font-size:0.72rem;color:#888;">완료율</div>
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:12px;font-size:0.78rem;">
+                            <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--accent-color);margin-right:3px;"></span>완료</span>
+                            <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#e5e7eb;margin-right:3px;"></span>미완료</span>
+                        </div>
+                    </div>
+                    <!-- 프로젝트별 바 차트 -->
+                    <div style="flex:2; min-width:260px; display:flex; flex-direction:column; gap:12px;">
+                        <div style="font-size:0.9rem; font-weight:bold; color:#555;">프로젝트별 진행률</div>
+                        <div id="project-bars"></div>
+                    </div>
+                    <!-- 상태별 카운트 카드 -->
+                    <div style="flex:1; min-width:160px; display:flex; flex-direction:column; gap:10px;">
+                        <div style="font-size:0.9rem; font-weight:bold; color:#555;">업무 현황 요약</div>
+                        <div id="status-cards"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-section" id="chart-section">
+                <strong>📅 월간 프로젝트 타임라인 (6월 마일스톤)</strong>
+                <div class="chart-header">
+                    <div style="width: 30%;">업무명</div>
+                    <div style="width: 70%; display: flex; justify-content: space-between; padding: 0 5px; font-size: 0.75rem; color: #888;">
+                        <span>6/01</span><span>6/10</span><span>6/20</span><span>6/30</span>
+                    </div>
+                </div>
+                <div id="chart-rows-container"></div>
+            </div>
+
+            <div class="input-box" id="input-container">
+                <input type="text" id="task-input" placeholder="새로운 업무를 입력하세요...">
+                <select id="project-select">
+                    <option value="A 시스템 제어">A 시스템 제어</option>
+                    <option value="B사 기능 안전">B사 기능 안전</option>
+                    <option value="개인 역량 개발">개인 역량 개발</option>
+                </select>
+                <div class="date-group">
+                    <label>시작:</label>
+                    <input type="date" id="start-date" value="2026-06-01">
+                </div>
+                <div class="date-group">
+                    <label>목표종료:</label>
+                    <input type="date" id="end-date" value="2026-06-15">
+                </div>
+                <button onclick="addTask()">추가</button>
+            </div>
+
+            <div class="task-list" id="task-list"></div>
+        </main>
+    </div>
+
+    <script>
+        // 프로젝트별 마지막 활동일 데이터 (장기 미활동 계산용 가상 데이터)
+        // 현재 시점: 2026년 6월 15일 가정
+        let projectsMetadata = [
+            { name: "A 시스템 제어", lastActionDate: "2026-06-14" },
+            { name: "B사 기능 안전", lastActionDate: "2026-05-10" }, // 30일 이상 액션 없음
+            { name: "개인 역량 개발", lastActionDate: "2026-06-02" }  // 10일 이상 액션 없음
+        ];
+
+        // 업무 데이터 구조 (actualEnd: 실제 완료일 항목 추가)
+        let tasks = [
+            { id: 1, text: "제어 알고리즘 코드 리뷰", project: "A 시스템 제어", completed: false, period: "today", start: "2026-06-01", end: "2026-06-12", actualEnd: null },
+            { id: 2, text: "안전 프로토콜 문서 수정", project: "B사 기능 안전", completed: true, period: "today", start: "2026-06-02", end: "2026-06-15", actualEnd: "2026-06-10" }, // 5일 조기 완료!
+            { id: 3, text: "영어 기술 문서 1챕터 읽기", project: "개인 역량 개발", completed: false, period: "today", start: "2026-06-10", end: "2026-06-25", actualEnd: null },
+            { id: 4, text: "기능 검증 체크리스트 작성", project: "B사 기능 안전", completed: true, period: "today", start: "2026-06-05", end: "2026-06-10", actualEnd: "2026-06-10" }  // 정시 완료
+        ];
+
+        let currentProjectFilter = 'all';
+        let currentTabFilter = 'today';
+
+        function render() {
+            const taskListEl = document.getElementById('task-list');
+            const inputContainer = document.getElementById('input-container');
+            const chartSection = document.getElementById('chart-section');
+            const calSection = document.getElementById('calendar-section');
+            const progSection = document.getElementById('progress-section');
+            taskListEl.innerHTML = '';
+
+            checkInactiveProjects();
+
+            const filteredTasks = tasks.filter(task => {
+                const projectMatch = currentProjectFilter === 'all' || task.project === currentProjectFilter;
+                const tabMatch = task.period === currentTabFilter || currentTabFilter === 'calendar' || currentTabFilter === 'progress';
+                return projectMatch && (currentTabFilter === 'calendar' || currentTabFilter === 'progress' ? true : task.period === currentTabFilter);
+            });
+
+            // 섹션 가시성 제어
+            chartSection.style.display = currentTabFilter === 'today' ? 'flex' : 'none';
+            calSection.style.display = currentTabFilter === 'calendar' ? 'flex' : 'none';
+            progSection.style.display = currentTabFilter === 'progress' ? 'flex' : 'none';
+            inputContainer.style.display = (currentTabFilter === 'weekly' || currentTabFilter === 'calendar' || currentTabFilter === 'progress') ? 'none' : 'flex';
+
+            if (currentTabFilter === 'today') {
+                const todayFiltered = tasks.filter(task => {
+                    return (currentProjectFilter === 'all' || task.project === currentProjectFilter) && task.period === 'today';
+                });
+                renderChart(todayFiltered);
+                todayFiltered.forEach(task => {
+                    const isEarly = task.completed && task.actualEnd && (new Date(task.actualEnd) < new Date(task.end));
+                    const item = document.createElement('div');
+                    item.className = `task-item ${task.completed ? 'completed' : ''}`;
+                    item.innerHTML = `
+                        <div class="task-info">
+                            <input type="checkbox" ${task.completed ? 'checked' : ''} onclick="toggleTask(${task.id})">
+                            <span class="p-badge">${task.project}</span>
+                            <span class="task-text">${task.text}</span>
+                            <span class="date-badge">📅 목표: ${task.start} ~ ${task.end}</span>
+                            ${isEarly ? `<span class="status-badge status-early">⚡ 조기완수(${task.actualEnd})</span>` : ''}
+                        </div>
+                        <div>
+                            ${!task.completed ? `<button style="background:#10b981; color:white; border:none; padding:3px 7px; border-radius:4px; font-size:0.75rem; cursor:pointer; margin-right:5px;" onclick="completeEarly(${task.id})">조기완료</button>` : ''}
+                            <button style="background:none; border:none; color:#ff4d4d; cursor:pointer; font-size:0.9rem;" onclick="deleteTask(${task.id})">삭제</button>
+                        </div>`;
+                    taskListEl.appendChild(item);
+                });
+            } else if (currentTabFilter === 'calendar') {
+                calYear = 2026; calMonth = 5;
+                renderCalendar();
+            } else if (currentTabFilter === 'progress') {
+                renderProgress();
+            }
+
+            calculateMetrics();
+        }
+
+        // 📊 월간 일정 차트 렌더링 (조기 완료 시각화 매핑)
+        function renderChart(filteredTasks) {
+            const container = document.getElementById('chart-rows-container');
+            container.innerHTML = '';
+
+            const monthStart = new Date('2026-06-01').getTime();
+            const monthEnd = new Date('2026-06-30').getTime();
+            const totalDuration = monthEnd - monthStart;
+
+            filteredTasks.forEach(task => {
+                const taskStart = new Date(task.start).getTime();
+                // 조기 완료되었다면 차트의 막대 끝 지점을 실제 완료일로 당겨서 표시
+                const isEarly = task.completed && task.actualEnd && (new Date(task.actualEnd) < new Date(task.end));
+                const endToChart = isEarly ? new Date(task.actualEnd).getTime() : new Date(task.end).getTime();
+
+                let leftPercent = ((taskStart - monthStart) / totalDuration) * 100;
+                let widthPercent = ((endToChart - taskStart) / totalDuration) * 100;
+
+                if (leftPercent < 0) leftPercent = 0;
+                if (widthPercent + leftPercent > 100) widthPercent = 100 - leftPercent;
+                if (widthPercent <= 0) widthPercent = 5; // 최소 가시성 확보
+
+                let barClass = 'bar-running';
+                let barText = '진행중';
+                if (task.completed) {
+                    if (isEarly) {
+                        barClass = 'bar-early';
+                        barText = '🚀 조기완료';
+                    } else {
+                        barClass = 'bar-completed';
+                        barText = '완료';
+                    }
+                }
+
+                const row = document.createElement('div');
+                row.className = 'chart-row';
+                row.innerHTML = `
+                    <div class="chart-label">${task.text}</div>
+                    <div class="chart-timeline">
+                        <div class="chart-bar ${barClass}" style="left: ${leftPercent}%; width: ${widthPercent}%;">
+                            ${barText}
+                        </div>
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        // 🚨 장기 미활동 프로젝트 진단 엔진 로직
+        function checkInactiveProjects() {
+            const alertList = document.getElementById('alert-list');
+            const alertSection = document.getElementById('alert-section');
+            alertList.innerHTML = '';
+
+            const today = new Date('2026-06-15'); // 기준일
+            let inactiveCount = 0;
+
+            projectsMetadata.forEach(p => {
+                const lastDate = new Date(p.lastActionDate);
+                const diffTime = Math.abs(today - lastDate);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                // 10일 이상 아무런 태스크 업데이트가 없는 프로젝트 발견 시 경고
+                if (diffDays >= 10) {
+                    inactiveCount++;
+                    const li = document.createElement('div');
+                    li.className = 'alert-item';
+                    li.innerHTML = `🛑 <strong>[${p.name}]</strong> 프로젝트는 현재 <strong>${diffDays}일 동안</strong> 새로운 활동이 기록되지 않았습니다. (마지막 활동일: ${p.lastActionDate})`;
+                    alertList.appendChild(li);
+                }
+            });
+
+            // 장기 미활동 프로젝트가 없으면 알림창을 숨김
+            if (inactiveCount === 0) {
+                alertSection.style.display = 'none';
+            } else {
+                alertSection.style.display = 'flex';
+            }
+        }
+
+        // 조기 완료 버튼 클릭 처리
+        function completeEarly(id) {
+            const todayStr = "2026-06-10"; // 가상의 조기 완료 날짜 (목표일인 15일보다 빠른 시점)
+            tasks = tasks.map(task => {
+                if (task.id === id) {
+                    // 메타데이터 정보 갱신
+                    updateProjectMetadata(task.project);
+                    return { ...task, completed: true, actualEnd: todayStr };
+                }
+                return task;
+            });
+            render();
+        }
+
+        function toggleTask(id) {
+            tasks = tasks.map(task => {
+                if (task.id === id) {
+                    const isNowCompleted = !task.completed;
+                    updateProjectMetadata(task.project);
+                    return { 
+                        ...task, 
+                        completed: isNowCompleted, 
+                        actualEnd: isNowCompleted ? "2026-06-15" : null // 정시 완료 가정
+                    };
+                }
+                return task;
+            });
+            render();
+        }
+
+        // 프로젝트에 액션이 일어났을 때 메타데이터의 마지막 활동일을 오늘로 갱신해주는 함수
+        function updateProjectMetadata(projectName) {
+            projectsMetadata = projectsMetadata.map(p => {
+                if (p.name === projectName) {
+                    return { ...p, lastActionDate: "2026-06-15" }; // 활동일을 최신으로 업데이트
+                }
+                return p;
+            });
+        }
+
+        function addTask() {
+            const input = document.getElementById('task-input');
+            const projectSelect = document.getElementById('project-select');
+            const startInput = document.getElementById('start-date');
+            const endInput = document.getElementById('end-date');
+            
+            if (!input.value.trim()) return;
+
+            tasks.push({
+                id: Date.now(),
+                text: input.value,
+                project: projectSelect.value,
+                completed: false,
+                period: 'today',
+                start: startInput.value,
+                end: endInput.value,
+                actualEnd: null
+            });
+
+            updateProjectMetadata(projectSelect.value); // 새 업무 추가도 액션으로 간주
+            input.value = '';
+            render();
+        }
+
+        function deleteTask(id) {
+            tasks = tasks.filter(task => task.id !== id);
+            render();
+        }
+
+        function filterProject(projectName) {
+            currentProjectFilter = projectName;
+            const items = document.querySelectorAll('.project-item');
+            items.forEach(item => item.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+            render();
+        }
+
+        function switchTab(tabName, element) {
+            currentTabFilter = tabName;
+            const btns = document.querySelectorAll('.tab-btn');
+            btns.forEach(btn => btn.classList.remove('active'));
+            element.classList.add('active');
+            render();
+        }
+
+        // ===== 캘린더 =====
+        let calYear = 2026, calMonth = 5; // 0-based: 5 = June
+
+        function prevMonth() { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } renderCalendar(); }
+        function nextMonth() { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } renderCalendar(); }
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendar-grid');
+            if (!grid) return;
+            const today = new Date('2026-06-15');
+            const days = ['일','월','화','수','목','금','토'];
+            const firstDay = new Date(calYear, calMonth, 1).getDay();
+            const lastDate = new Date(calYear, calMonth + 1, 0).getDate();
+            const prevLastDate = new Date(calYear, calMonth, 0).getDate();
+
+            document.getElementById('cal-title').textContent = `${calYear}년 ${calMonth + 1}월`;
+
+            let html = '<div class="cal-grid">';
+            days.forEach(d => html += `<div class="cal-head">${d}</div>`);
+
+            // 이전달 날짜
+            for (let i = 0; i < firstDay; i++) {
+                const d = prevLastDate - firstDay + 1 + i;
+                html += `<div class="cal-cell other-month"><div class="cal-day-num">${d}</div></div>`;
+            }
+
+            // 현재달
+            const filteredTasks = currentProjectFilter === 'all' ? tasks : tasks.filter(t => t.project === currentProjectFilter);
+
+            for (let d = 1; d <= lastDate; d++) {
+                const cellDate = new Date(calYear, calMonth, d);
+                const isToday = cellDate.toDateString() === today.toDateString();
+                const chips = [];
+
+                filteredTasks.forEach(task => {
+                    const s = new Date(task.start);
+                    const e = task.actualEnd ? new Date(task.actualEnd) : new Date(task.end);
+                    if (cellDate >= s && cellDate <= e) {
+                        const isEarly = task.completed && task.actualEnd && (new Date(task.actualEnd) < new Date(task.end));
+                        const cls = task.completed ? (isEarly ? 'early' : 'completed') : 'running';
+                        const isStart = cellDate.toDateString() === s.toDateString();
+                        chips.push(`<div class="cal-task-chip ${cls}${isStart ? ' start-dot' : ''}" title="${task.text}">${isStart ? '▶ ' : ''}${task.text}</div>`);
+                    }
+                });
+
+                html += `<div class="cal-cell${isToday ? ' today' : ''}">
+                    <div class="cal-day-num">${isToday ? `<span class="cal-today-dot">${d}</span>` : d}</div>
+                    ${chips.join('')}
+                </div>`;
+            }
+
+            // 다음달 날짜 채우기
+            const totalCells = firstDay + lastDate;
+            const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+            for (let i = 1; i <= remaining; i++) {
+                html += `<div class="cal-cell other-month"><div class="cal-day-num">${i}</div></div>`;
+            }
+
+            html += '</div>';
+            grid.innerHTML = html;
+        }
+
+        // ===== 진행 현황 차트 =====
+        function renderProgress() {
+            const filtered = currentProjectFilter === 'all' ? tasks : tasks.filter(t => t.project === currentProjectFilter);
+            const total = filtered.length;
+            const done = filtered.filter(t => t.completed).length;
+            const pct = total ? Math.round((done / total) * 100) : 0;
+
+            // 도넛
+            document.getElementById('donut-pct').textContent = pct + '%';
+            const canvas = document.getElementById('donut-canvas');
+            if (canvas) {
+                const ctx = canvas.getContext('2d');
+                const cx = 80, cy = 80, r = 60, lw = 22;
+                ctx.clearRect(0, 0, 160, 160);
+                // 배경 원
+                ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+                ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = lw; ctx.stroke();
+                // 완료 호
+                if (pct > 0) {
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + (Math.PI * 2 * pct / 100));
+                    ctx.strokeStyle = '#10b981'; ctx.lineWidth = lw; ctx.lineCap = 'round'; ctx.stroke();
+                }
+            }
+
+            // 프로젝트별 바
+            const projects = ['A 시스템 제어', 'B사 기능 안전', '개인 역량 개발'];
+            const colors = ['#4f46e5', '#0284c7', '#10b981'];
+            const barsEl = document.getElementById('project-bars');
+            barsEl.innerHTML = '';
+            projects.forEach((p, i) => {
+                const pt = tasks.filter(t => t.project === p);
+                const pd = pt.filter(t => t.completed).length;
+                const pp = pt.length ? Math.round((pd / pt.length) * 100) : 0;
+                barsEl.innerHTML += `
+                    <div style="margin-bottom:12px;">
+                        <div style="display:flex;justify-content:space-between;font-size:0.82rem;margin-bottom:4px;">
+                            <span style="font-weight:bold;">${p}</span>
+                            <span style="color:${colors[i]};font-weight:bold;">${pp}% (${pd}/${pt.length})</span>
+                        </div>
+                        <div style="background:#f3f4f6;border-radius:20px;height:12px;overflow:hidden;">
+                            <div style="height:100%;width:${pp}%;background:${colors[i]};border-radius:20px;transition:width 0.5s;"></div>
+                        </div>
+                    </div>`;
+            });
+
+            // 상태 카드
+            const overdue = filtered.filter(t => !t.completed && new Date(t.end) < new Date('2026-06-15')).length;
+            const inprog = filtered.filter(t => !t.completed).length;
+            const early = filtered.filter(t => t.completed && t.actualEnd && new Date(t.actualEnd) < new Date(t.end)).length;
+            document.getElementById('status-cards').innerHTML = `
+                <div class="stat-card" style="border-left:4px solid #10b981;">
+                    <div class="num" style="color:#10b981;">${done}</div>
+                    <div class="lbl">✅ 완료된 업무</div>
+                </div>
+                <div class="stat-card" style="border-left:4px solid var(--primary-color);">
+                    <div class="num" style="color:var(--primary-color);">${inprog}</div>
+                    <div class="lbl">🔄 진행중 업무</div>
+                </div>
+                <div class="stat-card" style="border-left:4px solid var(--early-color);">
+                    <div class="num" style="color:var(--early-color);">${early}</div>
+                    <div class="lbl">🚀 조기 완료</div>
+                </div>
+                <div class="stat-card" style="border-left:4px solid var(--warning-color);">
+                    <div class="num" style="color:var(--warning-color);">${overdue}</div>
+                    <div class="lbl">⚠️ 기한 초과</div>
+                </div>`;
+        }
+
+        function calculateMetrics() {
+            const todayTasks = tasks.filter(t => t.period === 'today');
+            const completedToday = todayTasks.filter(t => t.completed);
+            const efficiencyScore = todayTasks.length ? Math.round((completedToday.length / todayTasks.length) * 100) : 0;
+            document.getElementById('efficiency-score').textContent = efficiencyScore;
+        }
+
+        render();
+    </script>
+</body>
+</html>
