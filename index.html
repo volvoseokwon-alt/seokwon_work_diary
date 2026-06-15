@@ -310,9 +310,9 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
                 <div class="donut-lbl">완료율</div>
               </div>
             </div>
-            <div class="legend" style="justify-content:center;">
-              <span><span class="legend-dot" style="background:var(--accent);border-radius:50%"></span>완료</span>
-              <span><span class="legend-dot" style="background:#e2e8f0;border-radius:50%"></span>미완료</span>
+            <div class="legend" style="justify-content:center;flex-direction:column;gap:3px;">
+              <span><span class="legend-dot" style="background:#10b981;border-radius:50%"></span>완료</span>
+              <span><span class="legend-dot" style="background:#818cf8;border-radius:50%"></span>진행중 포함</span>
             </div>
           </div>
           <div style="flex:1;min-width:200px;">
@@ -958,35 +958,92 @@ function calMove(dir){ calMonth+=dir; if(calMonth>11){calMonth=0;calYear++;}else
 ══════════════════════════════════════ */
 function renderProgress(){
   const ft=filteredTasks();
-  const total=ft.length, done=ft.filter(t=>t.done).length;
-  const pct=total?Math.round(done/total*100):0;
-  document.getElementById('donut-pct').textContent=pct+'%';
+  const total=ft.length;
+  const done=ft.filter(t=>t.done).length;
+
+  // 전체 평균 진행률 = 각 업무의 진행% 평균 (완료=100, 진행중=10~90, 미진행=0)
+  const avgPct=total?Math.round(ft.reduce((s,t)=>s+getTaskProgress(t),0)/total):0;
+  const donePct=total?Math.round(done/total*100):0;
+
+  // 도넛: 평균 진행률 기준
+  document.getElementById('donut-pct').textContent=avgPct+'%';
   const canvas=document.getElementById('donut-canvas');
   const ctx=canvas.getContext('2d');
   ctx.clearRect(0,0,120,120);
   const cx=60,cy=60,r=44,lw=16;
+  // 배경
   ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.strokeStyle='#e2e8f0'; ctx.lineWidth=lw; ctx.stroke();
-  if(pct>0){ ctx.beginPath(); ctx.arc(cx,cy,r,-Math.PI/2,-Math.PI/2+(Math.PI*2*pct/100)); ctx.strokeStyle='#10b981'; ctx.lineWidth=lw; ctx.lineCap='round'; ctx.stroke(); }
+  // 완료% (진한 초록)
+  if(donePct>0){
+    ctx.beginPath(); ctx.arc(cx,cy,r,-Math.PI/2,-Math.PI/2+(Math.PI*2*donePct/100));
+    ctx.strokeStyle='#10b981'; ctx.lineWidth=lw; ctx.lineCap='round'; ctx.stroke();
+  }
+  // 진행중 포함 평균% (연한 파랑, 완료 위에 덧그리기)
+  if(avgPct>donePct){
+    ctx.beginPath(); ctx.arc(cx,cy,r,-Math.PI/2+(Math.PI*2*donePct/100),-Math.PI/2+(Math.PI*2*avgPct/100));
+    ctx.strokeStyle='#818cf8'; ctx.lineWidth=lw; ctx.lineCap='round'; ctx.stroke();
+  }
 
+  // 프로젝트별 바
   const bEl=document.getElementById('project-bars');
   bEl.innerHTML='';
   projects.forEach(p=>{
     const pt=tasks.filter(t=>t.project===p.id);
+    if(!pt.length) return;
     const pd=pt.filter(t=>t.done).length;
-    const pp=pt.length?Math.round(pd/pt.length*100):0;
+    // 평균 진행률 (완료=100% 포함)
+    const avgProgPct=Math.round(pt.reduce((s,t)=>s+getTaskProgress(t),0)/pt.length);
+    const donePctP=Math.round(pd/pt.length*100);
+    const hDiff=avgProgPct-getTimeElapsedPct({start:pt[0].start,end:pt[pt.length-1].end,done:false});
+    const hCol=healthColor(
+      Math.round(pt.filter(t=>!t.done).reduce((s,t)=>s+getHealthScore(t),0)/Math.max(1,pt.filter(t=>!t.done).length))
+    );
     bEl.innerHTML+=`<div class="prog-bar-wrap">
-      <div class="prog-bar-label"><span style="font-weight:600">${p.name}</span><span style="color:${p.color};font-weight:700">${pp}% (${pd}/${pt.length})</span></div>
-      <div class="prog-bar-track"><div class="prog-bar-fill" style="width:${pp}%;background:${p.color}"></div></div></div>`;
+      <div class="prog-bar-label">
+        <span style="font-weight:600">${p.name}</span>
+        <span style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:0.72rem;color:var(--muted);">완료 ${pd}/${pt.length}건</span>
+          <span style="color:${p.color};font-weight:700;">${avgProgPct}%</span>
+        </span>
+      </div>
+      <div class="prog-bar-track" style="height:14px;position:relative;">
+        <!-- 평균 진행률 (연한색) -->
+        <div style="position:absolute;height:100%;width:${avgProgPct}%;background:${p.color};opacity:0.25;border-radius:20px;"></div>
+        <!-- 완료 (진한색) -->
+        <div style="position:absolute;height:100%;width:${donePctP}%;background:${p.color};border-radius:20px;transition:width .6s;"></div>
+        <!-- 라벨 -->
+        <div style="position:absolute;inset:0;display:flex;align-items:center;padding:0 8px;justify-content:space-between;pointer-events:none;">
+          <span style="font-size:0.65rem;color:${donePctP>30?'white':'var(--text)'};font-weight:700;">${donePctP>0?'완료 '+donePctP+'%':''}</span>
+          <span style="font-size:0.65rem;color:var(--muted);font-weight:700;">${avgProgPct>donePctP?'진행포함 '+avgProgPct+'%':''}</span>
+        </div>
+      </div>
+    </div>`;
   });
 
   const overdue=ft.filter(t=>isOverdue(t)).length;
-  const inprog=ft.filter(t=>!t.done).length;
+  const inprog=ft.filter(t=>!t.done&&!isOverdue(t)).length;
   const early=ft.filter(t=>isEarly(t)).length;
+  const activeTasks=ft.filter(t=>!t.done&&!isOverdue(t));
+  const avgHealth=activeTasks.length?Math.round(activeTasks.reduce((s,t)=>s+getHealthScore(t),0)/activeTasks.length):0;
+  const hCol=healthColor(avgHealth);
   document.getElementById('stat-cards').innerHTML=`
-    <div class="prog-card" style="border-color:#10b981"><div class="big" style="color:#10b981">${done}</div><div class="sm">✅ 완료</div></div>
-    <div class="prog-card" style="border-color:var(--primary)"><div class="big" style="color:var(--primary)">${inprog}</div><div class="sm">🔄 진행중</div></div>
-    <div class="prog-card" style="border-color:var(--early)"><div class="big" style="color:var(--early)">${early}</div><div class="sm">🚀 조기완료</div></div>
-    <div class="prog-card" style="border-color:var(--warn)"><div class="big" style="color:var(--warn)">${overdue}</div><div class="sm">⚠️ 기한초과</div></div>`;
+    <div class="prog-card" style="border-color:#10b981">
+      <div class="big" style="color:#10b981">${donePct}%</div>
+      <div class="sm">✅ 완료율 (${done}/${total})</div>
+    </div>
+    <div class="prog-card" style="border-color:#818cf8">
+      <div class="big" style="color:#818cf8">${avgPct}%</div>
+      <div class="sm">📊 평균 진행률</div>
+      <div style="font-size:0.7rem;color:var(--muted);margin-top:2px;">완료+진행중 반영</div>
+    </div>
+    <div class="prog-card" style="border-color:${hCol}">
+      <div class="big" style="color:${hCol}">${avgHealth>0?'+':''}${avgHealth}%</div>
+      <div class="sm">${avgHealth>=0?'✅ 전체 건강도':'⚠️ 전체 건강도'}</div>
+    </div>
+    <div class="prog-card" style="border-color:var(--warn)">
+      <div class="big" style="color:var(--warn)">${overdue}</div>
+      <div class="sm">🔴 기한초과</div>
+    </div>`;
 }
 
 /* ══════════════════════════════════════
