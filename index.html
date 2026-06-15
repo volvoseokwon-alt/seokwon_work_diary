@@ -190,6 +190,8 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
       <button class="tab-btn" onclick="switchTab('calendar',this)">📅 캘린더</button>
       <button class="tab-btn" onclick="switchTab('progress',this)">📊 진행 현황</button>
       <button class="tab-btn" onclick="switchTab('weekly',this)">⏱️ 주간 기록</button>
+      <button class="tab-btn" onclick="switchTab('history',this)">📂 완료 히스토리</button>
+      <button class="tab-btn" onclick="switchTab('trash',this)">🗑️ 휴지통 <span id="trash-badge" style="display:none;background:var(--warn);color:white;font-size:0.65rem;border-radius:10px;padding:1px 5px;margin-left:2px;"></span></button>
     </div>
 
     <!-- 할 일 & 간트 -->
@@ -293,6 +295,28 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
         <div id="weekly-log"></div>
       </div>
     </div>
+    <!-- 완료 히스토리 -->
+    <div id="tab-history" style="display:none;">
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <strong>📂 완료된 프로젝트 히스토리</strong>
+          <span style="font-size:0.78rem;color:var(--muted);margin-left:4px;">완료 처리한 프로젝트와 업무 기록</span>
+        </div>
+        <div id="history-list"></div>
+      </div>
+    </div>
+
+    <!-- 휴지통 -->
+    <div id="tab-trash" style="display:none;">
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <strong>🗑️ 휴지통</strong>
+          <span style="font-size:0.78rem;color:var(--muted);">삭제된 프로젝트 · 업무 · 주간기록</span>
+          <button onclick="emptyTrash()" class="btn-sm" style="margin-left:auto;background:#fee2e2;color:var(--warn);">전체 비우기</button>
+        </div>
+        <div id="trash-list"></div>
+      </div>
+    </div>
   </main>
 </div>
 
@@ -383,6 +407,8 @@ async function saveToFirebase() {
       projects,
       tasks,
       weeklyLogs,
+      trash,
+      completedProjects,
       sidebarNote: document.getElementById('sidebar-note')?.value || '',
       updatedAt: new Date().toISOString()
     });
@@ -395,9 +421,11 @@ async function loadFromFirebase() {
     const snap = await db.collection('userData').doc('main').get();
     if (snap.exists) {
       const data = snap.data();
-      if (data.projects?.length)   projects    = data.projects;
-      if (data.tasks?.length)      tasks       = data.tasks;
-      if (data.weeklyLogs?.length) weeklyLogs  = data.weeklyLogs;
+      if (data.projects?.length)          projects          = data.projects;
+      if (data.tasks?.length)             tasks             = data.tasks;
+      if (data.weeklyLogs?.length)        weeklyLogs        = data.weeklyLogs;
+      if (data.trash?.length)             trash             = data.trash;
+      if (data.completedProjects?.length) completedProjects = data.completedProjects;
       if (data.sidebarNote) {
         const noteEl = document.getElementById('sidebar-note');
         if (noteEl) noteEl.value = data.sidebarNote;
@@ -413,7 +441,8 @@ function saveAndRender() { render(); saveToFirebase(); }
    DATA
 ══════════════════════════════════════ */
 const TODAY = new Date();
-const TODAY_STR = TODAY.toISOString().slice(0,10);
+// 로컬 날짜 기준 (UTC 오프셋 보정 - 한국 KST 등)
+const TODAY_STR = `${TODAY.getFullYear()}-${String(TODAY.getMonth()+1).padStart(2,'0')}-${String(TODAY.getDate()).padStart(2,'0')}`;
 
 let projects = [
   {id:'p1',name:'A 시스템 제어', color:'#4f46e5',lastAction:'2026-06-14'},
@@ -447,6 +476,8 @@ let weeklyLogs = [
   {id:9,project:'p2',task:'안전 리뷰 준비',        date:'2026-06-15',hours:2,  memo:''},
 ];
 
+let trash = [];          // {type:'project'|'task'|'weekly', data:{...}, deletedAt:''}
+let completedProjects = []; // {project:{...}, tasks:[...], completedAt:''}
 let currentFilter = 'all';
 let currentTab    = 'today';
 let calYear  = TODAY.getFullYear();
@@ -545,7 +576,8 @@ function renderSidebar(){
       <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="setFilter('${p.id}')">${p.name}</span>
       ${dot}
       <span onclick="openEditProject('${p.id}')" title="이름 수정" style="color:${iconCol};font-size:0.75rem;cursor:pointer;padding:2px 3px;flex-shrink:0;line-height:1;" onmouseover="this.style.color='#a5b4fc'" onmouseout="this.style.color='${iconCol}'">✏</span>
-      <span onclick="deleteProject('${p.id}')" title="삭제" style="color:${iconCol};font-size:0.85rem;cursor:pointer;padding:2px 3px;flex-shrink:0;line-height:1;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='${iconCol}'">&times;</span>
+      <span onclick="completeProject('${p.id}')" title="완료 처리 → 히스토리" style="color:${iconCol};font-size:0.72rem;cursor:pointer;padding:2px 3px;flex-shrink:0;line-height:1;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='${iconCol}'">✔</span>
+      <span onclick="deleteProject('${p.id}')" title="휴지통으로 이동" style="color:${iconCol};font-size:0.85rem;cursor:pointer;padding:2px 3px;flex-shrink:0;line-height:1;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='${iconCol}'">&times;</span>
     </div>`;
   });
   el.innerHTML = html;
@@ -600,7 +632,7 @@ function checkAlerts(){
 /* ══════════════════════════════════════
    TABS
 ══════════════════════════════════════ */
-const TAB_IDS=['today','calendar','progress','weekly'];
+const TAB_IDS=['today','calendar','progress','weekly','history','trash'];
 function switchTab(name,el){
   currentTab=name;
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
@@ -622,17 +654,16 @@ function renderGantt(list){
   const mDur   = mEnd.getTime()-mStart.getTime();
 
   const fmtD = dt => `${dt.getMonth()+1}/${dt.getDate()}`;
-  const q1 = new Date(mStart); q1.setDate(mStart.getDate()+Math.round(30*.25));
-  const q2 = new Date(mStart); q2.setDate(mStart.getDate()+15); // 오늘
-  const q3 = new Date(mStart); q3.setDate(mStart.getDate()+Math.round(30*.75));
+  const q1 = new Date(mStart); q1.setDate(mStart.getDate()+8);
+  const q3 = new Date(mStart); q3.setDate(mStart.getDate()+23);
 
   document.getElementById('gantt-title').textContent=`📅 타임라인 (${fmtD(mStart)} ~ ${fmtD(mEnd)})`;
   document.getElementById('g-d1').textContent=fmtD(mStart);
   document.getElementById('g-d2').textContent=fmtD(q1);
-  document.getElementById('g-d3').textContent=`오늘(${fmtD(q2)})`;
+  document.getElementById('g-d3').textContent=`▼오늘(${fmtD(TODAY)})`;
   document.getElementById('g-d4').textContent=fmtD(mEnd);
 
-  const todayPct = 50; // 오늘은 항상 중앙(50%)
+  const todayPct = 50; // 오늘은 항상 중앙(50%) — mStart=today-15, mEnd=today+15
 
   if(!list.length){ container.innerHTML='<div style="color:var(--muted);font-size:0.82rem;padding:10px 0">표시할 업무가 없습니다.</div>'; return; }
   list.sort(prioSort).forEach(t=>{
@@ -984,6 +1015,132 @@ function taskDrop(e, targetTid, targetPrio){
   renderTaskList(filteredTasks());
 }
 
+/* ══════════════════════════════════════
+   TRASH & HISTORY
+══════════════════════════════════════ */
+function updateTrashBadge(){
+  const badge=document.getElementById('trash-badge');
+  if(!badge) return;
+  if(trash.length>0){ badge.textContent=trash.length; badge.style.display='inline'; }
+  else badge.style.display='none';
+}
+
+function renderTrash(){
+  updateTrashBadge();
+  const el=document.getElementById('trash-list');
+  if(!trash.length){
+    el.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted);font-size:0.85rem;">휴지통이 비어있습니다.</div>';
+    return;
+  }
+  el.innerHTML=[...trash].reverse().map((item,ri)=>{
+    const i=trash.length-1-ri;
+    if(item.type==='project'){
+      const {project,tasks:pt}=item.data;
+      return `<div class="trash-item">
+        <span style="font-size:1.2rem">📁</span>
+        <div class="ti-meta">
+          <div class="ti-name" style="color:${project.color}">${project.name}</div>
+          <div class="ti-sub">프로젝트 · 업무 ${pt.length}개 포함 · 삭제일: ${item.deletedAt}</div>
+        </div>
+        <button class="btn-sm" style="background:var(--pri-light);color:var(--primary)" onclick="restoreTrash(${i})">복원</button>
+        <button class="btn-sm" style="background:#fee2e2;color:var(--warn)" onclick="permanentDelete(${i})">영구삭제</button>
+      </div>`;
+    } else if(item.type==='task'){
+      const t=item.data, p=proj(t.project);
+      return `<div class="trash-item">
+        <span style="font-size:1.2rem">📋</span>
+        <div class="ti-meta">
+          <div class="ti-name">${t.text}</div>
+          <div class="ti-sub"><span style="color:${p.color}">${p.name}</span> · ${t.start}~${t.end} · 삭제일: ${item.deletedAt}</div>
+        </div>
+        <button class="btn-sm" style="background:var(--pri-light);color:var(--primary)" onclick="restoreTrash(${i})">복원</button>
+        <button class="btn-sm" style="background:#fee2e2;color:var(--warn)" onclick="permanentDelete(${i})">영구삭제</button>
+      </div>`;
+    } else {
+      const l=item.data, p=proj(l.project);
+      return `<div class="trash-item">
+        <span style="font-size:1.2rem">⏱️</span>
+        <div class="ti-meta">
+          <div class="ti-name">${l.task}</div>
+          <div class="ti-sub"><span style="color:${p.color}">${p.name}</span> · ${l.date} · ${l.hours}h · 삭제일: ${item.deletedAt}</div>
+        </div>
+        <button class="btn-sm" style="background:var(--pri-light);color:var(--primary)" onclick="restoreTrash(${i})">복원</button>
+        <button class="btn-sm" style="background:#fee2e2;color:var(--warn)" onclick="permanentDelete(${i})">영구삭제</button>
+      </div>`;
+    }
+  }).join('');
+}
+
+function restoreTrash(i){
+  const item=trash[i];
+  if(!item) return;
+  if(item.type==='project'){
+    const {project,tasks:pt,weeklyLogs:wl}=item.data;
+    if(!projects.find(p=>p.id===project.id)) projects.push(project);
+    pt.forEach(t=>{ if(!tasks.find(x=>x.id===t.id)) tasks.push(t); });
+    if(wl) wl.forEach(l=>{ if(!weeklyLogs.find(x=>x.id===l.id)) weeklyLogs.push(l); });
+  } else if(item.type==='task'){
+    if(!tasks.find(x=>x.id===item.data.id)) tasks.push(item.data);
+  } else {
+    if(!weeklyLogs.find(x=>x.id===item.data.id)) weeklyLogs.push(item.data);
+  }
+  trash.splice(i,1);
+  updateTrashBadge();
+  saveAndRender();
+}
+
+function permanentDelete(i){
+  if(!confirm('영구 삭제합니다. 복원할 수 없습니다.')) return;
+  trash.splice(i,1);
+  updateTrashBadge();
+  saveToFirebase();
+  renderTrash();
+}
+
+function emptyTrash(){
+  if(!trash.length) return;
+  if(!confirm(`휴지통의 항목 ${trash.length}개를 모두 영구 삭제합니다. 복원할 수 없습니다.`)) return;
+  trash=[];
+  updateTrashBadge();
+  saveToFirebase();
+  renderTrash();
+}
+
+function renderHistory(){
+  const el=document.getElementById('history-list');
+  if(!completedProjects.length){
+    el.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted);font-size:0.85rem;">완료된 프로젝트가 없습니다.<br><span style="font-size:0.75rem;">사이드바의 프로젝트 ✔ 버튼으로 완료 처리하세요.</span></div>';
+    return;
+  }
+  el.innerHTML=[...completedProjects].reverse().map((cp,ri)=>{
+    const i=completedProjects.length-1-ri;
+    const p=cp.project;
+    const doneTasks=cp.tasks.filter(t=>t.done).length;
+    const totalTasks=cp.tasks.length;
+    return `<div class="history-item">
+      <div class="hi-head">
+        <span style="width:10px;height:10px;border-radius:50%;background:${p.color};display:inline-block;flex-shrink:0"></span>
+        <span class="hi-name">${p.name}</span>
+        <span style="font-size:0.75rem;background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:10px;font-weight:600;">완료</span>
+        <span class="hi-date">완료일: ${p.completedAt||cp.completedAt}</span>
+        <button class="btn-sm" style="background:var(--pri-light);color:var(--primary);margin-left:8px;" onclick="restoreHistory(${i})">프로젝트 복원</button>
+      </div>
+      <div style="font-size:0.78rem;color:var(--muted);">업무 ${totalTasks}개 · 완료 ${doneTasks}개 (${totalTasks?Math.round(doneTasks/totalTasks*100):0}%)</div>
+      ${cp.tasks.length?`<div class="hi-tasks">${cp.tasks.map(t=>`<span class="history-task-chip">${t.done?'✓ ':''}${t.text}</span>`).join('')}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function restoreHistory(i){
+  const cp=completedProjects[i];
+  if(!cp) return;
+  if(!confirm(`"${cp.project.name}" 프로젝트를 활성 프로젝트로 복원합니다.`)) return;
+  if(!projects.find(p=>p.id===cp.project.id)) projects.push(cp.project);
+  cp.tasks.forEach(t=>{ if(!tasks.find(x=>x.id===t.id)) tasks.push(t); });
+  completedProjects.splice(i,1);
+  saveAndRender();
+}
+
 function calcScore(){
   const ft=filteredTasks();
   const total=ft.length, done=ft.filter(t=>t.done).length;
@@ -1003,6 +1160,8 @@ function render(){
   else if(currentTab==='calendar'){ renderCalendar(); }
   else if(currentTab==='progress'){ renderProgress(); }
   else if(currentTab==='weekly'){ renderWeekly(); }
+  else if(currentTab==='history'){ renderHistory(); }
+  else if(currentTab==='trash'){ renderTrash(); }
 }
 
 /* ══════════════════════════════════════
@@ -1020,7 +1179,13 @@ function addTask(){
   document.getElementById('task-input').value='';
   saveAndRender();
 }
-function deleteTask(id){ tasks=tasks.filter(t=>t.id!==id); saveAndRender(); }
+function deleteTask(id){
+  const t=tasks.find(x=>x.id===id); if(!t) return;
+  trash.push({type:'task', data:t, deletedAt:TODAY_STR});
+  tasks=tasks.filter(x=>x.id!==id);
+  updateTrashBadge();
+  saveAndRender();
+}
 function toggleTask(id){
   tasks=tasks.map(t=>{ if(t.id!==id) return t; touchProject(t.project); return{...t,done:!t.done,actualEnd:!t.done?TODAY_STR:null}; });
   saveAndRender();
@@ -1090,11 +1255,28 @@ function submitProject(){
 function deleteProject(pid){
   const p=projects.find(x=>x.id===pid);
   if(!p) return;
-  const taskCount=tasks.filter(t=>t.project===pid).length;
+  const projTasks=tasks.filter(t=>t.project===pid);
+  const taskCount=projTasks.length;
   const msg=taskCount>0
-    ? `"${p.name}" 프로젝트를 삭제하면 연결된 업무 ${taskCount}개도 함께 삭제됩니다.\n계속하시겠습니까?`
-    : `"${p.name}" 프로젝트를 삭제하시겠습니까?`;
+    ? `"${p.name}" 프로젝트와 연결된 업무 ${taskCount}개를 휴지통으로 이동합니다.`
+    : `"${p.name}" 프로젝트를 휴지통으로 이동합니다.`;
   if(!confirm(msg)) return;
+  // 휴지통에 프로젝트 + 연결 업무 + 주간기록 저장
+  trash.push({type:'project', data:{project:p, tasks:projTasks, weeklyLogs:weeklyLogs.filter(l=>l.project===pid)}, deletedAt:TODAY_STR});
+  tasks=tasks.filter(t=>t.project!==pid);
+  weeklyLogs=weeklyLogs.filter(l=>l.project!==pid);
+  projects=projects.filter(x=>x.id!==pid);
+  if(currentFilter===pid) currentFilter='all';
+  updateTrashBadge();
+  saveAndRender();
+}
+// 프로젝트 완료 처리 → 히스토리로 이동
+function completeProject(pid){
+  const p=projects.find(x=>x.id===pid);
+  if(!p) return;
+  if(!confirm(`"${p.name}" 프로젝트를 완료 처리하고 히스토리로 이동합니다.`)) return;
+  const projTasks=tasks.filter(t=>t.project===pid);
+  completedProjects.push({project:{...p, completedAt:TODAY_STR}, tasks:projTasks, completedAt:TODAY_STR});
   tasks=tasks.filter(t=>t.project!==pid);
   weeklyLogs=weeklyLogs.filter(l=>l.project!==pid);
   projects=projects.filter(x=>x.id!==pid);
@@ -1130,7 +1312,14 @@ function addWeeklyLog(){
   document.getElementById('w-memo').value='';
   closeModal('modal-weekly'); saveAndRender();
 }
-function deleteWeekly(id){ weeklyLogs=weeklyLogs.filter(l=>l.id!==id); saveToFirebase(); renderWeekly(); }
+function deleteWeekly(id){
+  const l=weeklyLogs.find(x=>x.id===id); if(!l) return;
+  trash.push({type:'weekly', data:l, deletedAt:TODAY_STR});
+  weeklyLogs=weeklyLogs.filter(x=>x.id!==id);
+  updateTrashBadge();
+  saveToFirebase();
+  renderWeekly();
+}
 
 /* ══════════════════════════════════════
    MODAL
@@ -1161,6 +1350,7 @@ document.getElementById('sidebar-note')?.addEventListener('input', ()=>{
     '<div id="fb-loading" style="text-align:center;padding:30px;color:var(--muted);font-size:0.9rem;">🔄 데이터 불러오는 중...</div>');
   await loadFromFirebase();
   document.getElementById('fb-loading')?.remove();
+  updateTrashBadge();
   render();
 })();
 </script>
