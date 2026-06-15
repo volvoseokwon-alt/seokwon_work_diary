@@ -321,6 +321,10 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
           </div>
         </div>
         <div class="prog-cards" id="stat-cards"></div>
+        <div style="border-top:1px solid var(--border);padding-top:12px;">
+          <div style="font-size:0.85rem;font-weight:700;color:var(--muted);margin-bottom:8px;">⚠️ 주의 업무 (기한초과 · 지연)</div>
+          <div id="risk-list"></div>
+        </div>
       </div>
     </div>
 
@@ -518,7 +522,7 @@ const TASK_STATUS={
   'in_progress_80':{label:'진행 80%',color:'#4f46e5',icon:'🔵',pct:80},
   'in_progress_90':{label:'진행 90%',color:'#4f46e5',icon:'🔵',pct:90},
   'in_progress':   {label:'진행중',  color:'#4f46e5',icon:'🔵',pct:50}, // 구버전 호환
-  'on_track':      {label:'순조',    color:'#10b981',icon:'✅',pct:100},
+  'on_track':      {label:'완료',    color:'#10b981',icon:'✅',pct:100},
   'delayed':       {label:'지연',    color:'#f59e0b',icon:'⚠️',pct:null},
   'done':          {label:'완료',    color:'#64748b',icon:'☑️',pct:100},
   'early_done':    {label:'조기완료',color:'#0284c7',icon:'⚡',pct:100},
@@ -812,13 +816,17 @@ function renderGantt(list){
     if(t.done){ barLabel=isEarly(t)?'⚡ 조기':'✓ 완료'; barBg='#94a3b8'; }
     else if(isOverdue(t)){ barLabel='🔴 초과'; barBg='#ef4444'; }
     else if(st2==='delayed'){ barLabel='⚠ 지연'; }
-    else if(st2==='on_track'){ barLabel='✅ 순조'; }
+    else if(st2==='on_track'){ barLabel='✅ 완료'; }
     else if(st2.startsWith('in_progress')){ barLabel=progPct+'%'; }
 
     const row=document.createElement('div');
     row.className='chart-row';
-    row.innerHTML=`<div class="chart-label" title="${t.text}">
-        ${prio?`<span style="background:${pc};color:white;font-size:0.65rem;font-weight:800;padding:1px 5px;border-radius:3px;margin-right:4px;">${prio}</span>`:''}${t.text}
+    const tp=proj(t.project);
+    const showProjLabel=currentFilter==='all';
+    row.innerHTML=`<div class="chart-label" title="[${tp.name}] ${t.text}">
+        ${prio?`<span style="background:${pc};color:white;font-size:0.65rem;font-weight:800;padding:1px 5px;border-radius:3px;margin-right:4px;">${prio}</span>`:''}
+        ${showProjLabel?`<span style="color:${tp.color};font-size:0.65rem;font-weight:700;margin-right:3px;">[${tp.name}]</span>`:''}
+        <span>${t.text}</span>
       </div>
       <div class="chart-timeline" title="${t.text}: ${barLabel}">
         <div class="chart-today-line" style="left:${todayPct}%"></div>
@@ -1393,7 +1401,10 @@ function restoreHistory(i){
 function setTaskStatus(id, status){
   tasks=tasks.map(t=>t.id===id?{...t,status}:t);
   saveToFirebase();
-  renderTaskList(filteredTasks());
+  // 목록 + 간트 둘 다 즉시 갱신
+  const ft=filteredTasks();
+  renderTaskList(ft);
+  renderGantt(ft);
 }
 
 /* ══════════════════════════════════════
