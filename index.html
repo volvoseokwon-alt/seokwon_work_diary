@@ -507,14 +507,62 @@ function prioColor(p){ return p?PRIORITY_COLOR[p[0]]||'#94a3b8':'#cbd5e1'; }
 
 /* 업무 상태 */
 const TASK_STATUS={
-  'not_started': {label:'미진행', color:'#94a3b8', icon:'⬜'},
-  'in_progress':  {label:'진행중', color:'#4f46e5', icon:'🔵'},
-  'on_track':     {label:'순조', color:'#10b981', icon:'✅'},
-  'delayed':      {label:'지연',  color:'#f59e0b', icon:'⚠️'},
-  'done':         {label:'완료',  color:'#64748b', icon:'☑️'},
-  'early_done':   {label:'조기완료',color:'#0284c7',icon:'⚡'},
-  'overdue':      {label:'기한초과',color:'#ef4444',icon:'🔴'},
+  'not_started': {label:'미진행',   color:'#94a3b8', icon:'⬜', pct:0},
+  'in_progress_10':{label:'진행 10%',color:'#4f46e5',icon:'🔵',pct:10},
+  'in_progress_20':{label:'진행 20%',color:'#4f46e5',icon:'🔵',pct:20},
+  'in_progress_30':{label:'진행 30%',color:'#4f46e5',icon:'🔵',pct:30},
+  'in_progress_40':{label:'진행 40%',color:'#4f46e5',icon:'🔵',pct:40},
+  'in_progress_50':{label:'진행 50%',color:'#4f46e5',icon:'🔵',pct:50},
+  'in_progress_60':{label:'진행 60%',color:'#4f46e5',icon:'🔵',pct:60},
+  'in_progress_70':{label:'진행 70%',color:'#4f46e5',icon:'🔵',pct:70},
+  'in_progress_80':{label:'진행 80%',color:'#4f46e5',icon:'🔵',pct:80},
+  'in_progress_90':{label:'진행 90%',color:'#4f46e5',icon:'🔵',pct:90},
+  'in_progress':   {label:'진행중',  color:'#4f46e5',icon:'🔵',pct:50}, // 구버전 호환
+  'on_track':      {label:'순조',    color:'#10b981',icon:'✅',pct:100},
+  'delayed':       {label:'지연',    color:'#f59e0b',icon:'⚠️',pct:null},
+  'done':          {label:'완료',    color:'#64748b',icon:'☑️',pct:100},
+  'early_done':    {label:'조기완료',color:'#0284c7',icon:'⚡',pct:100},
+  'overdue':       {label:'기한초과',color:'#ef4444',icon:'🔴',pct:null},
 };
+
+// 실제 진행% 반환 (0~100)
+function getTaskProgress(t){
+  if(t.done) return 100;
+  const st=t.status||'not_started';
+  const info=TASK_STATUS[st];
+  if(info && info.pct!=null) return info.pct;
+  return 0;
+}
+
+// 경과율 계산: 시작일~종료일 중 오늘이 몇%인지
+function getTimeElapsedPct(t){
+  const todayD=new Date(TODAY.getFullYear(),TODAY.getMonth(),TODAY.getDate());
+  const s=new Date(t.start); const sD=new Date(s.getFullYear(),s.getMonth(),s.getDate());
+  const e=new Date(t.end);   const eD=new Date(e.getFullYear(),e.getMonth(),e.getDate());
+  const total=eD-sD; if(total<=0) return 100;
+  const elapsed=todayD-sD;
+  return Math.min(100,Math.max(0,Math.round(elapsed/total*100)));
+}
+
+// 건강도: 진행% - 경과% → 양수=순조, 음수=지연
+function getHealthScore(t){
+  if(t.done) return 100;
+  const prog=getTaskProgress(t);
+  const elapsed=getTimeElapsedPct(t);
+  return prog-elapsed; // +면 앞서감, -면 뒤처짐
+}
+
+// 건강도 → 색상 (green~red 그라데이션)
+function healthColor(score){
+  // score: -100(위험) ~ +100(순조)
+  // -30이하: 완전 빨강, +20이상: 완전 초록, 중간: 그라데이션
+  const t=Math.min(1,Math.max(0,(score+30)/50)); // 0~1
+  const r=Math.round(239+(16-239)*t);
+  const g=Math.round(68+(185-68)*t);
+  const b=Math.round(68+(129-68)*t);
+  return `rgb(${r},${g},${b})`;
+}
+
 function getTaskStatus(t){
   if(t.done){ return isEarly(t)?'early_done':'done'; }
   if(isOverdue(t)) return 'overdue';
