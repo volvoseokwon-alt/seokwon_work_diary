@@ -207,7 +207,15 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
       <textarea class="proj-note-ta" id="proj-note-ta" placeholder="프로젝트 관련 메모, 목표, 이슈 등을 기록하세요..."></textarea>
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <span style="font-size:0.78rem;font-weight:700;color:var(--muted);">📅 주요 일정</span>
-        <button onclick="addProjSched()" class="btn-sm" style="background:var(--pri-light);color:var(--primary);">+ 추가</button>
+        <button onclick="toggleSchedForm()" class="btn-sm" style="background:var(--pri-light);color:var(--primary);">+ 추가</button>
+      </div>
+      <div id="sched-form" style="display:none;flex-direction:column;gap:6px;background:var(--bg);border-radius:6px;padding:8px;">
+        <input type="date" id="sched-date-input" style="padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:0.82rem;width:100%;">
+        <input type="text" id="sched-text-input" placeholder="일정 내용" style="padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:0.82rem;width:100%;">
+        <div style="display:flex;gap:6px;justify-content:flex-end;">
+          <button onclick="toggleSchedForm()" class="btn-cancel" style="font-size:0.78rem;padding:4px 10px;">취소</button>
+          <button onclick="addProjSched()" class="btn-primary" style="font-size:0.78rem;padding:4px 10px;">저장</button>
+        </div>
       </div>
       <div id="proj-sched-list"></div>
     </div>
@@ -238,7 +246,7 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
             <span id="g-d1" style="position:absolute;left:0;transform:translateX(0)"></span>
             <span id="g-d2" style="position:absolute;transform:translateX(-50%)"></span>
             <span id="g-d3" style="position:absolute;transform:translateX(-50%)"></span>
-            <span id="g-d4" style="position:absolute;right:0;transform:translateX(0)"></span>
+            <span id="g-d4" style="position:absolute;right:0;text-align:right;"></span>
           </div>
         </div>
         <div id="chart-rows"></div>
@@ -552,7 +560,7 @@ const fmt = s => s ? s.slice(5).replace('-','/') : '';
 const proj = id => projects.find(p=>p.id===id)||{name:'?',color:'#888'};
 const todayMs = TODAY.getTime();
 
-function isOverdue(t){ return !t.done && d(t.end)<TODAY; }
+function isOverdue(t){ const e=d(t.end); const todayD=new Date(TODAY.getFullYear(),TODAY.getMonth(),TODAY.getDate()); const eD=new Date(e.getFullYear(),e.getMonth(),e.getDate()); return !t.done && eD<todayD; }
 function isEarly(t){  return t.done && t.actualEnd && d(t.actualEnd)<d(t.end); }
 function filteredTasks(){ return currentFilter==='all'?tasks:tasks.filter(t=>t.project===currentFilter); }
 
@@ -733,7 +741,7 @@ function renderGantt(list){
   g1.textContent=fmtD(mStart);  g1.style.left='0%';
   g2.textContent=fmtD(q1Date);  g2.style.left='25%';
   g3.textContent=`▼오늘(${fmtD(todayD)})`; g3.style.left=todayPct+'%'; g3.style.color='#f59e0b'; g3.style.fontWeight='700';
-  g4.textContent=fmtD(mEnd);    g4.style.left='100%';
+  g4.textContent=fmtD(mEnd);    g4.style.left=''; g4.style.right='0';
 
   if(!list.length){ container.innerHTML='<div style="color:var(--muted);font-size:0.82rem;padding:10px 0">표시할 업무가 없습니다.</div>'; return; }
   list.sort(prioSort).forEach(t=>{
@@ -1273,17 +1281,28 @@ function renderProjSched(pid){
   </div>`).join('');
 }
 
+function toggleSchedForm(){
+  const f=document.getElementById('sched-form');
+  if(!f) return;
+  const show=f.style.display==='none';
+  f.style.display=show?'flex':'none';
+  if(show){
+    document.getElementById('sched-date-input').value=TODAY_STR;
+    document.getElementById('sched-text-input').value='';
+    document.getElementById('sched-text-input').focus();
+  }
+}
 function addProjSched(){
   const pid=currentProjNoteId; if(!pid) return;
-  const date=prompt('날짜 입력 (예: 2026-06-30)','');
-  if(!date) return;
-  const text=prompt('일정 내용','');
-  if(!text) return;
+  const date=document.getElementById('sched-date-input').value;
+  const text=document.getElementById('sched-text-input').value.trim();
+  if(!date||!text) return;
   projects=projects.map(p=>{
     if(p.id!==pid) return p;
     const schedules=[...(p.schedules||[]),{date,text}].sort((a,b)=>a.date.localeCompare(b.date));
     return {...p,schedules};
   });
+  toggleSchedForm();
   saveToFirebase();
   renderProjSched(pid);
 }
