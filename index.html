@@ -803,25 +803,35 @@ function renderGantt(list){
     const st2=getTaskStatus(t);
     const prio=t.priority||'';
     const pc=prioColor(prio);
-    // 상태별 간트 색상
-    const ganttStyle={
-      'not_started': {bg:'#cbd5e1',lbl:'미진행'},
-      'in_progress':  {bg:'#4f46e5',lbl:'진행중'},
-      'on_track':     {bg:'#10b981',lbl:'✅ 순조'},
-      'delayed':      {bg:'#f59e0b',lbl:'⚠ 지연'},
-      'done':         {bg:'#94a3b8',lbl:'✓ 완료'},
-      'early_done':   {bg:'#0284c7',lbl:'⚡ 조기'},
-      'overdue':      {bg:'#ef4444',lbl:'🔴 초과'},
-    };
-    const gs=ganttStyle[st2]||ganttStyle['not_started'];
+    const progPct=getTaskProgress(t);
+    const health=!t.done?getHealthScore(t):0;
+    const hCol=t.done?'#94a3b8':healthColor(health);
+
+    // 바 배경: 항상 연한 회색, 채움: 진행% 만큼 건강도 색상
+    let barLabel='미진행'; let barBg='#e2e8f0';
+    if(t.done){ barLabel=isEarly(t)?'⚡ 조기':'✓ 완료'; barBg='#94a3b8'; }
+    else if(isOverdue(t)){ barLabel='🔴 초과'; barBg='#ef4444'; }
+    else if(st2==='delayed'){ barLabel='⚠ 지연'; }
+    else if(st2==='on_track'){ barLabel='✅ 순조'; }
+    else if(st2.startsWith('in_progress')){ barLabel=progPct+'%'; }
+
     const row=document.createElement('div');
     row.className='chart-row';
     row.innerHTML=`<div class="chart-label" title="${t.text}">
         ${prio?`<span style="background:${pc};color:white;font-size:0.65rem;font-weight:800;padding:1px 5px;border-radius:3px;margin-right:4px;">${prio}</span>`:''}${t.text}
       </div>
-      <div class="chart-timeline">
+      <div class="chart-timeline" title="${t.text}: ${barLabel}">
         <div class="chart-today-line" style="left:${todayPct}%"></div>
-        <div class="chart-bar" style="left:${left}%;width:${width}%;background:${gs.bg}">${gs.lbl}</div>
+        <!-- 바 전체 배경 (기간) -->
+        <div style="position:absolute;left:${left}%;width:${width}%;height:100%;background:#e2e8f0;border-radius:4px;overflow:hidden;">
+          <!-- 진행% 채움 -->
+          <div style="height:100%;width:${t.done?100:progPct}%;background:${hCol};transition:width .4s;display:flex;align-items:center;justify-content:center;min-width:${barLabel?'auto':'0'};">
+          </div>
+          <!-- 라벨 (중앙 고정) -->
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:${progPct>40||t.done?'white':'#334155'};font-size:0.67rem;font-weight:700;pointer-events:none;">
+            ${barLabel}
+          </div>
+        </div>
       </div>`;
     container.appendChild(row);
   });
@@ -1061,25 +1071,64 @@ function renderWeekly(){
     </div>`;
   }).join('');
 
+  // 요일별 가로 타임라인 (스택 바)
+  const maxDayHforBar = Math.max(1,...dayKeys.map(k=>byDay[k].h));
+  const dayRowsHTML = dayKeys.map((k,i)=>{
+    const h=byDay[k].h;
+    const dayLogs=byDay[k].logs;
+    const isToday=k===TODAY_STR;
+    const isWeekend=i>=5;
+    if(!h && !isToday) return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;opacity:0.4;">
+      <div style="width:28px;font-size:0.72rem;font-weight:${isToday?700:400};color:${isWeekend?'#ef4444':'var(--muted)'};">${dayNames[i]}</div>
+      <div style="font-size:0.68rem;color:#cbd5e1;width:36px">${k.slice(5).replace('-','/')}</div>
+      <div style="flex:1;height:18px;background:#f8fafc;border-radius:4px;border:1px dashed #e2e8f0;"></div>
+      <div style="width:30px;font-size:0.72rem;color:#cbd5e1;text-align:right;">—</div>
+    </div>`;
+    // 스택 바 세그먼트
+    const projH={};
+    dayLogs.forEach(l=>{ projH[l.project]=(projH[l.project]||0)+l.hours; });
+    const segments=Object.entries(projH).map(([pid,ph])=>{
+      const w=(ph/maxDayHforBar*100).toFixed(1);
+      const pc=proj(pid).color;
+      const pn=proj(pid).name;
+      return `<div style="height:100%;width:${w}%;background:${pc};display:flex;align-items:center;justify-content:center;overflow:hidden;" title="${pn}: ${ph}h">
+        <span style="font-size:0.6rem;color:white;font-weight:700;white-space:nowrap;padding:0 3px;">${ph>=1?ph+'h':''}</span>
+      </div>`;
+    }).join('');
+    return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid ${isToday?'var(--primary)22':'var(--border)'};">
+      <div style="width:28px;font-size:0.72rem;font-weight:${isToday?700:400};color:${isToday?'var(--primary)':isWeekend?'#ef4444':'var(--text)'};">${dayNames[i]}</div>
+      <div style="font-size:0.68rem;color:var(--muted);width:36px">${k.slice(5).replace('-','/')}</div>
+      <div style="flex:1;height:22px;background:#f1f5f9;border-radius:5px;overflow:hidden;display:flex;border:${isToday?'2px solid var(--primary)':'1px solid var(--border)'};">
+        ${segments}
+      </div>
+      <div style="width:36px;font-size:0.78rem;font-weight:700;color:var(--primary);text-align:right;">${h}h</div>
+    </div>`;
+  }).join('');
+
+  // 프로젝트별 합계 (기록 있는 것만)
+  const projSumHTML=projects.filter(p=>byProj[p.id]>0).map(p=>`
+    <div style="display:flex;align-items:center;gap:6px;font-size:0.78rem;">
+      <span style="width:10px;height:10px;border-radius:50%;background:${p.color};flex-shrink:0;display:inline-block;"></span>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name}</span>
+      <span style="font-weight:700;color:${p.color};">${byProj[p.id]}h</span>
+    </div>`).join('');
+
   document.getElementById('weekly-summary').innerHTML=`
-    <div style="background:var(--pri-light);border-radius:8px;padding:12px 14px;display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start;">
-      <div style="min-width:130px;">
-        <div style="font-size:1.05rem;font-weight:800;color:var(--primary)">${wLabel}</div>
-        <div style="font-size:0.75rem;color:var(--muted);margin-top:2px;">총 <strong>${totalH}시간</strong> · ${logs.length}건</div>
-        <div style="margin-top:10px;">
-          ${projects.map(p=>`<div class="week-bar-row" style="margin-bottom:5px;">
-            <div class="week-bar-name">${p.name}</div>
-            <div class="week-bar-track"><div class="week-bar-fill" style="width:${(byProj[p.id]/maxH*100).toFixed(1)}%;background:${p.color}"></div></div>
-            <div class="week-bar-val">${byProj[p.id]>0?byProj[p.id]+'h':'—'}</div>
-          </div>`).join('')}
+    <div style="background:var(--pri-light);border-radius:8px;padding:14px 16px;display:flex;gap:20px;flex-wrap:wrap;">
+      <!-- 왼쪽: 주차 정보 + 프로젝트별 합계 -->
+      <div style="min-width:160px;max-width:200px;display:flex;flex-direction:column;gap:8px;">
+        <div>
+          <div style="font-size:1rem;font-weight:800;color:var(--primary)">${wLabel}</div>
+          <div style="font-size:0.78rem;color:var(--muted);margin-top:2px;">총 <strong style="color:var(--text)">${totalH}시간</strong> · ${logs.length}건</div>
+        </div>
+        <div style="border-top:1px solid var(--border);padding-top:8px;display:flex;flex-direction:column;gap:5px;">
+          ${projSumHTML||'<span style="color:var(--muted);font-size:0.78rem;">기록 없음</span>'}
         </div>
       </div>
-      <div style="flex:1;min-width:200px;">
+      <!-- 오른쪽: 요일별 가로 타임라인 -->
+      <div style="flex:1;min-width:260px;">
         <div style="font-size:0.75rem;font-weight:700;color:var(--muted);margin-bottom:6px;">📅 날짜별 업무 시간</div>
-        <div style="display:flex;gap:4px;align-items:flex-end;height:100px;">${dayBarHTML}</div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
-          ${projects.filter(p=>byProj[p.id]>0).map(p=>`<span style="font-size:0.68rem;display:flex;align-items:center;gap:3px;"><span style="width:8px;height:8px;border-radius:50%;background:${p.color};display:inline-block"></span>${p.name}</span>`).join('')}
-        </div>
+        ${dayRowsHTML}
       </div>
     </div>`;
 
