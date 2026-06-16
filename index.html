@@ -1612,24 +1612,39 @@ function emptyTrash(){
 function renderHistory(){
   const el=document.getElementById('history-list');
   if(!completedProjects.length){
-    el.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted);font-size:0.85rem;">완료된 프로젝트가 없습니다.<br><span style="font-size:0.75rem;">사이드바의 프로젝트 ✔ 버튼으로 완료 처리하세요.</span></div>';
+    el.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted);font-size:0.85rem;">히스토리가 없습니다.<br><span style="font-size:0.75rem;">업무를 완료하거나 프로젝트 ✔ 버튼으로 완료 처리하세요.</span></div>';
     return;
   }
-  el.innerHTML=[...completedProjects].reverse().map((cp,ri)=>{
-    const i=completedProjects.length-1-ri;
+  // 최신순 정렬
+  const sorted=[...completedProjects].sort((a,b)=>
+    (b.completedAt||'').localeCompare(a.completedAt||'')
+  );
+  el.innerHTML=sorted.map((cp,si)=>{
+    const i=completedProjects.indexOf(cp);
     const p=cp.project;
-    const doneTasks=cp.tasks.filter(t=>t.done).length;
+    const archNote=cp._archiveNote||'';
+    const isTaskDone=cp._type==='task_done';
+    const doneTasks=cp.tasks.filter(t=>t.done||t.status==='done'||t.status==='early_done'||t.status==='on_track').length;
     const totalTasks=cp.tasks.length;
+    const wLabel=cp._weekKey?`W${cp._weekKey.split('-W')[1]} `:'';
+    const badge=isTaskDone
+      ? `<span style="font-size:0.72rem;background:#dbeafe;color:#1d4ed8;padding:2px 8px;border-radius:10px;font-weight:600;">✅ ${wLabel}완료기록</span>`
+      : `<span style="font-size:0.72rem;background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:10px;font-weight:600;">📁 프로젝트 완료</span>`;
     return `<div class="history-item">
       <div class="hi-head">
-        <span style="width:10px;height:10px;border-radius:50%;background:${p.color};display:inline-block;flex-shrink:0"></span>
+        <span style="width:10px;height:10px;border-radius:50%;background:${p.color};display:inline-block;flex-shrink:0;"></span>
         <span class="hi-name">${p.name}</span>
-        <span style="font-size:0.75rem;background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:10px;font-weight:600;">완료</span>
-        <span class="hi-date">완료일: ${p.completedAt||cp.completedAt}</span>
-        <button class="btn-sm" style="background:var(--pri-light);color:var(--primary);margin-left:8px;" onclick="restoreHistory(${i})">프로젝트 복원</button>
+        ${badge}
+        <span class="hi-date" style="font-size:0.72rem;color:var(--muted);">📅 ${cp.completedAt||''}</span>
+        ${!isTaskDone?`<button class="btn-sm" style="background:var(--pri-light);color:var(--primary);margin-left:4px;" onclick="restoreHistory(${i})">복원</button>`:''}
       </div>
-      <div style="font-size:0.78rem;color:var(--muted);">업무 ${totalTasks}개 · 완료 ${doneTasks}개 (${totalTasks?Math.round(doneTasks/totalTasks*100):0}%)${archNote?` <span style="color:#94a3b8;font-size:0.7rem;">· ${archNote}</span>`:''}</div>
-      ${cp.tasks.length?`<div class="hi-tasks">${cp.tasks.map(t=>`<span class="history-task-chip">${t.done?'✓ ':''}${t.text}</span>`).join('')}</div>`:''}
+      <div style="font-size:0.78rem;color:var(--muted);margin-top:4px;">업무 ${totalTasks}개${archNote?` · <span style="color:#94a3b8;font-size:0.7rem;">${archNote}</span>`:''}</div>
+      ${cp.tasks.length?`<div class="hi-tasks" style="margin-top:6px;">${cp.tasks.map(t=>{
+        const tDate=t._completedAt?` <span style="color:#94a3b8;font-size:0.65rem;">(${fmt(t._completedAt)})</span>`:'';
+        const prioC=prioColor(t.priority||'');
+        return `<span class="history-task-chip" style="border-left:3px solid ${prioC};">
+          ${t.priority?`<span style="color:${prioC};font-weight:700;font-size:0.68rem;">${t.priority}</span> `:''}✓ ${t.text}${tDate}</span>`;
+      }).join('')}</div>`:''}
     </div>`;
   }).join('');
 }
@@ -2019,49 +2034,26 @@ function checkRepeatTasks(){
 ══════════════════════════════════════ */
 function autoArchiveCompletedTasks(){
   const todayD=new Date(TODAY.getFullYear(),TODAY.getMonth(),TODAY.getDate());
-  const oneWeekAgo=new Date(todayD); oneWeekAgo.setDate(todayD.getDate()-7);
-  let archived=false;
+  // 이번 주 월요일 계산
+  const dow=todayD.getDay()||7;
+  const thisMonday=new Date(todayD); thisMonday.setDate(todayD.getDate()-(dow-1));
 
-  // 1주 이상 지난 완료 업무를 프로젝트별로 묶어서 히스토리로
+  // 이번 주 이전에 완료된 업무 = 지난 주 이전 완료 → 할일 목록에서 제거
   const oldDone=tasks.filter(t=>{
     if(!t.done||!t.actualEnd) return false;
     const ae=new Date(t.actualEnd);
     const aeD=new Date(ae.getFullYear(),ae.getMonth(),ae.getDate());
-    return aeD<=oneWeekAgo;
+    return aeD<thisMonday; // 이번 주 월요일 이전 완료
   });
 
   if(oldDone.length>0){
-    // 프로젝트별로 그룹
-    const byProj={};
-    oldDone.forEach(t=>{
-      if(!byProj[t.project]) byProj[t.project]=[];
-      byProj[t.project].push(t);
-    });
-    Object.entries(byProj).forEach(([pid,pts])=>{
-      const p=projects.find(x=>x.id===pid)||{name:'기타',color:'#888',id:pid};
-      // 기존 히스토리에 추가 또는 새로 생성
-      const existing=completedProjects.find(cp=>cp.project.id===pid&&cp._autoArchive);
-      if(existing){
-        existing.tasks.push(...pts);
-        existing.completedAt=TODAY_STR;
-      } else {
-        completedProjects.push({
-          project:{...p,completedAt:TODAY_STR},
-          tasks:pts,
-          completedAt:TODAY_STR,
-          _autoArchive:true,
-          _archiveNote:`${pts.length}개 업무 자동 보관 (완료 후 1주 경과)`
-        });
-      }
-    });
-    // 원본에서 제거
+    // 이미 addToHistory로 기록된 것들이므로 할일에서만 제거
     const archiveIds=new Set(oldDone.map(t=>t.id));
     tasks=tasks.filter(t=>!archiveIds.has(t.id));
-    archived=true;
-    console.log(`[자동보관] ${oldDone.length}개 완료 업무 히스토리 이동`);
+    console.log(`[주간청소] ${oldDone.length}개 지난 주 완료 업무 제거`);
+    saveToFirebase();
   }
-  if(archived) saveToFirebase();
-  return archived;
+  return oldDone.length>0;
 }
 
 /* ══════════════════════════════════════
@@ -2083,22 +2075,29 @@ function autoAddWeeklyLog(t){
 }
 
 function addToHistory(t){
-  // 완료된 업무를 히스토리에 즉시 기록 (단일 업무 단위)
   const p=projects.find(x=>x.id===t.project)||{name:'기타',color:'#888',id:t.project};
-  // 같은 날 같은 프로젝트 히스토리 묶기
-  const todayKey=`__done_${t.project}_${TODAY_STR}`;
-  const existing=completedProjects.find(cp=>cp._key===todayKey);
+  // 같은 날 + 같은 프로젝트 묶기 (_key 방식)
+  const wKey=isoWeekKey(TODAY_STR); // 주차별로 묶기
+  const histKey=`__done_${t.project}_${wKey}`;
+  const existing=completedProjects.find(cp=>cp._key===histKey);
   if(existing){
-    if(!existing.tasks.find(x=>x.id===t.id)) existing.tasks.push(t);
+    if(!existing.tasks.find(x=>x.id===t.id)){
+      existing.tasks.push({...t, _completedAt:TODAY_STR});
+      existing.completedAt=TODAY_STR;
+    }
   } else {
     completedProjects.push({
-      _key:todayKey,
-      project:{...p, completedAt:TODAY_STR},
-      tasks:[t],
+      _key:histKey,
+      _type:'task_done',
+      project:{...p},
+      tasks:[{...t, _completedAt:TODAY_STR}],
       completedAt:TODAY_STR,
+      _weekKey:wKey,
       _archiveNote:'완료 자동 기록'
     });
   }
+  // 히스토리 탭이 열려있으면 즉시 갱신
+  if(currentTab==='history') renderHistory();
 }
 
 /* ══════════════════════════════════════
@@ -2430,6 +2429,7 @@ function updateWorldClocks(){
   const fmt2=n=>String(n).padStart(2,'0');
   const zones=[
     {tz:'Asia/Seoul',      tId:'wc-kr-time', dId:'wc-kr-date'},
+    {tz:'Asia/Kolkata',    tId:'wc-in-time', dId:'wc-in-date'},
     {tz:'Europe/Berlin',   tId:'wc-de-time', dId:'wc-de-date'},
     {tz:'America/New_York',tId:'wc-us-time', dId:'wc-us-date'},
   ];
