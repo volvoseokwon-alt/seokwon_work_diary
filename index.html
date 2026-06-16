@@ -577,6 +577,8 @@ function initDB() {
 
 async function saveToFirebase() {
   if (!db) return;
+  // 안전장치: Firebase 로드가 완료된 후에만 저장 (로드 전 빈 데이터로 덮어쓰기 방지)
+  if (!window._fbLoaded) { console.warn('Firebase 로드 전 저장 시도 차단'); return; }
   try {
     await db.collection('userData').doc('main').set({
       projects, tasks, weeklyLogs, trash, completedProjects,
@@ -607,6 +609,7 @@ async function loadFromFirebase() {
       }
     }
   } catch(e) { console.warn('Firebase load error:', e); }
+  window._fbLoaded = true; // 로드 완료 플래그
 }
 
 /* 자동 저장 래퍼 */
@@ -2503,8 +2506,9 @@ document.getElementById('sidebar-note')?.addEventListener('input', ()=>{
   document.getElementById('fb-loading')?.remove();
   updateTrashBadge();
   checkRepeatTasks();
-  autoArchiveCompletedTasks();
   render();
+  // 주간 자동 보관은 render 후 안전하게 실행
+  setTimeout(()=>{ if(tasks.length>0) autoArchiveCompletedTasks(); }, 500);
   setTimeout(checkDeadlineAlert, 1500);
   // 시계는 DOM 완전 로드 후 시작
   updateWorldClocks();
