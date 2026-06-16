@@ -791,17 +791,30 @@ function renderGantt(list){
   // 오늘 위치 정확히 계산 (날짜 기준)
   const todayPct = ((todayD.getTime()-mStart.getTime())/mDur)*100;
 
-  document.getElementById('gantt-title').textContent=`📅 타임라인 (${fmtD(mStart)} ~ ${fmtD(mEnd)})`;
+  const WEEKDAYS=['일','월','화','수','목','금','토'];
+  const fmtDW = dt => `${dt.getMonth()+1}/${dt.getDate()}(${WEEKDAYS[dt.getDay()]})`;
 
-  // 라벨 텍스트 + 위치를 % 로 정확히 설정
+  document.getElementById('gantt-title').textContent=`📅 타임라인 (${fmtDW(mStart)} ~ ${fmtDW(mEnd)})`;
+
+  // 라벨 위치 설정
   const g1=document.getElementById('g-d1');
   const g2=document.getElementById('g-d2');
   const g3=document.getElementById('g-d3');
   const g4=document.getElementById('g-d4');
-  g1.textContent=fmtD(mStart);  g1.style.left='0%';
-  g2.textContent=fmtD(q1Date);  g2.style.left='25%';
-  g3.textContent=`▼오늘(${fmtD(todayD)})`; g3.style.left=todayPct+'%'; g3.style.color='#f59e0b'; g3.style.fontWeight='700';
-  g4.textContent=fmtD(mEnd);    g4.style.left=''; g4.style.right='0';
+  g1.textContent=fmtDW(mStart); g1.style.left='0%';
+  g2.textContent=fmtDW(q1Date); g2.style.left='25%';
+  g3.textContent=`▼오늘(${fmtDW(todayD)})`; g3.style.left=todayPct+'%'; g3.style.color='#f59e0b'; g3.style.fontWeight='700';
+  g4.textContent=fmtDW(mEnd);   g4.style.left=''; g4.style.right='0';
+
+  // 주 단위 점선 계산 (월요일마다)
+  const weekLines=[];
+  const cursor=new Date(mStart);
+  cursor.setDate(cursor.getDate()+((8-cursor.getDay())%7||7)); // 다음 월요일
+  while(cursor<mEnd){
+    const pct=((cursor.getTime()-mStart.getTime())/mDur)*100;
+    weekLines.push({pct, label:fmtD(cursor)});
+    cursor.setDate(cursor.getDate()+7);
+  }
 
   if(!list.length){ container.innerHTML='<div style="color:var(--muted);font-size:0.82rem;padding:10px 0">표시할 업무가 없습니다.</div>'; return; }
   list.sort(prioSort).forEach(t=>{
@@ -837,6 +850,7 @@ function renderGantt(list){
         <span>${t.text}</span>
       </div>
       <div class="chart-timeline" title="${t.text}: ${barLabel}">
+        ${weekLines.map(w=>`<div style="position:absolute;left:${w.pct}%;top:0;bottom:0;width:1px;background:rgba(0,0,0,0.1);border-left:1px dashed #cbd5e1;z-index:1;"></div>`).join('')}
         <div class="chart-today-line" style="left:${todayPct}%"></div>
         <!-- 바 전체 배경 (기간) -->
         <div style="position:absolute;left:${left}%;width:${width}%;height:100%;background:#e2e8f0;border-radius:4px;overflow:hidden;">
@@ -897,6 +911,7 @@ function renderTaskList(list){
         ${prio?`<span style="background:${pc};color:white;font-size:0.7rem;font-weight:800;padding:2px 6px;border-radius:4px;min-width:26px;text-align:center">${prio}</span>`:''}
         <span class="p-badge" style="background:${p.color}22;color:${p.color}">${p.name}</span>
         <span class="task-text" style="font-size:0.85rem">${t.text}</span>
+        ${t.memo?`<span title="메모 있음: ${t.memo.slice(0,30)}${t.memo.length>30?'...':''}" style="font-size:0.75rem;cursor:pointer;color:var(--primary);background:var(--pri-light);padding:1px 5px;border-radius:4px;">📝</span>`:''}
         <span class="date-badge">📅 ${fmt(t.start)} ~ ${fmt(t.end)}</span>
         ${!t.done?`<select class="status-select" style="color:${stInfo.color};border-color:${stInfo.color}22;background:${stInfo.color}11"
             onchange="setTaskStatus(${t.id},this.value)">
@@ -908,10 +923,19 @@ function renderTaskList(list){
         <button class="btn-sm" style="background:var(--pri-light);color:var(--primary)" onclick="openEdit(${t.id})">수정</button>
         <button class="btn-sm" style="background:#fee2e2;color:var(--warn)" onclick="deleteTask(${t.id})">삭제</button>
       </div>
-      ${t.memo?`<div style="width:100%;margin-top:4px;padding:5px 8px;background:#f8fafc;border-left:3px solid var(--primary);border-radius:0 4px 4px 0;font-size:0.78rem;color:var(--muted);">📝 ${t.memo}</div>`:''}
+      ${t.memo?`<div class="task-memo-preview" style="width:100%;margin-top:4px;padding:5px 8px;background:#f8fafc;border-left:3px solid var(--primary);border-radius:0 4px 4px 0;font-size:0.78rem;color:${t.memoStyle?.color||'#64748b'};font-weight:${t.memoStyle?.bold?'700':'400'};">📝 ${t.memo}</div>`:''}
       <div id="task-memo-${t.id}" style="display:none;width:100%;margin-top:6px;">
-        <textarea placeholder="진행 메모 (예: 80%인 이유, 남은 작업...)" 
-          style="width:100%;padding:7px 10px;border:1.5px solid var(--primary);border-radius:6px;font-size:0.82rem;resize:vertical;min-height:56px;font-family:inherit;"
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:5px;flex-wrap:wrap;">
+          <span style="font-size:0.75rem;color:var(--muted);">서식:</span>
+          <button class="btn-sm memo-bold-btn" data-tid="${t.id}" style="background:${t.memoStyle?.bold?'var(--primary)':'var(--bg)'};color:${t.memoStyle?.bold?'white':'var(--muted)'};border:1px solid var(--border);font-weight:700;padding:2px 8px;"
+            onclick="toggleMemoBold(${t.id},this)"><b>B</b></button>
+          <span style="font-size:0.75rem;color:var(--muted);">색상:</span>
+          ${['#1e293b','#ef4444','#f59e0b','#10b981','#0284c7','#7c3aed','#64748b'].map(c=>
+            `<span onclick="setMemoColor(${t.id},'${c}')" style="width:16px;height:16px;border-radius:50%;background:${c};cursor:pointer;display:inline-block;border:2px solid ${(t.memoStyle?.color||'#64748b')===c?'var(--text)':'transparent'};flex-shrink:0;"></span>`
+          ).join('')}
+        </div>
+        <textarea id="task-memo-ta-${t.id}" placeholder="진행 메모 (예: 80%인 이유, 남은 작업...)" 
+          style="width:100%;padding:7px 10px;border:1.5px solid var(--primary);border-radius:6px;font-size:0.82rem;resize:vertical;min-height:56px;font-family:inherit;color:${t.memoStyle?.color||'#1e293b'};font-weight:${t.memoStyle?.bold?'700':'400'};"
           onblur="saveTaskMemo(${t.id},this.value)">${t.memo||''}</textarea>
       </div>`;
     // task drag events
@@ -1424,11 +1448,33 @@ function restoreHistory(i){
 function saveTaskMemo(id, memo){
   tasks=tasks.map(t=>t.id===id?{...t,memo:memo.trim()}:t);
   saveToFirebase();
-  // 메모 미리보기 즉시 업데이트
-  const item=document.querySelector(`[data-tid="${id}"]`);
-  if(item){
-    const prev=item.querySelector('.task-memo-preview');
-    if(prev) prev.style.display=memo.trim()?'':'none';
+  const ft=filteredTasks();
+  renderTaskList(ft);
+}
+function toggleMemoBold(id, btn){
+  tasks=tasks.map(t=>{
+    if(t.id!==id) return t;
+    const bold=!(t.memoStyle?.bold);
+    return {...t, memoStyle:{...(t.memoStyle||{}), bold}};
+  });
+  saveToFirebase();
+  // 즉시 반영
+  const ta=document.getElementById(`task-memo-ta-${id}`);
+  if(ta) ta.style.fontWeight=btn.style.background==='var(--primary)'?'400':'700';
+  btn.style.background=btn.style.background==='var(--primary)'?'var(--bg)':'var(--primary)';
+  btn.style.color=btn.style.color==='white'?'var(--muted)':'white';
+}
+function setMemoColor(id, color){
+  tasks=tasks.map(t=>t.id!==id?t:{...t, memoStyle:{...(t.memoStyle||{}), color}});
+  saveToFirebase();
+  const ta=document.getElementById(`task-memo-ta-${id}`);
+  if(ta) ta.style.color=color;
+  // 색상 점 선택 표시 갱신
+  const memoEl=document.getElementById(`task-memo-${id}`);
+  if(memoEl){
+    memoEl.querySelectorAll('span[onclick^="setMemoColor"]').forEach(s=>{
+      s.style.borderColor=s.style.background===color?'var(--text)':'transparent';
+    });
   }
 }
 function setTaskStatus(id, status){
