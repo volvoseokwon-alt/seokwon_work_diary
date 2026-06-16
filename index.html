@@ -904,38 +904,43 @@ function renderTaskList(list){
     item.setAttribute('data-prio', prio);
     const st=getTaskStatus(t);
     const stInfo=TASK_STATUS[st]||TASK_STATUS['not_started'];
+    item.style.flexDirection='column';
+    item.style.alignItems='stretch';
+    item.style.gap='0';
     item.innerHTML=`
-      <span class="drag-handle" title="같은 우선순위 내 순서 변경">⠿</span>
-      <div class="task-left">
+      <!-- 메인 행 -->
+      <div style="display:flex;align-items:center;gap:8px;width:100%;">
+        <span class="drag-handle" title="같은 우선순위 내 순서 변경">⠿</span>
         <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask(${t.id})">
-        ${prio?`<span style="background:${pc};color:white;font-size:0.7rem;font-weight:800;padding:2px 6px;border-radius:4px;min-width:26px;text-align:center">${prio}</span>`:''}
-        <span class="p-badge" style="background:${p.color}22;color:${p.color}">${p.name}</span>
-        <span class="task-text" style="font-size:0.85rem">${t.text}</span>
-        ${t.memo?`<span title="메모 있음: ${t.memo.slice(0,30)}${t.memo.length>30?'...':''}" style="font-size:0.75rem;cursor:pointer;color:var(--primary);background:var(--pri-light);padding:1px 5px;border-radius:4px;">📝</span>`:''}
-        <span class="date-badge">📅 ${fmt(t.start)} ~ ${fmt(t.end)}</span>
-        ${!t.done?`<select class="status-select" style="color:${stInfo.color};border-color:${stInfo.color}22;background:${stInfo.color}11"
+        ${prio?`<span style="background:${pc};color:white;font-size:0.7rem;font-weight:800;padding:2px 6px;border-radius:4px;min-width:26px;text-align:center;flex-shrink:0">${prio}</span>`:''}
+        <span class="p-badge" style="background:${p.color}22;color:${p.color};flex-shrink:0">${p.name}</span>
+        <span class="task-text" style="font-size:0.85rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${t.text}</span>
+        ${t.memo?`<span title="${t.memo.slice(0,40)}${t.memo.length>40?'...':''}" onclick="event.stopPropagation();toggleTaskMemo(${t.id})" style="font-size:0.85rem;cursor:pointer;flex-shrink:0;" >🗒️</span>`:'<span style="width:18px;flex-shrink:0;"></span>'}
+        <span class="date-badge" style="flex-shrink:0;">📅 ${fmt(t.start)} ~ ${fmt(t.end)}</span>
+        ${!t.done?`<select class="status-select" style="color:${stInfo.color};border-color:${stInfo.color}22;background:${stInfo.color}11;flex-shrink:0;"
             onchange="setTaskStatus(${t.id},this.value)">
           ${Object.entries(TASK_STATUS).filter(([k])=>k!=='done'&&k!=='early_done'&&k!=='overdue').map(([k,v])=>`<option value="${k}" ${st===k?'selected':''}>${v.icon} ${v.label}</option>`).join('')}
-        </select>`:`<span class="status-chip" style="background:${stInfo.color}">${stInfo.icon} ${stInfo.label}</span>`}
-      </div>
-      <div class="task-right">
-        ${!t.done?`<button class="btn-sm" style="background:var(--accent);color:white" onclick="completeEarly(${t.id})">조기완료</button>`:''}
-        <button class="btn-sm" style="background:var(--pri-light);color:var(--primary)" onclick="openEdit(${t.id})">수정</button>
-        <button class="btn-sm" style="background:#fee2e2;color:var(--warn)" onclick="deleteTask(${t.id})">삭제</button>
-      </div>
-      ${t.memo?`<div class="task-memo-preview" style="width:100%;margin-top:4px;padding:5px 8px;background:#f8fafc;border-left:3px solid var(--primary);border-radius:0 4px 4px 0;font-size:0.78rem;color:${t.memoStyle?.color||'#64748b'};font-weight:${t.memoStyle?.bold?'700':'400'};">📝 ${t.memo}</div>`:''}
-      <div id="task-memo-${t.id}" style="display:none;width:100%;margin-top:6px;">
-        <div style="display:flex;gap:6px;align-items:center;margin-bottom:5px;flex-wrap:wrap;">
-          <span style="font-size:0.75rem;color:var(--muted);">서식:</span>
-          <button class="btn-sm memo-bold-btn" data-tid="${t.id}" style="background:${t.memoStyle?.bold?'var(--primary)':'var(--bg)'};color:${t.memoStyle?.bold?'white':'var(--muted)'};border:1px solid var(--border);font-weight:700;padding:2px 8px;"
-            onclick="toggleMemoBold(${t.id},this)"><b>B</b></button>
-          <span style="font-size:0.75rem;color:var(--muted);">색상:</span>
-          ${['#1e293b','#ef4444','#f59e0b','#10b981','#0284c7','#7c3aed','#64748b'].map(c=>
-            `<span onclick="setMemoColor(${t.id},'${c}')" style="width:16px;height:16px;border-radius:50%;background:${c};cursor:pointer;display:inline-block;border:2px solid ${(t.memoStyle?.color||'#64748b')===c?'var(--text)':'transparent'};flex-shrink:0;"></span>`
-          ).join('')}
+        </select>`:`<span class="status-chip" style="background:${stInfo.color};flex-shrink:0;">${stInfo.icon} ${stInfo.label}</span>`}
+        <div style="display:flex;gap:5px;flex-shrink:0;">
+          ${!t.done?`<button class="btn-sm" style="background:var(--accent);color:white" onclick="completeEarly(${t.id})">조기완료</button>`:''}
+          <button class="btn-sm" style="background:var(--pri-light);color:var(--primary)" onclick="openEdit(${t.id})">수정</button>
+          <button class="btn-sm" style="background:#fee2e2;color:var(--warn)" onclick="deleteTask(${t.id})">삭제</button>
         </div>
-        <textarea id="task-memo-ta-${t.id}" placeholder="진행 메모 (예: 80%인 이유, 남은 작업...)" 
-          style="width:100%;padding:7px 10px;border:1.5px solid var(--primary);border-radius:6px;font-size:0.82rem;resize:vertical;min-height:56px;font-family:inherit;color:${t.memoStyle?.color||'#1e293b'};font-weight:${t.memoStyle?.bold?'700':'400'};"
+      </div>
+      <!-- 메모 펼침 패널 (기본 숨김) -->
+      <div id="task-memo-${t.id}" style="display:none;margin-top:8px;padding:10px;background:#f8fafc;border-radius:6px;border-left:3px solid var(--primary);">
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap;">
+          <span style="font-size:0.73rem;color:var(--muted);">서식:</span>
+          <button class="btn-sm" data-tid="${t.id}" style="background:${t.memoStyle?.bold?'var(--primary)':'var(--bg)'};color:${t.memoStyle?.bold?'white':'var(--muted)'};border:1px solid var(--border);font-weight:700;padding:2px 8px;"
+            onclick="toggleMemoBold(${t.id},this)"><b>B</b></button>
+          <span style="font-size:0.73rem;color:var(--muted);">색상:</span>
+          ${['#1e293b','#ef4444','#f59e0b','#10b981','#0284c7','#7c3aed','#64748b'].map(c=>
+            `<span onclick="setMemoColor(${t.id},'${c}')" style="width:16px;height:16px;border-radius:50%;background:${c};cursor:pointer;display:inline-block;border:2px solid ${(t.memoStyle?.color||'#1e293b')===c?'#000':'transparent'};flex-shrink:0;"></span>`
+          ).join('')}
+          <button onclick="closeTaskMemo(${t.id})" style="margin-left:auto;background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.8rem;">✕ 닫기</button>
+        </div>
+        <textarea id="task-memo-ta-${t.id}" placeholder="진행 메모 (예: 80%인 이유, 남은 작업...)"
+          style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:0.82rem;resize:vertical;min-height:60px;font-family:inherit;background:white;color:${t.memoStyle?.color||'#1e293b'};font-weight:${t.memoStyle?.bold?'700':'400'};"
           onblur="saveTaskMemo(${t.id},this.value)">${t.memo||''}</textarea>
       </div>`;
     // task drag events
@@ -944,15 +949,7 @@ function renderTaskList(list){
     item.addEventListener('dragleave', e=>e.currentTarget.classList.remove('drag-over'));
     item.addEventListener('drop',      e=>taskDrop(e, t.id, prio));
     item.addEventListener('dragend',   e=>e.currentTarget.classList.remove('dragging'));
-    // 클릭 시 메모 토글 (버튼/체크박스/셀렉트 제외)
-    item.addEventListener('click', e=>{
-      if(e.target.closest('button,input,select,a')) return;
-      const memoEl=document.getElementById(`task-memo-${t.id}`);
-      if(!memoEl) return;
-      const isOpen=memoEl.style.display!=='none';
-      memoEl.style.display=isOpen?'none':'block';
-      if(!isOpen) memoEl.querySelector('textarea').focus();
-    });
+    // drag 이벤트만 유지 (클릭 토글은 아이콘 onclick으로)
     el.appendChild(item);
   });
 }
@@ -1445,6 +1442,20 @@ function restoreHistory(i){
 /* ══════════════════════════════════════
    TASK STATUS
 ══════════════════════════════════════ */
+function toggleTaskMemo(id){
+  const el=document.getElementById(`task-memo-${id}`);
+  if(!el) return;
+  const isOpen=el.style.display!=='none';
+  el.style.display=isOpen?'none':'block';
+  if(!isOpen){
+    const ta=document.getElementById(`task-memo-ta-${id}`);
+    if(ta) setTimeout(()=>ta.focus(),50);
+  }
+}
+function closeTaskMemo(id){
+  const el=document.getElementById(`task-memo-${id}`);
+  if(el) el.style.display='none';
+}
 function saveTaskMemo(id, memo){
   tasks=tasks.map(t=>t.id===id?{...t,memo:memo.trim()}:t);
   saveToFirebase();
