@@ -1112,7 +1112,11 @@ function renderTaskList(list){
         ${prio?`<span style="background:${pc};color:white;font-size:0.7rem;font-weight:800;padding:2px 6px;border-radius:4px;min-width:26px;text-align:center;flex-shrink:0">${prio}</span>`:''}
         <span class="p-badge" style="background:${p.color}22;color:${p.color};flex-shrink:0">${p.name}</span>
         <span class="task-text" style="font-size:0.85rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${t.text}</span>
-        ${t.memo?`<span title="${t.memo.slice(0,40)}${t.memo.length>40?'...':''}" onclick="event.stopPropagation();toggleTaskMemo(${t.id})" style="font-size:0.85rem;cursor:pointer;flex-shrink:0;" >🗒️</span>`:'<span style="width:18px;flex-shrink:0;"></span>'}
+        <span onclick="event.stopPropagation();toggleTaskMemo(${t.id})"
+          title="${t.memo?t.memo.slice(0,40)+(t.memo.length>40?'...':''):'메모 추가'}"
+          style="font-size:0.82rem;cursor:pointer;flex-shrink:0;opacity:${t.memo?1:0.3};transition:opacity .15s;"
+          onmouseover="this.style.opacity='1'"
+          onmouseout="this.style.opacity='${t.memo?1:0.3}'">🗒️</span>
         <span class="date-badge" style="flex-shrink:0;">📅 ${fmt(t.start)} ~ ${fmt(t.end)}</span>
         ${!t.done?`<select class="status-select" style="color:${stInfo.color};border-color:${stInfo.color}22;background:${stInfo.color}11;flex-shrink:0;"
             onchange="setTaskStatus(${t.id},this.value)">
