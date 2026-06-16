@@ -1612,41 +1612,48 @@ function emptyTrash(){
 function renderHistory(){
   const el=document.getElementById('history-list');
   if(!completedProjects.length){
-    el.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted);font-size:0.85rem;">히스토리가 없습니다.<br><span style="font-size:0.75rem;">업무를 완료하거나 프로젝트 ✔ 버튼으로 완료 처리하세요.</span></div>';
+    el.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted);font-size:0.85rem;">히스토리가 없습니다.<br><span style="font-size:0.75rem;">업무를 완료하면 자동으로 기록됩니다.</span></div>';
     return;
   }
   // 최신순 정렬
-  const sorted=[...completedProjects].sort((a,b)=>
-    (b.completedAt||'').localeCompare(a.completedAt||'')
-  );
-  el.innerHTML=sorted.map((cp,si)=>{
-    const i=completedProjects.indexOf(cp);
+  const sorted=[...completedProjects].sort((a,b)=>(b.completedAt||'').localeCompare(a.completedAt||''));
+  el.innerHTML=sorted.map(cp=>{
+    const realIdx=completedProjects.indexOf(cp);
     const p=cp.project;
     const archNote=cp._archiveNote||'';
     const isTaskDone=cp._type==='task_done';
-    const doneTasks=cp.tasks.filter(t=>t.done||t.status==='done'||t.status==='early_done'||t.status==='on_track').length;
     const totalTasks=cp.tasks.length;
-    const wLabel=cp._weekKey?`W${cp._weekKey.split('-W')[1]} `:'';
+    const wLabel=cp._weekKey?'W'+cp._weekKey.split('-W')[1]+' ':'';
     const badge=isTaskDone
-      ? `<span style="font-size:0.72rem;background:#dbeafe;color:#1d4ed8;padding:2px 8px;border-radius:10px;font-weight:600;">✅ ${wLabel}완료기록</span>`
-      : `<span style="font-size:0.72rem;background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:10px;font-weight:600;">📁 프로젝트 완료</span>`;
-    return `<div class="history-item">
-      <div class="hi-head">
-        <span style="width:10px;height:10px;border-radius:50%;background:${p.color};display:inline-block;flex-shrink:0;"></span>
-        <span class="hi-name">${p.name}</span>
-        ${badge}
-        <span class="hi-date" style="font-size:0.72rem;color:var(--muted);">📅 ${cp.completedAt||''}</span>
-        ${!isTaskDone?`<button class="btn-sm" style="background:var(--pri-light);color:var(--primary);margin-left:4px;" onclick="restoreHistory(${i})">복원</button>`:''}
-      </div>
-      <div style="font-size:0.78rem;color:var(--muted);margin-top:4px;">업무 ${totalTasks}개${archNote?` · <span style="color:#94a3b8;font-size:0.7rem;">${archNote}</span>`:''}</div>
-      ${cp.tasks.length?`<div class="hi-tasks" style="margin-top:6px;">${cp.tasks.map(t=>{
-        const tDate=t._completedAt?` <span style="color:#94a3b8;font-size:0.65rem;">(${fmt(t._completedAt)})</span>`:'';
-        const prioC=prioColor(t.priority||'');
-        return `<span class="history-task-chip" style="border-left:3px solid ${prioC};">
-          ${t.priority?`<span style="color:${prioC};font-weight:700;font-size:0.68rem;">${t.priority}</span> `:''}✓ ${t.text}${tDate}</span>`;
-      }).join('')}</div>`:''}
-    </div>`;
+      ? '<span style="font-size:0.72rem;background:#dbeafe;color:#1d4ed8;padding:2px 8px;border-radius:10px;font-weight:600;">✅ '+wLabel+'완료기록</span>'
+      : '<span style="font-size:0.72rem;background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:10px;font-weight:600;">📁 프로젝트 완료</span>';
+    const taskChips=cp.tasks.map(t=>{
+      const tDate=t._completedAt?' <span style="color:#94a3b8;font-size:0.63rem;">('+fmt(t._completedAt)+')</span>':'';
+      const pc=prioColor(t.priority||'');
+      return '<span class="history-task-chip" style="border-left:3px solid '+pc+';">'
+        +(t.priority?'<span style="color:'+pc+';font-weight:700;font-size:0.68rem;">'+t.priority+'</span> ':'')
+        +'✓ '+t.text+tDate+'</span>';
+    }).join('');
+    return '<div class="history-item">'
+      +'<div class="hi-head">'
+      +'<span style="width:10px;height:10px;border-radius:50%;background:'+p.color+';display:inline-block;flex-shrink:0;"></span>'
+      +'<span class="hi-name">'+p.name+'</span>'
+      +badge
+      +'<span class="hi-date" style="font-size:0.72rem;color:var(--muted);">📅 '+(cp.completedAt||'')+'</span>'
+      +(!isTaskDone?'<button class="btn-sm" style="background:var(--pri-light);color:var(--primary);margin-left:4px;" onclick="restoreHistory('+realIdx+')">복원</button>':'')
+      +'<button class="btn-sm" style="background:#fee2e2;color:var(--warn);margin-left:4px;" onclick="deleteHistory('+realIdx+')">삭제</button>'
+      +'</div>'
+      +'<div style="font-size:0.78rem;color:var(--muted);margin-top:4px;">업무 '+totalTasks+'개'+(archNote?' · <span style="color:#94a3b8;font-size:0.7rem;">'+archNote+'</span>':'')+'</div>'
+      +(cp.tasks.length?'<div class="hi-tasks" style="margin-top:6px;">'+taskChips+'</div>':'')
+      +'</div>';
   }).join('');
+}
+
+function deleteHistory(i){
+  if(!confirm('이 히스토리를 삭제합니다. 복원할 수 없습니다.')) return;
+  completedProjects.splice(i,1);
+  saveToFirebase();
+  renderHistory();
 }
 
 function restoreHistory(i){
@@ -2033,48 +2040,53 @@ function checkRepeatTasks(){
    완료 업무 자동 히스토리 이동 (1주 경과)
 ══════════════════════════════════════ */
 function autoArchiveCompletedTasks(){
-  // 안전장치: tasks가 실제 로드되었는지 확인 (최소 1개 이상)
-  if(!tasks.length) return false;
+  // 안전장치1: 로드된 데이터가 없으면 실행 안 함
+  if(!tasks.length && !projects.length) return false;
 
   const todayD=new Date(TODAY.getFullYear(),TODAY.getMonth(),TODAY.getDate());
-  const dow=todayD.getDay()||7;
-  const thisMonday=new Date(todayD); thisMonday.setDate(todayD.getDate()-(dow-1));
+  const dow=todayD.getDay()||7; // 월=1~일=7
+  const thisMonday=new Date(todayD);
+  thisMonday.setDate(todayD.getDate()-(dow-1));
+  thisMonday.setHours(0,0,0,0);
 
-  // 반드시 done=true, actualEnd 있고, 이번 주 월요일 이전 완료인 것만
+  // 이번 주 월요일 이전에 완료된 업무만 대상
   const oldDone=tasks.filter(t=>{
-    if(!t.done||!t.actualEnd||typeof t.actualEnd!=='string') return false;
-    const ae=new Date(t.actualEnd);
-    if(isNaN(ae.getTime())) return false; // 날짜 파싱 실패 시 제외
-    const aeD=new Date(ae.getFullYear(),ae.getMonth(),ae.getDate());
-    return aeD<thisMonday;
+    if(!t.done) return false;
+    if(!t.actualEnd || typeof t.actualEnd!=='string') return false;
+    const ae=new Date(t.actualEnd+'T00:00:00');
+    if(isNaN(ae.getTime())) return false;
+    return ae<thisMonday;
   });
 
-  if(oldDone.length>0){
-    // 히스토리에 없는 것만 추가 후 제거
-    oldDone.forEach(t=>{
-      const wKey=isoWeekKey(t.actualEnd);
-      const histKey=`__done_${t.project}_${wKey}`;
-      const existing=completedProjects.find(cp=>cp._key===histKey);
-      if(existing){
-        if(!existing.tasks.find(x=>x.id===t.id)) existing.tasks.push({...t,_completedAt:t.actualEnd});
-      } else {
-        const p=projects.find(x=>x.id===t.project)||{name:'기타',color:'#888',id:t.project};
-        completedProjects.push({
-          _key:histKey,_type:'task_done',
-          project:{...p},
-          tasks:[{...t,_completedAt:t.actualEnd}],
-          completedAt:t.actualEnd,
-          _weekKey:wKey,
-          _archiveNote:'주간 자동 보관'
-        });
-      }
-    });
-    const archiveIds=new Set(oldDone.map(t=>t.id));
-    tasks=tasks.filter(t=>!archiveIds.has(t.id));
-    console.log(`[주간청소] ${oldDone.length}개 이전 주 완료 업무 히스토리 이동`);
-    saveToFirebase();
-  }
-  return oldDone.length>0;
+  if(!oldDone.length) return false;
+
+  // 히스토리에 추가
+  oldDone.forEach(t=>{
+    const wKey=isoWeekKey(t.actualEnd);
+    const histKey='__done_'+t.project+'_'+wKey;
+    const existing=completedProjects.find(cp=>cp._key===histKey);
+    if(existing){
+      if(!existing.tasks.find(x=>x.id===t.id))
+        existing.tasks.push({...t, _completedAt:t.actualEnd});
+    } else {
+      const p=projects.find(x=>x.id===t.project)||{name:'기타',color:'#888',id:t.project};
+      completedProjects.push({
+        _key:histKey, _type:'task_done',
+        project:{...p},
+        tasks:[{...t, _completedAt:t.actualEnd}],
+        completedAt:t.actualEnd,
+        _weekKey:wKey,
+        _archiveNote:'주간 자동 보관'
+      });
+    }
+  });
+
+  // tasks에서 제거
+  const ids=new Set(oldDone.map(t=>t.id));
+  tasks=tasks.filter(t=>!ids.has(t.id));
+  console.log('[주간청소]',oldDone.length,'개 이전 주 완료 업무 히스토리 이동');
+  saveToFirebase();
+  return true;
 }
 
 /* ══════════════════════════════════════
