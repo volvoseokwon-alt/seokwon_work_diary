@@ -13,9 +13,14 @@
 *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',sans-serif;}
 body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;height:100vh;overflow:hidden;}
 /* Header */
-header{background:var(--primary);color:white;padding:0 20px;height:52px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:12px;}
-header h1{font-size:1.05rem;font-weight:700;white-space:nowrap;}
-.hdr-right{display:flex;align-items:center;gap:8px;}
+header{background:var(--primary);color:white;padding:0 16px;height:56px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:10px;}
+header h1{font-size:1rem;font-weight:700;white-space:nowrap;flex-shrink:0;}
+.hdr-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.world-clocks{display:flex;gap:10px;align-items:center;flex:1;justify-content:center;flex-wrap:wrap;}
+.wclock{display:flex;flex-direction:column;align-items:center;background:rgba(255,255,255,.12);border-radius:8px;padding:3px 10px;min-width:90px;}
+.wclock .wc-flag{font-size:0.75rem;opacity:.85;}
+.wclock .wc-time{font-size:0.95rem;font-weight:800;letter-spacing:.03em;line-height:1.2;}
+.wclock .wc-date{font-size:0.62rem;opacity:.75;white-space:nowrap;}
 .score-badge{background:rgba(255,255,255,.18);padding:4px 12px;border-radius:20px;font-size:0.8rem;white-space:nowrap;}
 .week-badge{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);padding:4px 10px;border-radius:20px;font-size:0.78rem;white-space:nowrap;font-weight:600;}
 /* Layout */
@@ -179,6 +184,23 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 <body>
 <header>
   <h1>📔 석원이의 업무 다이어리</h1>
+  <div class="world-clocks" id="world-clocks">
+    <div class="wclock" id="wc-kr">
+      <span class="wc-flag">🇰🇷 한국</span>
+      <span class="wc-time" id="wc-kr-time">--:--</span>
+      <span class="wc-date" id="wc-kr-date">---</span>
+    </div>
+    <div class="wclock" id="wc-de">
+      <span class="wc-flag">🇩🇪 독일</span>
+      <span class="wc-time" id="wc-de-time">--:--</span>
+      <span class="wc-date" id="wc-de-date">---</span>
+    </div>
+    <div class="wclock" id="wc-us">
+      <span class="wc-flag">🇺🇸 미국(동부)</span>
+      <span class="wc-time" id="wc-us-time">--:--</span>
+      <span class="wc-date" id="wc-us-date">---</span>
+    </div>
+  </div>
   <div class="hdr-right">
     <span class="week-badge" id="hdr-week">W?</span>
     <span class="score-badge">효율 <span id="efficiency-score">0</span>%</span>
@@ -243,14 +265,9 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
     <div id="tab-today">
       <div class="card" style="margin-bottom:11px;">
         <strong id="gantt-title">📅 월간 타임라인</strong>
-        <div class="chart-header">
-          <div style="width:28%">업무명</div>
-          <div style="flex:1;position:relative;height:18px;font-size:0.7rem;color:var(--muted);overflow:visible;margin-right:4px;">
-            <span id="g-d1" style="position:absolute;left:0;white-space:nowrap;"></span>
-            <span id="g-d2" style="position:absolute;white-space:nowrap;transform:translateX(-50%);"></span>
-            <span id="g-d3" style="position:absolute;white-space:nowrap;transform:translateX(-50%);"></span>
-            <span id="g-d4" style="position:absolute;right:0;white-space:nowrap;transform:translateX(0);"></span>
-          </div>
+        <div style="display:flex;font-size:0.78rem;font-weight:700;color:var(--muted);padding-bottom:5px;border-bottom:2px solid var(--border);gap:8px;align-items:flex-end;">
+          <div style="width:28%;flex-shrink:0;">업무명</div>
+          <div id="gantt-date-header" style="flex:1;position:relative;height:28px;overflow:visible;"></div>
         </div>
         <div id="chart-rows"></div>
         <div class="legend">
@@ -479,6 +496,17 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
   </div>
 </div>
 
+<!-- 마감 임박 알림 팝업 -->
+<div class="modal" id="modal-deadline-alert">
+  <div class="modal-box" style="max-width:440px;">
+    <h3 style="display:flex;align-items:center;gap:8px;">🚨 마감 임박 업무 알림</h3>
+    <div id="deadline-alert-list" style="max-height:320px;overflow-y:auto;"></div>
+    <div class="modal-actions">
+      <button class="btn-primary" onclick="closeModal('modal-deadline-alert')">확인</button>
+    </div>
+  </div>
+</div>
+
 <!-- 캘린더 날짜 클릭 메모 모달 -->
 <div class="modal" id="modal-cal-memo">
   <div class="modal-box">
@@ -596,6 +624,42 @@ let projects = [
   {id:'p2',name:'B사 기능 안전', color:'#0284c7',lastAction:'2026-05-10'},
   {id:'p3',name:'개인 역량 개발',color:'#10b981',lastAction:'2026-06-02'},
 ];
+/* ══════════════════════════════════════
+   공휴일 데이터
+══════════════════════════════════════ */
+const HOLIDAYS={
+  '2026-01-01':[{n:'신정',f:'🇰🇷'}],
+  '2026-01-28':[{n:'설날 연휴',f:'🇰🇷'}],
+  '2026-01-29':[{n:'설날',f:'🇰🇷'}],
+  '2026-01-30':[{n:'설날 연휴',f:'🇰🇷'}],
+  '2026-03-01':[{n:'삼일절',f:'🇰🇷'}],
+  '2026-05-05':[{n:'어린이날',f:'🇰🇷'}],
+  '2026-05-25':[{n:'부처님오신날',f:'🇰🇷'},{n:'Memorial Day',f:'🇺🇸'},{n:'Pfingstmontag',f:'🇩🇪'}],
+  '2026-06-06':[{n:'현충일',f:'🇰🇷'}],
+  '2026-08-15':[{n:'광복절',f:'🇰🇷'}],
+  '2026-09-24':[{n:'추석 연휴',f:'🇰🇷'}],
+  '2026-09-25':[{n:'추석',f:'🇰🇷'}],
+  '2026-09-26':[{n:'추석 연휴',f:'🇰🇷'}],
+  '2026-10-03':[{n:'개천절',f:'🇰🇷'},{n:'Tag d.Einheit',f:'🇩🇪'}],
+  '2026-10-09':[{n:'한글날',f:'🇰🇷'}],
+  '2026-12-25':[{n:'성탄절',f:'🇰🇷'},{n:'Christmas',f:'🇺🇸'},{n:'Weihnacht',f:'🇩🇪'}],
+  '2026-12-26':[{n:'2.Weihnacht',f:'🇩🇪'}],
+  '2026-01-06':[{n:'Trettondag',f:'🇸🇪'}],
+  '2026-04-03':[{n:'Långfredag',f:'🇸🇪'},{n:'Karfreitag',f:'🇩🇪'}],
+  '2026-04-05':[{n:'Påskdagen',f:'🇸🇪'}],
+  '2026-04-06':[{n:'Annandag påsk',f:'🇸🇪'},{n:'Ostermontag',f:'🇩🇪'}],
+  '2026-05-01':[{n:'Valborg',f:'🇸🇪'},{n:'Tag d.Arbeit',f:'🇩🇪'}],
+  '2026-05-14':[{n:'Kristi himmelsfärd',f:'🇸🇪'},{n:'Christi Himmelfahrt',f:'🇩🇪'}],
+  '2026-05-23':[{n:'Pingstdagen',f:'🇸🇪'}],
+  '2026-06-19':[{n:'Midsommar',f:'🇸🇪'}],
+  '2026-11-07':[{n:'Alla helgons dag',f:'🇸🇪'}],
+  '2026-01-19':[{n:'MLK Day',f:'🇺🇸'}],
+  '2026-02-16':[{n:"Presidents Day",f:'🇺🇸'}],
+  '2026-07-04':[{n:'Independence Day',f:'🇺🇸'}],
+  '2026-09-07':[{n:'Labor Day',f:'🇺🇸'}],
+  '2026-11-26':[{n:'Thanksgiving',f:'🇺🇸'}],
+};
+
 /* priority: A1>A2>A3>B1>B2>B3>C1>C2>C3 */
 const PRIORITY_ORDER=['A1','A2','A3','B1','B2','B3','C1','C2','C3'];
 const PRIORITY_COLOR={A:'#ef4444',B:'#f59e0b',C:'#10b981'};
@@ -898,18 +962,32 @@ function renderGantt(list){
 
   document.getElementById('gantt-title').textContent=`📅 타임라인 (${fmtDW(mStart)} ~ ${fmtDW(mEnd)})`;
 
-  // 라벨 위치 설정
-  const g1=document.getElementById('g-d1');
-  const g2=document.getElementById('g-d2');
-  const g3=document.getElementById('g-d3');
-  const g4=document.getElementById('g-d4');
-  g1.textContent=fmtDW(mStart); g1.style.left='0%';
-  g2.textContent=fmtDW(q1Date); g2.style.left='25%';
-  g3.textContent=`▼오늘(${fmtDW(todayD)})`; g3.style.left=todayPct+'%'; g3.style.color='#f59e0b'; g3.style.fontWeight='700';
-  g4.textContent=fmtDW(mEnd);
-  g4.style.left='100%';
-  g4.style.right='';
-  g4.style.transform='translateX(-100%)';
+  // 날짜 헤더 — 오늘 기준 -3주 ~ +3주 고정 눈금 (총 7개 마커)
+  const hdr=document.getElementById('gantt-date-header');
+  if(hdr){
+    hdr.innerHTML='';
+    const addLbl=(txt,pct,isToday)=>{
+      const s=document.createElement('span');
+      s.textContent=txt;
+      const atLeft=pct<=3, atRight=pct>=97;
+      s.style.cssText=`position:absolute;font-size:0.67rem;white-space:nowrap;top:0;`
+        +`color:${isToday?'#f59e0b':'var(--muted)'};`
+        +`font-weight:${isToday?'700':'500'};`
+        +`border-top:${isToday?'2px solid #f59e0b':'1px solid #e2e8f0'};`
+        +`padding-top:1px;`;
+      if(atRight){ s.style.right='0'; }
+      else { s.style.left=pct+'%'; if(!atLeft) s.style.transform='translateX(-50%)'; }
+      hdr.appendChild(s);
+    };
+    // -3주 ~ +3주, 1주 간격으로 7개 마커
+    for(let w=-3; w<=3; w++){
+      const dt=new Date(todayD); dt.setDate(todayD.getDate()+w*7);
+      const pct=((dt.getTime()-mStart.getTime())/mDur)*100;
+      if(pct<-2||pct>102) continue; // 범위 밖이면 스킵
+      const label=w===0?('▼오늘\n'+fmtDW(dt)):fmtDW(dt);
+      addLbl(label, Math.max(0,Math.min(100,pct)), w===0);
+    }
+  }
 
   // 주 단위 점선 계산 (월요일마다)
   const weekLines=[];
@@ -1986,6 +2064,86 @@ function autoArchiveCompletedTasks(){
   return archived;
 }
 
+/* ══════════════════════════════════════
+   완료 시 자동 주간기록 + 히스토리
+══════════════════════════════════════ */
+function autoAddWeeklyLog(t){
+  // 이미 오늘 같은 업무 기록이 있으면 중복 방지
+  const exists=weeklyLogs.find(l=>l.project===t.project&&l.task===t.text&&l.date===TODAY_STR);
+  if(exists) return;
+  weeklyLogs.push({
+    id:Date.now()+Math.random(),
+    project:t.project,
+    task:t.text,
+    date:TODAY_STR,
+    hours:1,
+    memo:'✅ 완료 자동 기록 (시간 수정 가능)',
+    _auto:true
+  });
+}
+
+function addToHistory(t){
+  // 완료된 업무를 히스토리에 즉시 기록 (단일 업무 단위)
+  const p=projects.find(x=>x.id===t.project)||{name:'기타',color:'#888',id:t.project};
+  // 같은 날 같은 프로젝트 히스토리 묶기
+  const todayKey=`__done_${t.project}_${TODAY_STR}`;
+  const existing=completedProjects.find(cp=>cp._key===todayKey);
+  if(existing){
+    if(!existing.tasks.find(x=>x.id===t.id)) existing.tasks.push(t);
+  } else {
+    completedProjects.push({
+      _key:todayKey,
+      project:{...p, completedAt:TODAY_STR},
+      tasks:[t],
+      completedAt:TODAY_STR,
+      _archiveNote:'완료 자동 기록'
+    });
+  }
+}
+
+/* ══════════════════════════════════════
+   마감 임박 알림 (하루 2회)
+══════════════════════════════════════ */
+function checkDeadlineAlert(){
+  const now=new Date();
+  const h=now.getHours();
+  const dateKey=TODAY_STR;
+  const stored=JSON.parse(localStorage.getItem('dlAlert')||'{}');
+  // 오전 (06:00~12:59) / 오후 (13:00~) 각 1회
+  const slot=h>=13?'pm':'am';
+  const alreadyShown=stored[dateKey]&&stored[dateKey][slot];
+  if(h<6||alreadyShown) return;
+
+  const todayD=new Date(TODAY.getFullYear(),TODAY.getMonth(),TODAY.getDate());
+  const deadlines=tasks.filter(t=>!t.done).map(t=>{
+    const eD=new Date(t.end); const end=new Date(eD.getFullYear(),eD.getMonth(),eD.getDate());
+    return{...t,_diff:Math.ceil((end-todayD)/86400000)};
+  }).filter(t=>t._diff<=3).sort((a,b)=>a._diff-b._diff);
+
+  if(!deadlines.length) return;
+
+  // 팝업 표시
+  const listEl=document.getElementById('deadline-alert-list');
+  listEl.innerHTML=deadlines.map(t=>{
+    const p=proj(t.project);
+    const col=t._diff<0?'#ef4444':t._diff===0?'#f97316':t._diff===1?'#f59e0b':'#64748b';
+    const lbl=t._diff<0?`D+${-t._diff}`:t._diff===0?'D-Day':`D-${t._diff}`;
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">
+      <span style="background:${col};color:white;font-weight:800;font-size:0.8rem;padding:3px 10px;border-radius:6px;min-width:52px;text-align:center;">${lbl}</span>
+      <div style="flex:1;">
+        <div style="font-weight:600;font-size:0.85rem;">${t.text}</div>
+        <div style="font-size:0.72rem;color:${p.color};margin-top:1px;">${p.name} · 종료: ${fmt(t.end)}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  openModal('modal-deadline-alert');
+  // 표시 기록 저장
+  if(!stored[dateKey]) stored[dateKey]={};
+  stored[dateKey][slot]=true;
+  localStorage.setItem('dlAlert', JSON.stringify(stored));
+}
+
 function calcScore(){
   const ft=filteredTasks();
   const total=ft.length, done=ft.filter(t=>t.done).length;
@@ -2035,16 +2193,24 @@ function deleteTask(id){
   saveAndRender();
 }
 function toggleTask(id){
+  let completedTask=null;
   tasks=tasks.map(t=>{
     if(t.id!==id) return t;
     touchProject(t.project);
     const nowDone=!t.done;
+    if(nowDone) completedTask={...t, done:true, actualEnd:TODAY_STR, status:'done'};
     return{...t, done:nowDone, actualEnd:nowDone?TODAY_STR:null, status:nowDone?'done':(t.status==='done'?'not_started':t.status)};
   });
+  if(completedTask){
+    autoAddWeeklyLog(completedTask);
+    addToHistory(completedTask);
+  }
   saveAndRender();
 }
 function completeEarly(id){
+  const t=tasks.find(x=>x.id===id);
   tasks=tasks.map(t=>{ if(t.id!==id) return t; touchProject(t.project); return{...t,done:true,actualEnd:TODAY_STR,status:'early_done'}; });
+  if(t){ autoAddWeeklyLog({...t,done:true,actualEnd:TODAY_STR,status:'early_done'}); addToHistory({...t,done:true,actualEnd:TODAY_STR,status:'early_done'}); }
   saveAndRender();
 }
 function openEdit(id){
@@ -2258,6 +2424,31 @@ document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{ i
 /* ══════════════════════════════════════
    INIT
 ══════════════════════════════════════ */
+// ── 세계 시계
+function updateWorldClocks(){
+  const DAYS=['일','월','화','수','목','금','토'];
+  const fmt2=n=>String(n).padStart(2,'0');
+  const zones=[
+    {tz:'Asia/Seoul',      tId:'wc-kr-time', dId:'wc-kr-date'},
+    {tz:'Europe/Berlin',   tId:'wc-de-time', dId:'wc-de-date'},
+    {tz:'America/New_York',tId:'wc-us-time', dId:'wc-us-date'},
+  ];
+  zones.forEach(({tz,tId,dId})=>{
+    const now=new Date();
+    const opts={timeZone:tz,hour:'2-digit',minute:'2-digit',hour12:false};
+    const dOpts={timeZone:tz,month:'numeric',day:'numeric',weekday:'short'};
+    const tStr=new Intl.DateTimeFormat('ko-KR',opts).format(now);
+    const dParts=new Intl.DateTimeFormat('ko-KR',{timeZone:tz,month:'numeric',day:'numeric',weekday:'short'}).formatToParts(now);
+    const month=dParts.find(p=>p.type==='month')?.value||'';
+    const day2=dParts.find(p=>p.type==='day')?.value||'';
+    const wd=dParts.find(p=>p.type==='weekday')?.value||'';
+    document.getElementById(tId).textContent=tStr;
+    document.getElementById(dId).textContent=`${month}/${day2}(${wd})`;
+  });
+}
+updateWorldClocks();
+setInterval(updateWorldClocks, 30000); // 30초마다 갱신
+
 // 날짜 기본값 (로컬 기준 — UTC 오프셋 문제 방지)
 document.getElementById('start-date').value=TODAY_STR;
 const _endDef=new Date(TODAY); _endDef.setDate(TODAY.getDate()+7);
@@ -2281,6 +2472,7 @@ document.getElementById('sidebar-note')?.addEventListener('input', ()=>{
   checkRepeatTasks();
   autoArchiveCompletedTasks();
   render();
+  setTimeout(checkDeadlineAlert, 1500); // 로딩 후 1.5초 뒤 알림 체크
 })();
 </script>
 </body>
