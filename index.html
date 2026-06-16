@@ -278,7 +278,51 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
       <div class="task-list" id="task-list"></div>
     </div>
 
-    <!-- 캘린더 -->
+    <!-- 홈 대시보드 -->
+    <div id="tab-home" style="display:none;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px;" id="home-stats"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="card">
+          <div style="font-size:0.85rem;font-weight:700;color:var(--muted);margin-bottom:8px;">🚨 마감 임박 (D-3 이내)</div>
+          <div id="home-deadlines"></div>
+        </div>
+        <div class="card">
+          <div style="font-size:0.85rem;font-weight:700;color:var(--muted);margin-bottom:8px;">📋 이번 주 할 일</div>
+          <div id="home-thisweek"></div>
+        </div>
+        <div class="card" style="grid-column:1/-1;">
+          <div style="font-size:0.85rem;font-weight:700;color:var(--muted);margin-bottom:8px;">⚠️ 지연·초과 업무</div>
+          <div id="home-risk"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 검색 -->
+    <div id="tab-search" style="display:none;">
+      <div class="card">
+        <div style="display:flex;gap:8px;margin-bottom:4px;">
+          <input type="text" id="search-input" placeholder="업무명, 메모, 프로젝트명으로 검색..." style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:0.88rem;" oninput="renderSearch()">
+          <select id="search-proj" style="padding:8px;border:1.5px solid var(--border);border-radius:7px;" onchange="renderSearch()">
+            <option value="all">전체 프로젝트</option>
+          </select>
+        </div>
+        <div id="search-results"><div style="color:var(--muted);font-size:0.85rem;padding:16px 0;text-align:center;">키워드를 입력하세요.</div></div>
+      </div>
+    </div>
+
+    <!-- 반복업무 -->
+    <div id="tab-repeat" style="display:none;">
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <strong>🔄 반복 업무 설정</strong>
+          <button class="btn-primary" onclick="openModal('modal-repeat')" style="margin-left:auto;font-size:0.8rem;padding:5px 12px;">+ 추가</button>
+        </div>
+        <div style="font-size:0.78rem;color:var(--muted);margin-bottom:10px;">설정한 반복 업무는 매주/매월 자동으로 할 일에 추가됩니다.</div>
+        <div id="repeat-list"></div>
+      </div>
+    </div>
+
+    <!-- 캘린더 (자유 메모) -->
     <div id="tab-calendar" style="display:none;">
       <div class="card">
         <div class="cal-nav">
@@ -289,14 +333,9 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
           </div>
           <button class="cal-nav-btn" onclick="calMove(1)">▶</button>
         </div>
+        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px;">📝 날짜를 클릭해서 메모를 추가하세요</div>
         <div class="cal-grid" id="cal-head-row"></div>
         <div class="cal-grid" id="cal-body"></div>
-        <div class="legend">
-          <span><span class="legend-dot" style="background:var(--primary)"></span>진행중</span>
-          <span><span class="legend-dot" style="background:var(--early)"></span>조기완료</span>
-          <span><span class="legend-dot" style="background:#94a3b8"></span>완료</span>
-          <span><span class="legend-dot" style="background:#fbbf24"></span>오늘</span>
-        </div>
       </div>
     </div>
 
@@ -942,18 +981,29 @@ function renderTaskList(list){
   if(!list.length){ el.innerHTML='<div style="color:var(--muted);font-size:0.83rem;text-align:center;padding:18px">업무 없음. 위에서 추가하세요.</div>'; return; }
 
   // 우선순위 그룹별로 묶기 (같은 priority끼리 subOrder로 순서 유지)
+  // 완료된 것은 맨 뒤로, 미완료는 우선순위 정렬
   const sorted=[...list].sort((a,b)=>{
+    if(a.done !== b.done) return a.done?1:-1; // 완료=뒤
     const ai=PRIORITY_ORDER.indexOf(a.priority||'C3');
     const bi=PRIORITY_ORDER.indexOf(b.priority||'C3');
     if(ai!==bi) return (ai<0?99:ai)-(bi<0?99:bi);
     return (a.subOrder||0)-(b.subOrder||0);
   });
 
-  let lastPrio=null;
+  let lastPrio=null; let shownDoneSep=false;
   sorted.forEach(t=>{
     const prio=t.priority||'';
-    // 그룹 라벨
-    if(prio && prio!==lastPrio){
+    // 완료 구분선
+    if(t.done && !shownDoneSep){
+      shownDoneSep=true;
+      const sep=document.createElement('div');
+      sep.style.cssText='border-top:2px dashed #e2e8f0;margin:8px 0;display:flex;align-items:center;gap:8px;';
+      sep.innerHTML='<span style="font-size:0.72rem;color:#94a3b8;font-weight:700;white-space:nowrap;">✅ 완료된 업무</span>';
+      el.appendChild(sep);
+      lastPrio=null;
+    }
+    // 그룹 라벨 (미완료만)
+    if(!t.done && prio && prio!==lastPrio){
       const lbl=document.createElement('div');
       lbl.className='prio-group-label';
       const groupColor=prioColor(prio);
@@ -1500,7 +1550,7 @@ function renderHistory(){
         <span class="hi-date">완료일: ${p.completedAt||cp.completedAt}</span>
         <button class="btn-sm" style="background:var(--pri-light);color:var(--primary);margin-left:8px;" onclick="restoreHistory(${i})">프로젝트 복원</button>
       </div>
-      <div style="font-size:0.78rem;color:var(--muted);">업무 ${totalTasks}개 · 완료 ${doneTasks}개 (${totalTasks?Math.round(doneTasks/totalTasks*100):0}%)</div>
+      <div style="font-size:0.78rem;color:var(--muted);">업무 ${totalTasks}개 · 완료 ${doneTasks}개 (${totalTasks?Math.round(doneTasks/totalTasks*100):0}%)${archNote?` <span style="color:#94a3b8;font-size:0.7rem;">· ${archNote}</span>`:''}</div>
       ${cp.tasks.length?`<div class="hi-tasks">${cp.tasks.map(t=>`<span class="history-task-chip">${t.done?'✓ ':''}${t.text}</span>`).join('')}</div>`:''}
     </div>`;
   }).join('');
@@ -1886,6 +1936,56 @@ function checkRepeatTasks(){
   if(generated) saveToFirebase();
 }
 
+/* ══════════════════════════════════════
+   완료 업무 자동 히스토리 이동 (1주 경과)
+══════════════════════════════════════ */
+function autoArchiveCompletedTasks(){
+  const todayD=new Date(TODAY.getFullYear(),TODAY.getMonth(),TODAY.getDate());
+  const oneWeekAgo=new Date(todayD); oneWeekAgo.setDate(todayD.getDate()-7);
+  let archived=false;
+
+  // 1주 이상 지난 완료 업무를 프로젝트별로 묶어서 히스토리로
+  const oldDone=tasks.filter(t=>{
+    if(!t.done||!t.actualEnd) return false;
+    const ae=new Date(t.actualEnd);
+    const aeD=new Date(ae.getFullYear(),ae.getMonth(),ae.getDate());
+    return aeD<=oneWeekAgo;
+  });
+
+  if(oldDone.length>0){
+    // 프로젝트별로 그룹
+    const byProj={};
+    oldDone.forEach(t=>{
+      if(!byProj[t.project]) byProj[t.project]=[];
+      byProj[t.project].push(t);
+    });
+    Object.entries(byProj).forEach(([pid,pts])=>{
+      const p=projects.find(x=>x.id===pid)||{name:'기타',color:'#888',id:pid};
+      // 기존 히스토리에 추가 또는 새로 생성
+      const existing=completedProjects.find(cp=>cp.project.id===pid&&cp._autoArchive);
+      if(existing){
+        existing.tasks.push(...pts);
+        existing.completedAt=TODAY_STR;
+      } else {
+        completedProjects.push({
+          project:{...p,completedAt:TODAY_STR},
+          tasks:pts,
+          completedAt:TODAY_STR,
+          _autoArchive:true,
+          _archiveNote:`${pts.length}개 업무 자동 보관 (완료 후 1주 경과)`
+        });
+      }
+    });
+    // 원본에서 제거
+    const archiveIds=new Set(oldDone.map(t=>t.id));
+    tasks=tasks.filter(t=>!archiveIds.has(t.id));
+    archived=true;
+    console.log(`[자동보관] ${oldDone.length}개 완료 업무 히스토리 이동`);
+  }
+  if(archived) saveToFirebase();
+  return archived;
+}
+
 function calcScore(){
   const ft=filteredTasks();
   const total=ft.length, done=ft.filter(t=>t.done).length;
@@ -2179,6 +2279,7 @@ document.getElementById('sidebar-note')?.addEventListener('input', ()=>{
   document.getElementById('fb-loading')?.remove();
   updateTrashBadge();
   checkRepeatTasks();
+  autoArchiveCompletedTasks();
   render();
 })();
 </script>
