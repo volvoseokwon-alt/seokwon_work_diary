@@ -728,8 +728,10 @@ function healthColor(score){
 
 function getTaskStatus(t){
   if(t.done){ return isEarly(t)?'early_done':'done'; }
+  // 사용자가 명시적으로 진행 상태를 선택했으면 그 선택을 존중 (기한초과여도 진행률 표시 가능)
+  if(t.status) return t.status;
   if(isOverdue(t)) return 'overdue';
-  return t.status||'not_started';
+  return 'not_started';
 }
 function prioSort(a,b){
   const ai=PRIORITY_ORDER.indexOf(a.priority||'C3');
@@ -1019,12 +1021,17 @@ function renderGantt(list){
     const hCol=t.done?'#94a3b8':healthColor(health);
 
     // 바 배경: 항상 연한 회색, 채움: 진행% 만큼 건강도 색상
+    // 사용자가 명시적으로 진행상태(in_progress_xx/delayed/on_track)를 선택했으면 그걸 우선 표시
     let barLabel='미진행'; let barBg='#e2e8f0';
+    const userPicked = st2==='delayed'||st2==='on_track'||st2.startsWith('in_progress');
     if(t.done){ barLabel=isEarly(t)?'⚡ 조기':'✓ 완료'; barBg='#94a3b8'; }
+    else if(userPicked){
+      if(st2==='delayed') barLabel='⚠ 지연';
+      else if(st2==='on_track') barLabel='✅ 완료';
+      else barLabel=progPct+'%';
+      if(isOverdue(t)) barLabel+=' 🔴'; // 기한초과 보조 표시
+    }
     else if(isOverdue(t)){ barLabel='🔴 초과'; barBg='#ef4444'; }
-    else if(st2==='delayed'){ barLabel='⚠ 지연'; }
-    else if(st2==='on_track'){ barLabel='✅ 완료'; }
-    else if(st2.startsWith('in_progress')){ barLabel=progPct+'%'; }
 
     const row=document.createElement('div');
     row.className='chart-row';
@@ -2243,7 +2250,7 @@ function addTask(){
   const end=document.getElementById('end-date').value;
   const priority=document.getElementById('task-priority').value;
   if(!text||!start||!end) return;
-  tasks.push({id:Date.now(),text,project:projId,done:false,start,end,actualEnd:null,priority});
+  tasks.push({id:Date.now(),text,project:projId,done:false,start,end,actualEnd:null,priority,status:'not_started'});
   touchProject(projId);
   document.getElementById('task-input').value='';
   saveAndRender();
