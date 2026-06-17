@@ -2,18 +2,12 @@
 // 앱 셀(HTML/아이콘)을 캐시해서 오프라인에서도 화면이 뜨도록 함.
 // 단, Firebase 데이터 통신은 네트워크가 있어야 동작함.
 
-const CACHE_NAME = 'workdiary-cache-v1';
+const CACHE_NAME = 'workdiary-cache-v2';
 const ASSETS_TO_CACHE = [
   './index.html',
   './manifest.json',
-  './icons/icon-72.png',
-  './icons/icon-96.png',
-  './icons/icon-128.png',
-  './icons/icon-144.png',
-  './icons/icon-152.png',
-  './icons/icon-192.png',
-  './icons/icon-384.png',
-  './icons/icon-512.png',
+  './icon-192.png',
+  './icon-512.png',
 ];
 
 self.addEventListener('install', (event) => {
