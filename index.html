@@ -1732,12 +1732,26 @@ function setMemoColor(id, color){
   }
 }
 function setTaskStatus(id, status){
-  tasks=tasks.map(t=>t.id===id?{...t,status}:t);
+  let completedTask=null;
+  tasks=tasks.map(t=>{
+    if(t.id!==id) return t;
+    // '완료'(on_track) 선택 시 실제 완료 처리 (체크박스와 동일하게)
+    if(status==='on_track'){
+      touchProject(t.project);
+      completedTask={...t, done:true, actualEnd:TODAY_STR, status:'on_track'};
+      return completedTask;
+    }
+    return {...t, status};
+  });
+  if(completedTask){
+    autoAddWeeklyLog(completedTask);
+    addToHistory(completedTask);
+  }
   saveToFirebase();
-  // 목록 + 간트 둘 다 즉시 갱신
   const ft=filteredTasks();
   renderTaskList(ft);
   renderGantt(ft);
+  calcScore();
 }
 
 /* ══════════════════════════════════════
