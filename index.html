@@ -1108,7 +1108,7 @@ function renderTaskList(list){
       <!-- 메인 행 -->
       <div style="display:flex;align-items:center;gap:8px;width:100%;">
         <span class="drag-handle" title="같은 우선순위 내 순서 변경">⠿</span>
-        <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask(${t.id})">
+        <input type="checkbox" draggable="false" onmousedown="event.stopPropagation()" ${t.done?'checked':''} onchange="toggleTask(${t.id})">
         ${prio?`<span style="background:${pc};color:white;font-size:0.7rem;font-weight:800;padding:2px 6px;border-radius:4px;min-width:26px;text-align:center;flex-shrink:0">${prio}</span>`:''}
         <span class="p-badge" style="background:${p.color}22;color:${p.color};flex-shrink:0">${p.name}</span>
         <span class="task-text" style="font-size:0.85rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${t.text}</span>
@@ -1118,14 +1118,15 @@ function renderTaskList(list){
           onmouseover="this.style.opacity='1'"
           onmouseout="this.style.opacity='${t.memo?1:0.3}'">🗒️</span>
         <span class="date-badge" style="flex-shrink:0;">📅 ${fmt(t.start)} ~ ${fmt(t.end)}</span>
-        ${!t.done?`<select class="status-select" style="color:${stInfo.color};border-color:${stInfo.color}22;background:${stInfo.color}11;flex-shrink:0;"
+        ${!t.done?`<select class="status-select" draggable="false" onmousedown="event.stopPropagation()" style="color:${stInfo.color};border-color:${stInfo.color}22;background:${stInfo.color}11;flex-shrink:0;"
             onchange="setTaskStatus(${t.id},this.value)">
+          ${st==='overdue'?`<option value="overdue" selected>🔴 기한초과</option>`:''}
           ${Object.entries(TASK_STATUS).filter(([k])=>k!=='done'&&k!=='early_done'&&k!=='overdue').map(([k,v])=>`<option value="${k}" ${st===k?'selected':''}>${v.icon} ${v.label}</option>`).join('')}
         </select>`:`<span class="status-chip" style="background:${stInfo.color};flex-shrink:0;">${stInfo.icon} ${stInfo.label}</span>`}
         <div style="display:flex;gap:5px;flex-shrink:0;">
-          ${!t.done?`<button class="btn-sm" style="background:var(--accent);color:white" onclick="completeEarly(${t.id})">조기완료</button>`:''}
-          <button class="btn-sm" style="background:var(--pri-light);color:var(--primary)" onclick="openEdit(${t.id})">수정</button>
-          <button class="btn-sm" style="background:#fee2e2;color:var(--warn)" onclick="deleteTask(${t.id})">삭제</button>
+          ${!t.done?`<button class="btn-sm" style="background:var(--accent);color:white" onclick="completeEarly(${t.id})" onmousedown="event.stopPropagation()" draggable="false">조기완료</button>`:''}
+          <button class="btn-sm" style="background:var(--pri-light);color:var(--primary)" onclick="openEdit(${t.id})" onmousedown="event.stopPropagation()" draggable="false">수정</button>
+          <button class="btn-sm" style="background:#fee2e2;color:var(--warn)" onclick="deleteTask(${t.id})" onmousedown="event.stopPropagation()" draggable="false">삭제</button>
         </div>
       </div>
       <!-- 메모 펼침 패널 (기본 숨김) -->
