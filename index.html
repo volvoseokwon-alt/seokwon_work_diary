@@ -463,6 +463,7 @@ if ('serviceWorker' in navigator) {
           <div style="align-self:flex-end;display:flex;gap:6px;">
             <button class="btn-primary" onclick="generateReport()">📊 레포트 생성</button>
             <button class="btn-sm" style="background:#f0fdf4;color:#16a34a;padding:8px 12px;" onclick="copyReport()">📋 복사</button>
+            <button class="btn-sm" style="background:#eff6ff;color:#4f46e5;padding:8px 12px;" onclick="downloadReportWord()">📄 Word 다운로드</button>
           </div>
         </div>
         <div id="report-output" style="margin-top:14px;"></div>
@@ -2757,6 +2758,7 @@ function generateReport(){
   const byProj={};
   logs.forEach(l=>{ byProj[l.project]=(byProj[l.project]||0)+(l.hours||0); });
   const totalH=logs.reduce((s,l)=>s+(l.hours||0),0);
+  const weeks=Object.keys(byWeek).sort();
 
   // 완료 업무
   const doneTasks=[];
@@ -2765,7 +2767,6 @@ function generateReport(){
 
   // 레포트 렌더링
   const el=document.getElementById('report-output');
-  const weeks=Object.keys(byWeek).sort();
 
   const weekHtml=weeks.map(wk=>{
     const wData=byWeek[wk];
@@ -2774,80 +2775,76 @@ function generateReport(){
     const wByProj={};
     wLogs.forEach(l=>{ wByProj[l.project]=(wByProj[l.project]||0)+(l.hours||0); });
     const [wy,wn]=wk.split('-W');
-    // 그 주의 월~일
     const wStart=isoWeekStart(parseInt(wy),parseInt(wn));
     const wEnd=new Date(wStart); wEnd.setDate(wStart.getDate()+6);
-    const fmtShort=d=>`${d.getMonth()+1}/${d.getDate()}`;
-
-    return `<div style="margin-bottom:16px;padding:12px 14px;border:1px solid var(--border);border-radius:8px;background:var(--card);">
-      <div style="font-weight:700;font-size:0.88rem;color:var(--primary);margin-bottom:8px;">
-        W${wn} (${fmtShort(wStart)} ~ ${fmtShort(wEnd)}) — 총 <span style="color:var(--text)">${wTotal}h</span>
+    const fmtShort=dt2=>`${dt2.getMonth()+1}/${dt2.getDate()}`;
+    return `<div style="margin-bottom:14px;padding:12px 14px;border:1px solid #e2e8f0;border-radius:8px;background:white;">
+      <div style="font-weight:700;font-size:0.88rem;color:#4f46e5;margin-bottom:8px;">
+        W${wn} (${fmtShort(wStart)} ~ ${fmtShort(wEnd)}) — 총 <strong>${wTotal}h</strong>
       </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
         ${Object.entries(wByProj).sort((a,b)=>b[1]-a[1]).map(([pid,h])=>{
           const p=proj(pid);
           return `<span style="font-size:0.75rem;background:${p.color}18;color:${p.color};padding:3px 9px;border-radius:12px;font-weight:600;">${p.name} ${h}h</span>`;
         }).join('')}
       </div>
-      <div style="font-size:0.78rem;color:var(--muted);">
+      <div style="font-size:0.76rem;color:#94a3b8;">
         ${Object.entries(wData.days).sort().map(([date,h])=>`${fmt(date)} ${h}h`).join(' · ')}
       </div>
     </div>`;
   }).join('');
 
-  // 도표 텍스트용 레포트
-  const reportText=generateReportText(startKey, endKey, logs, byProj, totalH, doneTasks, weeks, byWeek);
-  document.getElementById('report-output')._text=reportText;
+  const projBarsHtml=Object.entries(byProj).sort((a,b)=>b[1]-a[1]).map(([pid,h])=>{
+    const p=proj(pid);
+    const pct=Math.round(h/Math.max(totalH,1)*100);
+    return `<div style="display:flex;align-items:center;gap:8px;font-size:0.82rem;margin-bottom:6px;">
+      <span style="width:120px;font-weight:600;color:${p.color};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name}</span>
+      <div style="flex:1;background:#f1f5f9;border-radius:20px;height:16px;overflow:hidden;">
+        <div style="height:100%;width:${pct}%;background:${p.color};border-radius:20px;display:flex;align-items:center;padding-left:6px;">
+          ${pct>15?`<span style="font-size:0.65rem;color:white;font-weight:700;">${h}h</span>`:''}
+        </div>
+      </div>
+      <span style="width:42px;text-align:right;color:#64748b;">${h}h / ${pct}%</span>
+    </div>`;
+  }).join('')||'<div style="color:#94a3b8;">기록 없음</div>';
+
+  const doneHtml=doneTasks.slice(0,20).map(t=>{
+    const p=proj(t.project);
+    const pc=prioColor(t.priority||'');
+    return `<div style="display:flex;align-items:center;gap:7px;font-size:0.8rem;padding:5px 0;border-bottom:1px solid #f1f5f9;">
+      ${t.priority?`<span style="color:${pc};font-weight:700;font-size:0.68rem;min-width:24px;">${t.priority}</span>`:'<span style="min-width:24px;"></span>'}
+      <span style="color:${p.color};font-weight:600;font-size:0.72rem;min-width:80px;">${p.name}</span>
+      <span style="flex:1;">${t.text}</span>
+      <span style="color:#94a3b8;font-size:0.72rem;">${fmt(t.actualEnd||t._completedAt||'')}</span>
+    </div>`;
+  }).join('');
 
   el.innerHTML=`
-    <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
-      <div class="dash-card dash-stat" style="min-width:100px;padding:10px 16px;">
-        <div class="n" style="color:var(--primary)">${totalH}h</div>
-        <div class="l">총 작업 시간</div>
+    <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+      <div style="background:#eff6ff;border-radius:8px;padding:10px 18px;text-align:center;">
+        <div style="font-size:1.6rem;font-weight:800;color:#4f46e5;">${totalH}h</div>
+        <div style="font-size:0.72rem;color:#64748b;">총 작업 시간</div>
       </div>
-      <div class="dash-card dash-stat" style="min-width:100px;padding:10px 16px;">
-        <div class="n" style="color:#10b981">${doneTasks.length}</div>
-        <div class="l">완료 업무</div>
+      <div style="background:#f0fdf4;border-radius:8px;padding:10px 18px;text-align:center;">
+        <div style="font-size:1.6rem;font-weight:800;color:#10b981;">${doneTasks.length}</div>
+        <div style="font-size:0.72rem;color:#64748b;">완료 업무</div>
       </div>
-      <div class="dash-card dash-stat" style="min-width:100px;padding:10px 16px;">
-        <div class="n" style="color:#f59e0b">${Object.keys(wData||{}).length||weeks.length}</div>
-        <div class="l">기록 주차</div>
+      <div style="background:#faf5ff;border-radius:8px;padding:10px 18px;text-align:center;">
+        <div style="font-size:1.6rem;font-weight:800;color:#7c3aed;">${weeks.length}</div>
+        <div style="font-size:0.72rem;color:#64748b;">기록 주차</div>
       </div>
     </div>
-    <div style="font-size:0.82rem;font-weight:700;color:var(--muted);margin-bottom:8px;">📅 주별 업무 부하</div>
-    ${weekHtml||'<div style="color:var(--muted);padding:16px;text-align:center;">이 기간에 주간기록이 없습니다.</div>'}
-    <div style="font-size:0.82rem;font-weight:700;color:var(--muted);margin:12px 0 8px;">📊 프로젝트별 시간 분배</div>
-    <div style="display:flex;flex-direction:column;gap:6px;">
-      ${Object.entries(byProj).sort((a,b)=>b[1]-a[1]).map(([pid,h])=>{
-        const p=proj(pid);
-        const pct=Math.round(h/Math.max(totalH,1)*100);
-        return `<div style="display:flex;align-items:center;gap:8px;font-size:0.82rem;">
-          <span style="width:110px;font-weight:600;color:${p.color};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name}</span>
-          <div style="flex:1;background:#f1f5f9;border-radius:20px;height:16px;overflow:hidden;">
-            <div style="height:100%;width:${pct}%;background:${p.color};border-radius:20px;display:flex;align-items:center;padding-left:6px;">
-              ${pct>15?`<span style="font-size:0.65rem;color:white;font-weight:700;">${h}h</span>`:''}
-            </div>
-          </div>
-          <span style="width:36px;text-align:right;color:var(--muted);">${pct}%</span>
-        </div>`;
-      }).join('')||'<div style="color:var(--muted);">기록 없음</div>'}
-    </div>
-    <div style="font-size:0.82rem;font-weight:700;color:var(--muted);margin:12px 0 8px;">✅ 완료 업무 (${doneTasks.length}건)</div>
-    <div style="display:flex;flex-direction:column;gap:4px;">
-      ${doneTasks.slice(0,15).map(t=>{
-        const p=proj(t.project);
-        const pc=prioColor(t.priority||'');
-        return `<div style="display:flex;align-items:center;gap:7px;font-size:0.8rem;padding:4px 0;border-bottom:1px solid #f1f5f9;">
-          ${t.priority?`<span style="color:${pc};font-weight:700;font-size:0.68rem;">${t.priority}</span>`:''}
-          <span style="color:${p.color};font-weight:600;font-size:0.72rem;">${p.name}</span>
-          <span style="flex:1;">${t.text}</span>
-          <span style="color:var(--muted);font-size:0.72rem;">${fmt(t.actualEnd||t._completedAt||'')}</span>
-        </div>`;
-      }).join('')}
-      ${doneTasks.length>15?`<div style="color:var(--muted);font-size:0.78rem;padding:4px 0;">외 ${doneTasks.length-15}건...</div>`:''}
-    </div>
-    <textarea id="report-text-area" style="width:100%;min-height:200px;padding:12px;margin-top:14px;border:1.5px solid var(--border);border-radius:7px;font-size:0.8rem;font-family:monospace;background:#f8fafc;resize:vertical;" readonly>${reportText}</textarea>
+    <div style="font-size:0.82rem;font-weight:700;color:#64748b;margin-bottom:8px;">📅 주별 업무 부하</div>
+    ${weekHtml||'<div style="color:#94a3b8;padding:16px;text-align:center;">이 기간에 주간기록이 없습니다.</div>'}
+    <div style="font-size:0.82rem;font-weight:700;color:#64748b;margin:12px 0 8px;">📊 프로젝트별 시간 분배</div>
+    ${projBarsHtml}
+    <div style="font-size:0.82rem;font-weight:700;color:#64748b;margin:12px 0 8px;">✅ 완료 업무 (${doneTasks.length}건)</div>
+    ${doneHtml}
+    ${doneTasks.length>20?`<div style="color:#94a3b8;font-size:0.78rem;padding:4px 0;">외 ${doneTasks.length-20}건...</div>`:''}
   `;
+
+  // Word 다운로드 버튼 활성화 (데이터 저장)
+  window._reportData={startKey,endKey,logs,byProj,totalH,weeks,byWeek,doneTasks};
 }
 
 function isoWeekStart(year, week){
@@ -2858,7 +2855,8 @@ function isoWeekStart(year, week){
   return monday;
 }
 
-function generateReportText(startKey, endKey, logs, byProj, totalH, doneTasks, weeks, byWeek){
+function generateReportText(d){
+  const {startKey,endKey,byProj,totalH,doneTasks,weeks,byWeek}=d;
   let t=`${'='.repeat(40)}\n`;
   t+=`📔 업무 레포트\n`;
   t+=`기간: ${fmt(startKey)} ~ ${fmt(endKey)}\n`;
@@ -2880,8 +2878,9 @@ function generateReportText(startKey, endKey, logs, byProj, totalH, doneTasks, w
     const [wy,wn]=wk.split('-W');
     const wStart=isoWeekStart(parseInt(wy),parseInt(wn));
     const wEnd=new Date(wStart); wEnd.setDate(wStart.getDate()+6);
-    const fmtShort=d=>`${d.getMonth()+1}/${d.getDate()}`;
-    t+=`  W${wn} (${fmtShort(wStart)}~${fmtShort(wEnd)}): ${wTotal}h\n`;
+    const fmtShort=dt2=>`${dt2.getMonth()+1}/${dt2.getDate()}`;
+    t+=`  W${wn} (${fmtShort(wStart)}~${fmtShort(wEnd)}): ${wTotal}h
+`;
     const wByProj={};
     wData.logs.forEach(l=>{ wByProj[l.project]=(wByProj[l.project]||0)+(l.hours||0); });
     Object.entries(wByProj).sort((a,b)=>b[1]-a[1]).forEach(([pid,h])=>{
@@ -2900,9 +2899,116 @@ function generateReportText(startKey, endKey, logs, byProj, totalH, doneTasks, w
 }
 
 function copyReport(){
-  const ta=document.getElementById('report-text-area');
-  if(!ta||!ta.value){ alert('먼저 레포트를 생성해주세요.'); return; }
-  navigator.clipboard?.writeText(ta.value).then(()=>alert('레포트가 클립보드에 복사되었습니다!')).catch(()=>{ ta.select(); document.execCommand('copy'); alert('복사되었습니다!'); });
+  if(!window._reportData){ alert('먼저 레포트를 생성해주세요.'); return; }
+  const text=generateReportText(window._reportData);
+  navigator.clipboard?.writeText(text).then(()=>alert('레포트가 클립보드에 복사되었습니다!')).catch(()=>{ alert('복사 실패 — 브라우저 권한을 확인해주세요.'); });
+}
+
+function downloadReportWord(){
+  if(!window._reportData){ alert('먼저 레포트를 생성해주세요.'); return; }
+  const d=window._reportData;
+  const rangeLabel=`${fmt(d.startKey)} ~ ${fmt(d.endKey)}`;
+  const generatedAt=`${TODAY.getFullYear()}.${TODAY.getMonth()+1}.${TODAY.getDate()}`;
+
+  // 주별 테이블 행
+  const weekRows=d.weeks.map(wk=>{
+    const wData=d.byWeek[wk];
+    const wTotal=wData.logs.reduce((s,l)=>s+(l.hours||0),0);
+    const [wy,wn]=wk.split('-W');
+    const wStart=isoWeekStart(parseInt(wy),parseInt(wn));
+    const wEnd=new Date(wStart); wEnd.setDate(wStart.getDate()+6);
+    const fmtS=dt=>`${dt.getMonth()+1}/${dt.getDate()}`;
+    const wByProj={};
+    wData.logs.forEach(l=>{ wByProj[l.project]=(wByProj[l.project]||0)+(l.hours||0); });
+    const projStr=Object.entries(wByProj).sort((a,b)=>b[1]-a[1]).map(([pid,h])=>`${proj(pid).name}: ${h}h`).join(', ');
+    const dayStr=Object.entries(wData.days).sort().map(([date,h])=>`${fmt(date)} ${h}h`).join(' / ');
+    return `<tr>
+      <td style="border:1px solid #ccc;padding:6px 10px;font-weight:600;">W${wn}<br><span style="font-size:11px;color:#666;">${fmtS(wStart)}~${fmtS(wEnd)}</span></td>
+      <td style="border:1px solid #ccc;padding:6px 10px;text-align:center;font-weight:700;color:#4f46e5;">${wTotal}h</td>
+      <td style="border:1px solid #ccc;padding:6px 10px;font-size:12px;">${projStr}</td>
+      <td style="border:1px solid #ccc;padding:6px 10px;font-size:11px;color:#666;">${dayStr}</td>
+    </tr>`;
+  }).join('');
+
+  // 프로젝트별 행
+  const projRows=Object.entries(d.byProj).sort((a,b)=>b[1]-a[1]).map(([pid,h])=>{
+    const p=proj(pid);
+    const pct=Math.round(h/Math.max(d.totalH,1)*100);
+    return `<tr>
+      <td style="border:1px solid #ccc;padding:6px 10px;">${p.name}</td>
+      <td style="border:1px solid #ccc;padding:6px 10px;text-align:center;font-weight:700;">${h}h</td>
+      <td style="border:1px solid #ccc;padding:6px 10px;text-align:center;">${pct}%</td>
+    </tr>`;
+  }).join('');
+
+  // 완료 업무 행
+  const doneRows=d.doneTasks.map(t=>{
+    const p=proj(t.project);
+    const pc=prioColor(t.priority||'');
+    return `<tr>
+      <td style="border:1px solid #ccc;padding:5px 8px;text-align:center;font-weight:700;color:${pc};">${t.priority||'-'}</td>
+      <td style="border:1px solid #ccc;padding:5px 8px;color:${p.color};font-weight:600;">${p.name}</td>
+      <td style="border:1px solid #ccc;padding:5px 8px;">${t.text}</td>
+      <td style="border:1px solid #ccc;padding:5px 8px;text-align:center;color:#666;">${fmt(t.actualEnd||t._completedAt||'')}</td>
+    </tr>`;
+  }).join('');
+
+  const wordHtml=`
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="UTF-8">
+<style>
+  body { font-family: '맑은 고딕', Arial, sans-serif; font-size: 12pt; color: #1e293b; }
+  h1 { color: #4f46e5; font-size: 18pt; border-bottom: 2px solid #4f46e5; padding-bottom: 6pt; margin-bottom: 12pt; }
+  h2 { color: #374151; font-size: 13pt; margin-top: 20pt; margin-bottom: 8pt; background: #f8fafc; padding: 4pt 8pt; }
+  table { border-collapse: collapse; width: 100%; margin-bottom: 16pt; }
+  th { background: #4f46e5; color: white; padding: 7px 10px; font-size: 11pt; border: 1px solid #4f46e5; }
+  .summary-box { background: #eff6ff; border: 1px solid #bfdbfe; padding: 10pt; border-radius: 4pt; margin-bottom: 16pt; }
+  .summary-num { font-size: 22pt; font-weight: bold; color: #4f46e5; }
+</style>
+</head>
+<body>
+<h1>📔 업무 레포트</h1>
+<p style="color:#64748b;margin-bottom:12pt;"><strong>대상 기간:</strong> ${rangeLabel} &nbsp;|&nbsp; <strong>생성일:</strong> ${generatedAt}</p>
+
+<div class="summary-box">
+  <table style="border:none;width:auto;margin-bottom:0;">
+    <tr>
+      <td style="border:none;padding:4px 24px;text-align:center;"><div class="summary-num">${d.totalH}h</div><div style="font-size:9pt;color:#64748b;">총 작업 시간</div></td>
+      <td style="border:none;padding:4px 24px;text-align:center;"><div class="summary-num" style="color:#10b981;">${d.doneTasks.length}</div><div style="font-size:9pt;color:#64748b;">완료 업무</div></td>
+      <td style="border:none;padding:4px 24px;text-align:center;"><div class="summary-num" style="color:#7c3aed;">${d.weeks.length}</div><div style="font-size:9pt;color:#64748b;">기록 주차</div></td>
+    </tr>
+  </table>
+</div>
+
+<h2>📅 주별 업무 부하</h2>
+<table>
+  <tr><th>주차</th><th>총 시간</th><th>프로젝트별 시간</th><th>날짜별 기록</th></tr>
+  ${weekRows||'<tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:16px;">기록 없음</td></tr>'}
+</table>
+
+<h2>📊 프로젝트별 시간 분배</h2>
+<table>
+  <tr><th>프로젝트</th><th>투입 시간</th><th>비율</th></tr>
+  ${projRows||'<tr><td colspan="3" style="text-align:center;color:#94a3b8;padding:16px;">기록 없음</td></tr>'}
+</table>
+
+<h2>✅ 완료 업무 (${d.doneTasks.length}건)</h2>
+<table>
+  <tr><th style="width:50px;">우선순위</th><th style="width:120px;">프로젝트</th><th>업무명</th><th style="width:80px;">완료일</th></tr>
+  ${doneRows||'<tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:16px;">완료 업무 없음</td></tr>'}
+</table>
+
+</body></html>`;
+
+  const blob=new Blob(['\ufeff'+wordHtml],{type:'application/msword;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=`업무레포트_${d.startKey}_${d.endKey}.doc`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 function calcScore(){
