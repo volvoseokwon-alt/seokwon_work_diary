@@ -1275,8 +1275,24 @@ function renderTaskList(list){
           ${st==='overdue'?`<option value="overdue" selected>🔴 기한초과</option>`:''}
           ${Object.entries(TASK_STATUS).filter(([k])=>k!=='done'&&k!=='early_done'&&k!=='overdue').map(([k,v])=>`<option value="${k}" ${st===k?'selected':''}>${v.icon} ${v.label}</option>`).join('')}
         </select>`:`<span class="status-chip" style="background:${stInfo.color};flex-shrink:0;">${stInfo.icon} ${stInfo.label}</span>`}
+        <!-- 예상/투입 시간 인라인 표시 -->
+        ${(()=>{
+          const ah=weeklyLogs.filter(l=>l.task===t.text&&l.project===t.project).reduce((s,l)=>s+(l.hours||0),0);
+          const eh=t.estHours;
+          const over=eh&&ah>eh;
+          return `<div style="display:flex;align-items:center;gap:3px;flex-shrink:0;" title="투입시간/예상시간 — 클릭해서 예상시간 수정">
+            <span style="font-size:0.7rem;color:var(--muted);">⏱</span>
+            <span style="font-size:0.75rem;color:${over?'#ef4444':'#64748b'};font-weight:${over?'700':'400'};">${ah?ah+'h':'-'}</span>
+            <span style="font-size:0.7rem;color:#cbd5e1;">/</span>
+            <input type="number" min="0.5" step="0.5" value="${eh||''}" placeholder="-"
+              title="예상시간(h) 클릭해서 수정"
+              onmousedown="event.stopPropagation()"
+              onchange="updateEstHours(${t.id},this.value)"
+              style="width:36px;font-size:0.75rem;border:1px solid ${over?'#fca5a5':'var(--border)'};border-radius:4px;padding:1px 4px;text-align:center;background:${over?'#fff1f2':'white'};color:${over?'#ef4444':'#64748b'};">
+            <span style="font-size:0.7rem;color:#cbd5e1;">h</span>
+          </div>`;
+        })()}
         <div style="display:flex;gap:5px;flex-shrink:0;">
-          ${!t.done?`<button class="btn-sm" style="background:var(--accent);color:white" onclick="completeEarly(${t.id})" onmousedown="event.stopPropagation()" draggable="false">조기완료</button>`:''}
           <button class="btn-sm" style="background:#eef2ff;color:#6366f1" onclick="duplicateTask(${t.id})" onmousedown="event.stopPropagation()" draggable="false" title="이 업무를 복제">복제</button>
           <button class="btn-sm" style="background:var(--pri-light);color:var(--primary)" onclick="openEdit(${t.id})" onmousedown="event.stopPropagation()" draggable="false">수정</button>
           <button class="btn-sm" style="background:#fee2e2;color:var(--warn)" onclick="deleteTask(${t.id})" onmousedown="event.stopPropagation()" draggable="false">삭제</button>
@@ -1975,6 +1991,13 @@ function closeTaskMemo(id){
   const el=document.getElementById(`task-memo-${id}`);
   if(el) el.style.display='none';
 }
+function updateEstHours(id, val){
+  const h=parseFloat(val);
+  tasks=tasks.map(t=>t.id===id?{...t,estHours:isNaN(h)||h<=0?undefined:h}:t);
+  saveToFirebase();
+  // 인라인 색상만 업데이트 (리렌더 없이)
+}
+
 function saveTaskMemo(id, memo){
   tasks=tasks.map(t=>t.id===id?{...t,memo:memo.trim()}:t);
   saveToFirebase();
