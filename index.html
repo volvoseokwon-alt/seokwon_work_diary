@@ -275,7 +275,6 @@ if ('serviceWorker' in navigator) {
       <button class="tab-btn active" onclick="switchTab('today',this)">📋 할 일 &amp; 간트</button>
       <button class="tab-btn" onclick="switchTab('home',this)">🏠 홈</button>
       <button class="tab-btn" onclick="switchTab('calendar',this)">📅 캘린더</button>
-      <button class="tab-btn" onclick="switchTab('progress',this)">📊 진행 현황</button>
       <button class="tab-btn" onclick="switchTab('weekly',this)">⏱️ 주간 기록</button>
       <button class="tab-btn" onclick="switchTab('search',this)">🔍 검색</button>
       <button class="tab-btn" onclick="switchTab('repeat',this)">🔄 반복업무</button>
@@ -372,42 +371,17 @@ if ('serviceWorker' in navigator) {
           </div>
           <button class="cal-nav-btn" onclick="calMove(1)">▶</button>
         </div>
-        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px;">📝 날짜를 클릭해서 메모를 추가하세요</div>
+        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px;">📝 날짜를 클릭해서 메모를 추가하세요 (프로젝트 연결 선택 가능)</div>
         <div class="cal-grid" id="cal-head-row"></div>
         <div class="cal-grid" id="cal-body"></div>
+      </div>
+      <div class="card" style="margin-top:11px;">
+        <strong style="font-size:0.88rem;">📋 이번 달 메모 목록</strong>
+        <div id="cal-memo-list" style="margin-top:8px;"></div>
       </div>
     </div>
 
     <!-- 진행 현황 -->
-    <div id="tab-progress" style="display:none;">
-      <div class="card" style="gap:16px;">
-        <strong>📊 전체 진행 현황</strong>
-        <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:center;">
-          <div style="display:flex;flex-direction:column;align-items:center;gap:6px;min-width:130px;">
-            <div class="donut-wrap">
-              <canvas id="donut-canvas" width="120" height="120"></canvas>
-              <div class="donut-center">
-                <div class="donut-pct" id="donut-pct">0%</div>
-                <div class="donut-lbl">완료율</div>
-              </div>
-            </div>
-            <div class="legend" style="justify-content:center;flex-direction:column;gap:3px;">
-              <span><span class="legend-dot" style="background:#10b981;border-radius:50%"></span>완료</span>
-              <span><span class="legend-dot" style="background:#818cf8;border-radius:50%"></span>진행중 포함</span>
-            </div>
-          </div>
-          <div style="flex:1;min-width:200px;">
-            <div style="font-size:0.82rem;font-weight:700;color:var(--muted);margin-bottom:8px;">프로젝트별 진행률</div>
-            <div id="project-bars"></div>
-          </div>
-        </div>
-        <div class="prog-cards" id="stat-cards"></div>
-        <div style="border-top:1px solid var(--border);padding-top:12px;">
-          <div style="font-size:0.85rem;font-weight:700;color:var(--muted);margin-bottom:8px;">⚠️ 주의 업무 (기한초과 · 지연)</div>
-          <div id="risk-list"></div>
-        </div>
-      </div>
-    </div>
 
     <!-- 주간 기록 -->
     <div id="tab-weekly" style="display:none;">
@@ -533,6 +507,9 @@ if ('serviceWorker' in navigator) {
 <div class="modal" id="modal-cal-memo">
   <div class="modal-box">
     <h3>📝 <span id="cal-memo-date-title"></span> 메모</h3>
+    <select id="cal-memo-project" style="padding:8px;border:1.5px solid var(--border);border-radius:6px;font-size:0.85rem;width:100%;">
+      <option value="">📌 프로젝트 선택 안 함 (일반 메모)</option>
+    </select>
     <textarea id="cal-memo-input" placeholder="이 날짜에 대한 메모를 입력하세요..." style="width:100%;min-height:100px;padding:8px;border:1.5px solid var(--border);border-radius:6px;font-family:inherit;font-size:0.85rem;resize:vertical;"></textarea>
     <div style="display:flex;gap:6px;flex-wrap:wrap;">
       <select id="cal-memo-color" style="flex:1;padding:7px;border:1.5px solid var(--border);border-radius:6px;font-size:0.82rem;">
@@ -947,7 +924,7 @@ function checkAlerts(){
 /* ══════════════════════════════════════
    TABS
 ══════════════════════════════════════ */
-const TAB_IDS=['today','home','calendar','progress','weekly','search','repeat','history','trash'];
+const TAB_IDS=['today','home','calendar','weekly','search','repeat','history','trash'];
 function switchTab(name,el){
   currentTab=name;
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
@@ -1019,14 +996,13 @@ function renderGantt(list){
     }
   }
 
-  // 주 단위 점선 계산 (월요일마다)
+  // 주 단위 점선 — 헤더 라벨과 동일하게 "오늘 기준 ±주" 위치에 맞춤
   const weekLines=[];
-  const cursor=new Date(mStart);
-  cursor.setDate(cursor.getDate()+((8-cursor.getDay())%7||7)); // 다음 월요일
-  while(cursor<mEnd){
-    const pct=((cursor.getTime()-mStart.getTime())/mDur)*100;
-    weekLines.push({pct, label:fmtD(cursor)});
-    cursor.setDate(cursor.getDate()+7);
+  for(let w=-3; w<=3; w++){
+    const dt=new Date(todayD); dt.setDate(todayD.getDate()+w*7);
+    const pct=((dt.getTime()-mStart.getTime())/mDur)*100;
+    if(pct<-2||pct>102) continue;
+    weekLines.push({pct:Math.max(0,Math.min(100,pct)), label:fmtD(dt)});
   }
 
   if(!list.length){ container.innerHTML='<div style="color:var(--muted);font-size:0.82rem;padding:10px 0">표시할 업무가 없습니다.</div>'; return; }
@@ -1202,7 +1178,7 @@ function renderTaskList(list){
 /* ══════════════════════════════════════
    CALENDAR
 ══════════════════════════════════════ */
-// 캘린더 — 자유 메모 버전
+// 캘린더 — 자유 메모 버전 (프로젝트 연결 선택 가능)
 let calEditingDate=null;
 function renderCalendar(){
   document.getElementById('cal-title').textContent=`${calYear}년 ${calMonth+1}월`;
@@ -1224,31 +1200,39 @@ function renderCalendar(){
     const isMonday=cellDate.getDay()===1;
     const dateKey=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
     const memo=calMemos[dateKey];
+    const memoP=memo&&memo.project?proj(memo.project):null;
     html+=`<div class="cal-cell ${isToday?'today-cell':''}" onclick="openCalMemo('${dateKey}')" style="cursor:pointer;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
       <div class="cal-day" style="display:flex;align-items:center;gap:3px;">
         ${isToday?`<span class="today-num">${day}</span>`:day}
         ${isMonday?`<span style="font-size:0.58rem;color:var(--muted);">W${week}</span>`:''}
       </div>
-      ${memo?`<div style="border-radius:4px;padding:2px 5px;margin-top:2px;font-size:0.67rem;background:${memo.color}22;color:${memo.color};border-left:2px solid ${memo.color};line-height:1.3;word-break:break-all;">${memo.text}</div>`:''}
+      ${memo?`<div style="border-radius:4px;padding:2px 5px;margin-top:2px;font-size:0.65rem;background:${memo.color}22;color:${memo.color};border-left:2px solid ${memo.color};line-height:1.3;word-break:break-all;">${memoP?`<span style="font-weight:700;">[${memoP.name}]</span> `:''}${memo.text}</div>`:''}
     </div>`;
   }
   const rem=(first+last)%7;
   if(rem) for(let i=1;i<=7-rem;i++) html+=`<div class="cal-cell other"><div class="cal-day" style="color:#cbd5e1">${i}</div></div>`;
   document.getElementById('cal-body').innerHTML=html;
+  renderCalMemoList();
 }
 function calMove(dir){ calMonth+=dir; if(calMonth>11){calMonth=0;calYear++;}else if(calMonth<0){calMonth=11;calYear--;} renderCalendar(); }
+
 function openCalMemo(dateKey){
   calEditingDate=dateKey;
-  const memo=calMemos[dateKey]||{text:'',color:'#4f46e5'};
+  const memo=calMemos[dateKey]||{text:'',color:'#4f46e5',project:''};
   document.getElementById('cal-memo-date-title').textContent=dateKey;
   document.getElementById('cal-memo-input').value=memo.text;
-  document.getElementById('cal-memo-color').value=memo.color;
+  document.getElementById('cal-memo-color').value=memo.color||'#4f46e5';
+  const pSel=document.getElementById('cal-memo-project');
+  pSel.innerHTML='<option value="">📌 프로젝트 선택 안 함 (일반 메모)</option>'
+    + projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  pSel.value=memo.project||'';
   openModal('modal-cal-memo');
 }
 function saveCalMemo(){
   const text=document.getElementById('cal-memo-input').value.trim();
   const color=document.getElementById('cal-memo-color').value;
-  if(text) calMemos[calEditingDate]={text,color};
+  const project=document.getElementById('cal-memo-project').value;
+  if(text) calMemos[calEditingDate]={text,color,project};
   else delete calMemos[calEditingDate];
   closeModal('modal-cal-memo');
   saveToFirebase();
@@ -1259,6 +1243,41 @@ function deleteCalMemo(){
   closeModal('modal-cal-memo');
   saveToFirebase();
   renderCalendar();
+}
+
+// 이번 달 메모 목록 (하단)
+function renderCalMemoList(){
+  const el=document.getElementById('cal-memo-list');
+  if(!el) return;
+  const monthPrefix=`${calYear}-${String(calMonth+1).padStart(2,'0')}-`;
+  const entries=Object.entries(calMemos)
+    .filter(([k])=>k.startsWith(monthPrefix))
+    .sort((a,b)=>a[0].localeCompare(b[0]));
+
+  if(!entries.length){
+    el.innerHTML='<div style="color:var(--muted);font-size:0.82rem;padding:10px 0;text-align:center;">이번 달 메모가 없습니다.</div>';
+    return;
+  }
+
+  const days=['일','월','화','수','목','금','토'];
+  el.innerHTML=entries.map(([dateKey,memo])=>{
+    const dt=new Date(dateKey+'T00:00:00');
+    const dayNum=dt.getDate();
+    const wd=days[dt.getDay()];
+    const isToday=dateKey===TODAY_STR;
+    const p=memo.project?proj(memo.project):null;
+    return `<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:7px;background:${isToday?'var(--pri-light)':'var(--bg)'};margin-bottom:6px;cursor:pointer;" onclick="openCalMemo('${dateKey}')">
+      <div style="flex-shrink:0;text-align:center;min-width:38px;">
+        <div style="font-size:0.95rem;font-weight:800;color:${isToday?'var(--primary)':'var(--text)'};">${dayNum}</div>
+        <div style="font-size:0.65rem;color:var(--muted);">${wd}</div>
+      </div>
+      <div style="flex:1;min-width:0;">
+        ${p?`<span style="font-size:0.68rem;font-weight:700;color:${p.color};background:${p.color}1a;padding:1px 6px;border-radius:4px;">${p.name}</span>`:''}
+        <div style="font-size:0.83rem;color:${memo.color};margin-top:2px;white-space:pre-wrap;word-break:break-word;">${memo.text}</div>
+      </div>
+      <span style="width:9px;height:9px;border-radius:50%;background:${memo.color};flex-shrink:0;margin-top:4px;"></span>
+    </div>`;
+  }).join('');
 }
 
 /* ══════════════════════════════════════
@@ -2318,7 +2337,6 @@ function render(){
   if(currentTab==='today'){ renderGantt(ft); renderTaskList(ft); }
   else if(currentTab==='home'){ renderHome(); }
   else if(currentTab==='calendar'){ renderCalendar(); }
-  else if(currentTab==='progress'){ renderProgress(); }
   else if(currentTab==='weekly'){ renderWeekly(); }
   else if(currentTab==='search'){ renderSearch(); }
   else if(currentTab==='repeat'){ renderRepeat(); }
