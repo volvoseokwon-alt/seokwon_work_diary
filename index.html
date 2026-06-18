@@ -1668,36 +1668,79 @@ function renderHistory(){
   }
   // 최신순 정렬
   const sorted=[...completedProjects].sort((a,b)=>(b.completedAt||'').localeCompare(a.completedAt||''));
-  el.innerHTML=sorted.map(cp=>{
-    const realIdx=completedProjects.indexOf(cp);
-    const p=cp.project;
-    const archNote=cp._archiveNote||'';
-    const isTaskDone=cp._type==='task_done';
-    const totalTasks=cp.tasks.length;
-    const wLabel=cp._weekKey?'W'+cp._weekKey.split('-W')[1]+' ':'';
-    const badge=isTaskDone
-      ? '<span style="font-size:0.72rem;background:#dbeafe;color:#1d4ed8;padding:2px 8px;border-radius:10px;font-weight:600;">✅ '+wLabel+'완료기록</span>'
-      : '<span style="font-size:0.72rem;background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:10px;font-weight:600;">📁 프로젝트 완료</span>';
-    const taskChips=cp.tasks.map(t=>{
-      const tDate=t._completedAt?' <span style="color:#94a3b8;font-size:0.63rem;">('+fmt(t._completedAt)+')</span>':'';
-      const pc=prioColor(t.priority||'');
-      return '<span class="history-task-chip" style="border-left:3px solid '+pc+';">'
-        +(t.priority?'<span style="color:'+pc+';font-weight:700;font-size:0.68rem;">'+t.priority+'</span> ':'')
-        +'✓ '+t.text+tDate+'</span>';
+
+  // 날짜별로 그룹화
+  const byDate={};
+  sorted.forEach(cp=>{
+    const dateKey=cp.completedAt||'날짜 미지정';
+    if(!byDate[dateKey]) byDate[dateKey]=[];
+    byDate[dateKey].push(cp);
+  });
+  const dateKeys=Object.keys(byDate).sort((a,b)=>b.localeCompare(a));
+
+  const todayD2=TODAY_STR;
+  const yesterdayD=(()=>{ const y=new Date(TODAY); y.setDate(y.getDate()-1); return `${y.getFullYear()}-${String(y.getMonth()+1).padStart(2,'0')}-${String(y.getDate()).padStart(2,'0')}`; })();
+
+  el.innerHTML=dateKeys.map(dateKey=>{
+    const items=byDate[dateKey];
+    const dateLabel = dateKey===todayD2?'오늘':dateKey===yesterdayD?'어제':fmt(dateKey);
+    const weekdayStr=(()=>{ try{ const dt=new Date(dateKey+'T00:00:00'); const days=['일','월','화','수','목','금','토']; return days[dt.getDay()]; }catch(e){return '';} })();
+
+    const itemsHtml=items.map(cp=>{
+      const realIdx=completedProjects.indexOf(cp);
+      const p=cp.project;
+      const archNote=cp._archiveNote||'';
+      const isTaskDone=cp._type==='task_done';
+      const totalTasks=cp.tasks.length;
+      const wLabel=cp._weekKey?'W'+cp._weekKey.split('-W')[1]+' ':'';
+      const badge=isTaskDone
+        ? '<span style="font-size:0.7rem;background:#dbeafe;color:#1d4ed8;padding:2px 7px;border-radius:10px;font-weight:600;">✅ '+wLabel+'완료</span>'
+        : '<span style="font-size:0.7rem;background:#dcfce7;color:#15803d;padding:2px 7px;border-radius:10px;font-weight:600;">📁 프로젝트 완료</span>';
+
+      const taskRows=cp.tasks.map((t,ti)=>{
+        const pc=prioColor(t.priority||'');
+        const memoId=`hist-memo-${realIdx}-${ti}`;
+        const hasMemo=!!(t.memo && t.memo.trim());
+        return `<div style="display:flex;align-items:flex-start;gap:6px;padding:4px 0;border-top:1px solid #f1f5f9;">
+            <span style="flex-shrink:0;margin-top:1px;">${t.priority?`<span style="color:${pc};font-weight:700;font-size:0.68rem;">${t.priority}</span>`:''}</span>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:0.82rem;">✓ ${t.text}</div>
+              ${hasMemo?`<div id="${memoId}" style="margin-top:3px;font-size:0.74rem;color:${t.memoStyle&&t.memoStyle.color||'#64748b'};font-weight:${t.memoStyle&&t.memoStyle.bold?'700':'400'};background:#f8fafc;border-left:2px solid #cbd5e1;padding:3px 7px;border-radius:0 4px 4px 0;white-space:pre-wrap;">📝 ${t.memo}</div>`:''}
+            </div>
+            ${hasMemo?`<button onclick="toggleHistMemo('${memoId}',this)" style="flex-shrink:0;background:none;border:none;cursor:pointer;font-size:0.78rem;color:var(--muted);padding:2px;" title="메모 숨기기/보이기">🗒️</button>`:''}
+          </div>`;
+      }).join('');
+
+      return `<div class="history-item" style="margin-bottom:8px;">
+        <div class="hi-head">
+          <span style="width:9px;height:9px;border-radius:50%;background:${p.color};display:inline-block;flex-shrink:0;"></span>
+          <span class="hi-name">${p.name}</span>
+          ${badge}
+          ${!isTaskDone?`<button class="btn-sm" style="background:var(--pri-light);color:var(--primary);margin-left:4px;" onclick="restoreHistory(${realIdx})">복원</button>`:''}
+          <button class="btn-sm" style="background:#fee2e2;color:var(--warn);margin-left:4px;" onclick="deleteHistory(${realIdx})">삭제</button>
+        </div>
+        <div style="font-size:0.74rem;color:var(--muted);margin-top:3px;">업무 ${totalTasks}개${archNote?` · <span style="color:#94a3b8;">${archNote}</span>`:''}</div>
+        ${taskRows?`<div style="margin-top:4px;">${taskRows}</div>`:''}
+      </div>`;
     }).join('');
-    return '<div class="history-item">'
-      +'<div class="hi-head">'
-      +'<span style="width:10px;height:10px;border-radius:50%;background:'+p.color+';display:inline-block;flex-shrink:0;"></span>'
-      +'<span class="hi-name">'+p.name+'</span>'
-      +badge
-      +'<span class="hi-date" style="font-size:0.72rem;color:var(--muted);">📅 '+(cp.completedAt||'')+'</span>'
-      +(!isTaskDone?'<button class="btn-sm" style="background:var(--pri-light);color:var(--primary);margin-left:4px;" onclick="restoreHistory('+realIdx+')">복원</button>':'')
-      +'<button class="btn-sm" style="background:#fee2e2;color:var(--warn);margin-left:4px;" onclick="deleteHistory('+realIdx+')">삭제</button>'
-      +'</div>'
-      +'<div style="font-size:0.78rem;color:var(--muted);margin-top:4px;">업무 '+totalTasks+'개'+(archNote?' · <span style="color:#94a3b8;font-size:0.7rem;">'+archNote+'</span>':'')+'</div>'
-      +(cp.tasks.length?'<div class="hi-tasks" style="margin-top:6px;">'+taskChips+'</div>':'')
-      +'</div>';
+
+    return `<div style="margin-bottom:18px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:5px;border-bottom:2px solid var(--primary);">
+        <span style="font-size:0.95rem;font-weight:800;color:var(--primary);">📅 ${dateLabel}</span>
+        ${weekdayStr?`<span style="font-size:0.78rem;color:var(--muted);">(${weekdayStr}요일 · ${dateKey})</span>`:''}
+        <span style="margin-left:auto;font-size:0.72rem;color:var(--muted);background:var(--bg);padding:2px 8px;border-radius:10px;">${items.length}건 완료</span>
+      </div>
+      ${itemsHtml}
+    </div>`;
   }).join('');
+}
+
+function toggleHistMemo(id, btn){
+  const el=document.getElementById(id);
+  if(!el) return;
+  const hidden=el.style.display==='none';
+  el.style.display=hidden?'':'none';
+  btn.style.opacity=hidden?'1':'0.4';
 }
 
 function deleteHistory(i){
