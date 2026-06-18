@@ -224,6 +224,10 @@ if ('serviceWorker' in navigator) {
     </div>
   </div>
   <div class="hdr-right">
+    <span id="save-status" style="font-size:0.72rem;color:rgba(255,255,255,0.75);display:flex;align-items:center;gap:4px;">
+      <span id="save-icon">💾</span>
+      <span id="save-time">--</span>
+    </span>
     <span class="week-badge" id="hdr-week">W?</span>
     <span class="score-badge">효율 <span id="efficiency-score">0</span>%</span>
   </div>
@@ -279,6 +283,7 @@ if ('serviceWorker' in navigator) {
       <button class="tab-btn" onclick="switchTab('search',this)">🔍 검색</button>
       <button class="tab-btn" onclick="switchTab('repeat',this)">🔄 반복업무</button>
       <button class="tab-btn" onclick="switchTab('history',this)">📂 완료 히스토리</button>
+      <button class="tab-btn" onclick="switchTab('report',this)">📄 레포트</button>
       <button class="tab-btn" onclick="switchTab('trash',this)">🗑️ 휴지통 <span id="trash-badge" style="display:none;background:var(--warn);color:white;font-size:0.65rem;border-radius:10px;padding:1px 5px;margin-left:2px;"></span></button>
     </div>
 
@@ -430,6 +435,40 @@ if ('serviceWorker' in navigator) {
         <div id="weekly-log"></div>
       </div>
     </div>
+    <!-- 레포트 -->
+    <div id="tab-report" style="display:none;">
+      <div class="card">
+        <strong style="font-size:0.95rem;">📄 업무 레포트 생성</strong>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:0.75rem;color:var(--muted);">기간 선택</label>
+            <select id="report-range" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:0.85rem;" onchange="updateReportDates()">
+              <option value="this_week">이번 주</option>
+              <option value="last_week">지난 주</option>
+              <option value="this_month" selected>이번 달</option>
+              <option value="last_month">지난 달</option>
+              <option value="custom">직접 입력</option>
+            </select>
+          </div>
+          <div id="report-custom-dates" style="display:none;gap:8px;align-items:flex-end;">
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <label style="font-size:0.75rem;color:var(--muted);">시작일</label>
+              <input type="date" id="report-start" style="padding:7px;border:1.5px solid var(--border);border-radius:6px;">
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <label style="font-size:0.75rem;color:var(--muted);">종료일</label>
+              <input type="date" id="report-end" style="padding:7px;border:1.5px solid var(--border);border-radius:6px;">
+            </div>
+          </div>
+          <div style="align-self:flex-end;display:flex;gap:6px;">
+            <button class="btn-primary" onclick="generateReport()">📊 레포트 생성</button>
+            <button class="btn-sm" style="background:#f0fdf4;color:#16a34a;padding:8px 12px;" onclick="copyReport()">📋 복사</button>
+          </div>
+        </div>
+        <div id="report-output" style="margin-top:14px;"></div>
+      </div>
+    </div>
+
     <!-- 완료 히스토리 -->
     <div id="tab-history" style="display:none;">
       <div class="card">
@@ -571,7 +610,7 @@ if ('serviceWorker' in navigator) {
 
 <!-- 업무 수정 -->
 <div class="modal" id="modal-edit">
-  <div class="modal-box">
+  <div class="modal-box" style="max-width:520px;">
     <h3>✏️ 업무 수정</h3>
     <input type="text" id="edit-text" placeholder="업무명">
     <div style="display:flex;gap:8px;">
@@ -585,6 +624,17 @@ if ('serviceWorker' in navigator) {
     <div style="display:flex;gap:8px;">
       <div class="date-grp" style="flex:1;"><label>시작</label><input type="date" id="edit-start" style="flex:1;padding:7px;border:1.5px solid var(--border);border-radius:6px;font-size:0.8rem;"></div>
       <div class="date-grp" style="flex:1;"><label>종료</label><input type="date" id="edit-end" style="flex:1;padding:7px;border:1.5px solid var(--border);border-radius:6px;font-size:0.8rem;"></div>
+    </div>
+    <!-- 예상 시간 / 투입 시간 -->
+    <div style="display:flex;gap:8px;">
+      <div style="flex:1;">
+        <label style="font-size:0.74rem;color:var(--muted);display:block;margin-bottom:3px;">📋 예상 시간 (h)</label>
+        <input type="number" id="edit-est-hours" min="0.5" step="0.5" placeholder="예: 8" style="width:100%;padding:7px;border:1.5px solid var(--border);border-radius:6px;font-size:0.85rem;">
+      </div>
+      <div style="flex:1;">
+        <label style="font-size:0.74rem;color:var(--muted);display:block;margin-bottom:3px;">⏱️ 총 투입 시간 (h) <span style="color:#94a3b8;font-size:0.68rem;">주간기록 합산</span></label>
+        <input type="number" id="edit-actual-hours" min="0" step="0.5" placeholder="자동계산" readonly style="width:100%;padding:7px;border:1.5px solid var(--border);border-radius:6px;font-size:0.85rem;background:#f8fafc;color:var(--muted);">
+      </div>
     </div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal('modal-edit')">취소</button>
@@ -617,16 +667,37 @@ function initDB() {
 
 async function saveToFirebase() {
   if (!db) return;
-  // 안전장치: Firebase 로드가 완료된 후에만 저장 (로드 전 빈 데이터로 덮어쓰기 방지)
   if (!window._fbLoaded) { console.warn('Firebase 로드 전 저장 시도 차단'); return; }
+  setSaveStatus('saving');
   try {
+    const now = new Date();
     await db.collection('userData').doc('main').set({
       projects, tasks, weeklyLogs, trash, completedProjects,
       repeatTasks, calMemos, taskTags,
       sidebarNote: document.getElementById('sidebar-note')?.value || '',
-      updatedAt: new Date().toISOString()
+      updatedAt: now.toISOString()
     });
-  } catch(e) { console.warn('Firebase save error:', e); }
+    setSaveStatus('saved', now);
+  } catch(e) {
+    console.warn('Firebase save error:', e);
+    setSaveStatus('error');
+  }
+}
+
+function setSaveStatus(state, time){
+  const icon=document.getElementById('save-icon');
+  const timeEl=document.getElementById('save-time');
+  if(!icon||!timeEl) return;
+  if(state==='saving'){
+    icon.textContent='🔄'; timeEl.textContent='저장 중...';
+  } else if(state==='saved'){
+    icon.textContent='✅';
+    const hh=String(time.getHours()).padStart(2,'0');
+    const mm=String(time.getMinutes()).padStart(2,'0');
+    timeEl.textContent=`${hh}:${mm} 저장됨`;
+  } else {
+    icon.textContent='❌'; timeEl.textContent='저장 실패';
+  }
 }
 
 async function loadFromFirebase() {
@@ -965,7 +1036,7 @@ function checkAlerts(){
 /* ══════════════════════════════════════
    TABS
 ══════════════════════════════════════ */
-const TAB_IDS=['today','home','calendar','weekly','search','repeat','history','trash'];
+const TAB_IDS=['today','home','calendar','weekly','search','repeat','history','report','trash'];
 function switchTab(name,el){
   currentTab=name;
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
@@ -1091,8 +1162,15 @@ function renderGantt(list){
         ${prio?`<span style="background:${pc};color:white;font-size:0.65rem;font-weight:800;padding:1px 5px;border-radius:3px;margin-right:4px;">${prio}</span>`:''}
         ${showProjLabel?`<span style="color:${tp.color};font-size:0.65rem;font-weight:700;margin-right:3px;">[${tp.name}]</span>`:''}
         <span style="${isAtRisk?'color:#dc2626;font-weight:700;':''}">${t.text}</span>
+        ${(()=>{
+          const ah=weeklyLogs.filter(l=>l.task===t.text&&l.project===t.project).reduce((s,l)=>s+(l.hours||0),0);
+          const eh=t.estHours;
+          if(!eh&&!ah) return '';
+          const overBudget=eh&&ah>eh;
+          return `<span style="font-size:0.6rem;color:${overBudget?'#ef4444':'#94a3b8'};background:${overBudget?'#fee2e2':'#f1f5f9'};padding:1px 4px;border-radius:3px;white-space:nowrap;margin-left:2px;">${ah?ah+'h':''}${eh?'/'+eh+'h':''}</span>`;
+        })()}
       </div>
-      <div class="chart-timeline" title="${t.text}: ${barLabel}">
+      <div class="chart-timeline" title="${t.text}: ${barLabel}${t.estHours?` | 예상 ${t.estHours}h`:''}${(()=>{const ah=weeklyLogs.filter(l=>l.task===t.text&&l.project===t.project).reduce((s,l)=>s+(l.hours||0),0);return ah>0?` / 투입 ${ah}h`:''})()}">
         ${weekLines.map(w=>`<div style="position:absolute;left:${w.pct}%;top:0;bottom:0;width:1px;background:rgba(0,0,0,0.1);border-left:1px dashed #cbd5e1;z-index:1;"></div>`).join('')}
         <div class="chart-today-line" style="left:${todayPct}%"></div>
         <!-- 바 전체 배경 (기간) -->
@@ -2616,6 +2694,208 @@ function checkDeadlineAlert(){
   localStorage.setItem('dlAlert', JSON.stringify(stored));
 }
 
+/* ══════════════════════════════════════
+   레포트 생성
+══════════════════════════════════════ */
+function updateReportDates(){
+  const range=document.getElementById('report-range').value;
+  const custom=document.getElementById('report-custom-dates');
+  custom.style.display=range==='custom'?'flex':'none';
+}
+
+function getReportRange(){
+  const range=document.getElementById('report-range')?.value||'this_month';
+  const now=new Date(TODAY);
+  let s,e;
+  if(range==='this_week'){
+    const dow=now.getDay()||7;
+    s=new Date(now); s.setDate(now.getDate()-(dow-1));
+    e=new Date(s); e.setDate(s.getDate()+6);
+  } else if(range==='last_week'){
+    const dow=now.getDay()||7;
+    e=new Date(now); e.setDate(now.getDate()-(dow));
+    s=new Date(e); s.setDate(e.getDate()-6);
+  } else if(range==='this_month'){
+    s=new Date(now.getFullYear(),now.getMonth(),1);
+    e=new Date(now.getFullYear(),now.getMonth()+1,0);
+  } else if(range==='last_month'){
+    s=new Date(now.getFullYear(),now.getMonth()-1,1);
+    e=new Date(now.getFullYear(),now.getMonth(),0);
+  } else {
+    s=new Date(document.getElementById('report-start').value||TODAY_STR);
+    e=new Date(document.getElementById('report-end').value||TODAY_STR);
+  }
+  const fmt2=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  return {startKey:fmt2(s), endKey:fmt2(e)};
+}
+
+function renderReport(){ /* 탭 진입 시 초기 렌더 */ }
+
+function generateReport(){
+  const {startKey, endKey}=getReportRange();
+  const logs=weeklyLogs.filter(l=>l.date&&l.date>=startKey&&l.date<=endKey);
+
+  // 주별 그룹화
+  const byWeek={};
+  logs.forEach(l=>{
+    const wk=isoWeekKey(l.date);
+    if(!byWeek[wk]) byWeek[wk]={logs:[],days:{}};
+    byWeek[wk].logs.push(l);
+    byWeek[wk].days[l.date]=(byWeek[wk].days[l.date]||0)+(l.hours||0);
+  });
+
+  // 프로젝트별 합산
+  const byProj={};
+  logs.forEach(l=>{ byProj[l.project]=(byProj[l.project]||0)+(l.hours||0); });
+  const totalH=logs.reduce((s,l)=>s+(l.hours||0),0);
+
+  // 완료 업무
+  const doneTasks=[];
+  tasks.forEach(t=>{ if(t.done&&t.actualEnd&&t.actualEnd>=startKey&&t.actualEnd<=endKey) doneTasks.push(t); });
+  completedProjects.forEach(cp=>{ cp.tasks.forEach(t=>{ const cd=t._completedAt||cp.completedAt; if(cd&&cd>=startKey&&cd<=endKey&&!doneTasks.find(x=>x.id===t.id)) doneTasks.push(t); }); });
+
+  // 레포트 렌더링
+  const el=document.getElementById('report-output');
+  const weeks=Object.keys(byWeek).sort();
+
+  const weekHtml=weeks.map(wk=>{
+    const wData=byWeek[wk];
+    const wLogs=wData.logs;
+    const wTotal=wLogs.reduce((s,l)=>s+(l.hours||0),0);
+    const wByProj={};
+    wLogs.forEach(l=>{ wByProj[l.project]=(wByProj[l.project]||0)+(l.hours||0); });
+    const [wy,wn]=wk.split('-W');
+    // 그 주의 월~일
+    const wStart=isoWeekStart(parseInt(wy),parseInt(wn));
+    const wEnd=new Date(wStart); wEnd.setDate(wStart.getDate()+6);
+    const fmtShort=d=>`${d.getMonth()+1}/${d.getDate()}`;
+
+    return `<div style="margin-bottom:16px;padding:12px 14px;border:1px solid var(--border);border-radius:8px;background:var(--card);">
+      <div style="font-weight:700;font-size:0.88rem;color:var(--primary);margin-bottom:8px;">
+        W${wn} (${fmtShort(wStart)} ~ ${fmtShort(wEnd)}) — 총 <span style="color:var(--text)">${wTotal}h</span>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+        ${Object.entries(wByProj).sort((a,b)=>b[1]-a[1]).map(([pid,h])=>{
+          const p=proj(pid);
+          return `<span style="font-size:0.75rem;background:${p.color}18;color:${p.color};padding:3px 9px;border-radius:12px;font-weight:600;">${p.name} ${h}h</span>`;
+        }).join('')}
+      </div>
+      <div style="font-size:0.78rem;color:var(--muted);">
+        ${Object.entries(wData.days).sort().map(([date,h])=>`${fmt(date)} ${h}h`).join(' · ')}
+      </div>
+    </div>`;
+  }).join('');
+
+  // 도표 텍스트용 레포트
+  const reportText=generateReportText(startKey, endKey, logs, byProj, totalH, doneTasks, weeks, byWeek);
+  document.getElementById('report-output')._text=reportText;
+
+  el.innerHTML=`
+    <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
+      <div class="dash-card dash-stat" style="min-width:100px;padding:10px 16px;">
+        <div class="n" style="color:var(--primary)">${totalH}h</div>
+        <div class="l">총 작업 시간</div>
+      </div>
+      <div class="dash-card dash-stat" style="min-width:100px;padding:10px 16px;">
+        <div class="n" style="color:#10b981">${doneTasks.length}</div>
+        <div class="l">완료 업무</div>
+      </div>
+      <div class="dash-card dash-stat" style="min-width:100px;padding:10px 16px;">
+        <div class="n" style="color:#f59e0b">${Object.keys(wData||{}).length||weeks.length}</div>
+        <div class="l">기록 주차</div>
+      </div>
+    </div>
+    <div style="font-size:0.82rem;font-weight:700;color:var(--muted);margin-bottom:8px;">📅 주별 업무 부하</div>
+    ${weekHtml||'<div style="color:var(--muted);padding:16px;text-align:center;">이 기간에 주간기록이 없습니다.</div>'}
+    <div style="font-size:0.82rem;font-weight:700;color:var(--muted);margin:12px 0 8px;">📊 프로젝트별 시간 분배</div>
+    <div style="display:flex;flex-direction:column;gap:6px;">
+      ${Object.entries(byProj).sort((a,b)=>b[1]-a[1]).map(([pid,h])=>{
+        const p=proj(pid);
+        const pct=Math.round(h/Math.max(totalH,1)*100);
+        return `<div style="display:flex;align-items:center;gap:8px;font-size:0.82rem;">
+          <span style="width:110px;font-weight:600;color:${p.color};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name}</span>
+          <div style="flex:1;background:#f1f5f9;border-radius:20px;height:16px;overflow:hidden;">
+            <div style="height:100%;width:${pct}%;background:${p.color};border-radius:20px;display:flex;align-items:center;padding-left:6px;">
+              ${pct>15?`<span style="font-size:0.65rem;color:white;font-weight:700;">${h}h</span>`:''}
+            </div>
+          </div>
+          <span style="width:36px;text-align:right;color:var(--muted);">${pct}%</span>
+        </div>`;
+      }).join('')||'<div style="color:var(--muted);">기록 없음</div>'}
+    </div>
+    <div style="font-size:0.82rem;font-weight:700;color:var(--muted);margin:12px 0 8px;">✅ 완료 업무 (${doneTasks.length}건)</div>
+    <div style="display:flex;flex-direction:column;gap:4px;">
+      ${doneTasks.slice(0,15).map(t=>{
+        const p=proj(t.project);
+        const pc=prioColor(t.priority||'');
+        return `<div style="display:flex;align-items:center;gap:7px;font-size:0.8rem;padding:4px 0;border-bottom:1px solid #f1f5f9;">
+          ${t.priority?`<span style="color:${pc};font-weight:700;font-size:0.68rem;">${t.priority}</span>`:''}
+          <span style="color:${p.color};font-weight:600;font-size:0.72rem;">${p.name}</span>
+          <span style="flex:1;">${t.text}</span>
+          <span style="color:var(--muted);font-size:0.72rem;">${fmt(t.actualEnd||t._completedAt||'')}</span>
+        </div>`;
+      }).join('')}
+      ${doneTasks.length>15?`<div style="color:var(--muted);font-size:0.78rem;padding:4px 0;">외 ${doneTasks.length-15}건...</div>`:''}
+    </div>
+    <textarea id="report-text-area" style="width:100%;min-height:200px;padding:12px;margin-top:14px;border:1.5px solid var(--border);border-radius:7px;font-size:0.8rem;font-family:monospace;background:#f8fafc;resize:vertical;" readonly>${reportText}</textarea>
+  `;
+}
+
+function isoWeekStart(year, week){
+  const jan4=new Date(year,0,4);
+  const dow=(jan4.getDay()||7);
+  const monday=new Date(jan4);
+  monday.setDate(jan4.getDate()-(dow-1)+(week-1)*7);
+  return monday;
+}
+
+function generateReportText(startKey, endKey, logs, byProj, totalH, doneTasks, weeks, byWeek){
+  let t=`${'='.repeat(40)}\n`;
+  t+=`📔 업무 레포트\n`;
+  t+=`기간: ${fmt(startKey)} ~ ${fmt(endKey)}\n`;
+  t+=`${'='.repeat(40)}\n\n`;
+  t+=`■ 요약\n`;
+  t+=`  - 총 작업시간: ${totalH}h\n`;
+  t+=`  - 완료 업무: ${doneTasks.length}건\n\n`;
+  t+=`■ 프로젝트별 투입시간\n`;
+  Object.entries(byProj).sort((a,b)=>b[1]-a[1]).forEach(([pid,h])=>{
+    const p=proj(pid);
+    const pct=Math.round(h/Math.max(totalH,1)*100);
+    t+=`  - ${p.name}: ${h}h (${pct}%)\n`;
+  });
+  t+='\n';
+  t+=`■ 주별 업무 부하\n`;
+  weeks.forEach(wk=>{
+    const wData=byWeek[wk];
+    const wTotal=wData.logs.reduce((s,l)=>s+(l.hours||0),0);
+    const [wy,wn]=wk.split('-W');
+    const wStart=isoWeekStart(parseInt(wy),parseInt(wn));
+    const wEnd=new Date(wStart); wEnd.setDate(wStart.getDate()+6);
+    const fmtShort=d=>`${d.getMonth()+1}/${d.getDate()}`;
+    t+=`  W${wn} (${fmtShort(wStart)}~${fmtShort(wEnd)}): ${wTotal}h\n`;
+    const wByProj={};
+    wData.logs.forEach(l=>{ wByProj[l.project]=(wByProj[l.project]||0)+(l.hours||0); });
+    Object.entries(wByProj).sort((a,b)=>b[1]-a[1]).forEach(([pid,h])=>{
+      t+=`    • ${proj(pid).name}: ${h}h\n`;
+    });
+  });
+  t+='\n';
+  if(doneTasks.length){
+    t+=`■ 완료 업무\n`;
+    doneTasks.forEach(dt=>{
+      const p=proj(dt.project);
+      t+=`  [${dt.priority||'-'}] ${p.name} - ${dt.text}\n`;
+    });
+  }
+  return t;
+}
+
+function copyReport(){
+  const ta=document.getElementById('report-text-area');
+  if(!ta||!ta.value){ alert('먼저 레포트를 생성해주세요.'); return; }
+  navigator.clipboard?.writeText(ta.value).then(()=>alert('레포트가 클립보드에 복사되었습니다!')).catch(()=>{ ta.select(); document.execCommand('copy'); alert('복사되었습니다!'); });
+}
+
 function calcScore(){
   const ft=filteredTasks();
   const total=ft.length, done=ft.filter(t=>t.done).length;
@@ -2638,6 +2918,7 @@ function render(){
   else if(currentTab==='search'){ renderSearch(); }
   else if(currentTab==='repeat'){ renderRepeat(); }
   else if(currentTab==='history'){ renderHistory(); }
+  else if(currentTab==='report'){ renderReport(); }
   else if(currentTab==='trash'){ renderTrash(); }
 }
 
