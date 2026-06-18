@@ -198,7 +198,7 @@ if ('serviceWorker' in navigator) {
 </head>
 <body>
 <header>
-  <h1>📔 석원이의 업무 다이어리</h1>
+  <h1>📔 Developed by KSW</h1>
   <div class="world-clocks" id="world-clocks">
     <div class="wclock" id="wc-kr">
       <span class="wc-flag">🇰🇷 한국</span>
@@ -1115,7 +1115,7 @@ function renderTaskList(list){
       lastPrio=prio;
     }
     const p=proj(t.project), over=isOverdue(t), erly=isEarly(t);
-    const pc=prioColor(prio);
+    const pc=t.done?'#94a3b8':prioColor(prio);
     const item=document.createElement('div');
     item.className=`task-item ${t.done?'completed':''} ${over?'overdue':''}`;
     item.setAttribute('draggable','true');
