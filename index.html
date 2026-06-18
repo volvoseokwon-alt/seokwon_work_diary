@@ -1882,12 +1882,17 @@ function hexToRgb(hex){
 }
 
 /* ══════════════════════════════════════
-   SIDEBAR RESIZE
+   SIDEBAR RESIZE (너비 기억)
 ══════════════════════════════════════ */
 (function(){
   const resizer=document.getElementById('sidebar-resizer');
   const sidebar=document.getElementById('sidebar');
   if(!resizer||!sidebar) return;
+
+  // 저장된 너비 복원
+  const savedW=localStorage.getItem('sidebarWidth');
+  if(savedW){ sidebar.style.width=savedW+'px'; }
+
   let startX,startW;
   resizer.addEventListener('mousedown',e=>{
     startX=e.clientX; startW=sidebar.offsetWidth;
@@ -1904,6 +1909,8 @@ function hexToRgb(hex){
     resizer.classList.remove('dragging');
     document.removeEventListener('mousemove',onMove);
     document.removeEventListener('mouseup',onUp);
+    // 마지막 너비 저장
+    localStorage.setItem('sidebarWidth', sidebar.offsetWidth);
   }
 })();
 
