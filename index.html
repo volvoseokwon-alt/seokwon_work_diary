@@ -671,11 +671,13 @@ async function saveToFirebase() {
   setSaveStatus('saving');
   try {
     const now = new Date();
+    const nowIso = now.toISOString();
+    window._lastSavedAt = nowIso;
     await db.collection('userData').doc('main').set({
       projects, tasks, weeklyLogs, trash, completedProjects,
       repeatTasks, calMemos, taskTags,
       sidebarNote: document.getElementById('sidebar-note')?.value || '',
-      updatedAt: now.toISOString()
+      updatedAt: nowIso
     });
     setSaveStatus('saved', now);
   } catch(e) {
@@ -718,13 +720,20 @@ async function loadFromFirebase() {
         const noteEl = document.getElementById('sidebar-note');
         if (noteEl) noteEl.value = data.sidebarNote;
       }
+      // 마지막 저장 시각 표시
+      if (data.updatedAt) {
+        try { setSaveStatus('saved', new Date(data.updatedAt)); } catch(e){}
+      }
     }
   } catch(e) { console.warn('Firebase load error:', e); }
-  window._fbLoaded = true; // 로드 완료 플래그
+  window._fbLoaded = true;
 }
 
 /* 자동 저장 래퍼 */
-function saveAndRender() { render(); saveToFirebase(); }
+async function saveAndRender() {
+  render();
+  await saveToFirebase(); // 저장 완료까지 대기
+}
 
 /* ══════════════════════════════════════
    DATA
