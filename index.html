@@ -538,10 +538,20 @@ if ('serviceWorker' in navigator) {
 <div class="modal" id="modal-cal-memo">
   <div class="modal-box">
     <h3>📝 <span id="cal-memo-date-title"></span> 메모</h3>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <div style="flex:1;">
+        <label style="font-size:0.74rem;color:var(--muted);">시작일</label>
+        <input type="date" id="cal-memo-start" style="width:100%;padding:7px;border:1.5px solid var(--border);border-radius:6px;font-size:0.85rem;">
+      </div>
+      <div style="flex:1;">
+        <label style="font-size:0.74rem;color:var(--muted);">종료일</label>
+        <input type="date" id="cal-memo-end" style="width:100%;padding:7px;border:1.5px solid var(--border);border-radius:6px;font-size:0.85rem;">
+      </div>
+    </div>
     <select id="cal-memo-project" style="padding:8px;border:1.5px solid var(--border);border-radius:6px;font-size:0.85rem;width:100%;">
       <option value="">📌 프로젝트 선택 안 함 (일반 메모)</option>
     </select>
-    <textarea id="cal-memo-input" placeholder="이 날짜에 대한 메모를 입력하세요..." style="width:100%;min-height:100px;padding:8px;border:1.5px solid var(--border);border-radius:6px;font-family:inherit;font-size:0.85rem;resize:vertical;"></textarea>
+    <textarea id="cal-memo-input" placeholder="이 기간에 대한 메모를 입력하세요..." style="width:100%;min-height:100px;padding:8px;border:1.5px solid var(--border);border-radius:6px;font-family:inherit;font-size:0.85rem;resize:vertical;"></textarea>
     <div style="display:flex;gap:6px;flex-wrap:wrap;">
       <select id="cal-memo-color" style="flex:1;padding:7px;border:1.5px solid var(--border);border-radius:6px;font-size:0.82rem;">
         <option value="#4f46e5">🔵 파랑</option>
@@ -1037,7 +1047,10 @@ function renderGantt(list){
   }
 
   if(!list.length){ container.innerHTML='<div style="color:var(--muted);font-size:0.82rem;padding:10px 0">표시할 업무가 없습니다.</div>'; return; }
-  list.sort(prioSort).forEach(t=>{
+  list.slice().sort((a,b)=>{
+    if(a.done!==b.done) return a.done?1:-1; // 완료는 맨 아래로
+    return prioSort(a,b);
+  }).forEach(t=>{
     // 날짜만 비교 (시간 제거)
     const sd=d(t.start); const sD=new Date(sd.getFullYear(),sd.getMonth(),sd.getDate());
     const ed=d(t.done&&t.actualEnd?t.actualEnd:t.end); const eD=new Date(ed.getFullYear(),ed.getMonth(),ed.getDate());
@@ -1210,8 +1223,18 @@ function renderTaskList(list){
 /* ══════════════════════════════════════
    CALENDAR
 ══════════════════════════════════════ */
-// 캘린더 — 자유 메모 버전 (프로젝트 연결 선택 가능)
+// 캘린더 — 자유 메모 버전 (프로젝트 연결 선택 가능, 기간 지원)
 let calEditingDate=null;
+
+// 특정 날짜(dateKey)가 속한 메모를 찾음 (시작일~종료일 범위로 저장된 메모들 중)
+function findCalMemoForDate(dateKey){
+  for(const [startKey, memo] of Object.entries(calMemos)){
+    const endKey = memo.endDate || startKey;
+    if(dateKey>=startKey && dateKey<=endKey) return {startKey, memo};
+  }
+  return null;
+}
+
 function renderCalendar(){
   document.getElementById('cal-title').textContent=`${calYear}년 ${calMonth+1}월`;
   const firstOfMonth=new Date(calYear,calMonth,1);
@@ -1231,14 +1254,21 @@ function renderCalendar(){
     const {week}=getISOWeek(cellDate);
     const isMonday=cellDate.getDay()===1;
     const dateKey=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-    const memo=calMemos[dateKey];
+    const found=findCalMemoForDate(dateKey);
+    const memo=found?found.memo:null;
+    const memoStartKey=found?found.startKey:null;
     const memoP=memo&&memo.project?proj(memo.project):null;
+    const isRangeStart = memo && memoStartKey===dateKey;
+    const isRangeEnd = memo && (memo.endDate||memoStartKey)===dateKey;
+    const rangeLabel = memo && memo.endDate && memo.endDate!==memoStartKey
+      ? (isRangeStart?'▶ ':isRangeEnd?'■ ':'· ')
+      : '';
     html+=`<div class="cal-cell ${isToday?'today-cell':''}" onclick="openCalMemo('${dateKey}')" style="cursor:pointer;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
       <div class="cal-day" style="display:flex;align-items:center;gap:3px;">
         ${isToday?`<span class="today-num">${day}</span>`:day}
         ${isMonday?`<span style="font-size:0.58rem;color:var(--muted);">W${week}</span>`:''}
       </div>
-      ${memo?`<div style="border-radius:4px;padding:2px 5px;margin-top:2px;font-size:0.65rem;background:${memo.color}22;color:${memo.color};border-left:2px solid ${memo.color};line-height:1.3;word-break:break-all;">${memoP?`<span style="font-weight:700;">[${memoP.name}]</span> `:''}${memo.text}</div>`:''}
+      ${memo?`<div style="border-radius:4px;padding:2px 5px;margin-top:2px;font-size:0.65rem;background:${memo.color}22;color:${memo.color};border-left:2px solid ${memo.color};line-height:1.3;word-break:break-all;">${rangeLabel}${memoP?`<span style="font-weight:700;">[${memoP.name}]</span> `:''}${memo.text}</div>`:''}
     </div>`;
   }
   const rem=(first+last)%7;
@@ -1249,11 +1279,18 @@ function renderCalendar(){
 function calMove(dir){ calMonth+=dir; if(calMonth>11){calMonth=0;calYear++;}else if(calMonth<0){calMonth=11;calYear--;} renderCalendar(); }
 
 function openCalMemo(dateKey){
-  calEditingDate=dateKey;
-  const memo=calMemos[dateKey]||{text:'',color:'#4f46e5',project:''};
-  document.getElementById('cal-memo-date-title').textContent=dateKey;
-  document.getElementById('cal-memo-input').value=memo.text;
-  document.getElementById('cal-memo-color').value=memo.color||'#4f46e5';
+  // 이미 등록된 기간 메모가 있으면 그 메모의 시작일 기준으로 편집
+  const found=findCalMemoForDate(dateKey);
+  calEditingDate = found ? found.startKey : dateKey;
+  const memo = found ? found.memo : {text:'',color:'#4f46e5',project:'',endDate:dateKey};
+
+  document.getElementById('cal-memo-date-title').textContent = found
+    ? `${calEditingDate}${memo.endDate&&memo.endDate!==calEditingDate?' ~ '+memo.endDate:''}`
+    : dateKey;
+  document.getElementById('cal-memo-start').value = calEditingDate;
+  document.getElementById('cal-memo-end').value = memo.endDate || calEditingDate;
+  document.getElementById('cal-memo-input').value = memo.text;
+  document.getElementById('cal-memo-color').value = memo.color||'#4f46e5';
   const pSel=document.getElementById('cal-memo-project');
   pSel.innerHTML='<option value="">📌 프로젝트 선택 안 함 (일반 메모)</option>'
     + projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
@@ -1264,8 +1301,17 @@ function saveCalMemo(){
   const text=document.getElementById('cal-memo-input').value.trim();
   const color=document.getElementById('cal-memo-color').value;
   const project=document.getElementById('cal-memo-project').value;
-  if(text) calMemos[calEditingDate]={text,color,project};
-  else delete calMemos[calEditingDate];
+  let startDate=document.getElementById('cal-memo-start').value;
+  let endDate=document.getElementById('cal-memo-end').value;
+  if(!startDate) startDate=calEditingDate;
+  if(!endDate) endDate=startDate;
+  if(endDate<startDate){ const tmp=startDate; startDate=endDate; endDate=tmp; } // 순서 보정
+
+  // 기존 키 삭제 후 새 시작일 키로 저장 (시작일이 바뀐 경우 대응)
+  if(calEditingDate && calEditingDate!==startDate) delete calMemos[calEditingDate];
+
+  if(text) calMemos[startDate]={text,color,project,endDate};
+  else delete calMemos[startDate];
   closeModal('modal-cal-memo');
   saveToFirebase();
   renderCalendar();
@@ -1281,9 +1327,16 @@ function deleteCalMemo(){
 function renderCalMemoList(){
   const el=document.getElementById('cal-memo-list');
   if(!el) return;
-  const monthPrefix=`${calYear}-${String(calMonth+1).padStart(2,'0')}-`;
+  const monthStart=`${calYear}-${String(calMonth+1).padStart(2,'0')}-01`;
+  const lastD=new Date(calYear,calMonth+1,0).getDate();
+  const monthEnd=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(lastD).padStart(2,'0')}`;
+
+  // 이 달과 겹치는 모든 메모 (시작일이 다른 달이어도 기간이 겹치면 포함)
   const entries=Object.entries(calMemos)
-    .filter(([k])=>k.startsWith(monthPrefix))
+    .filter(([startKey,memo])=>{
+      const endKey=memo.endDate||startKey;
+      return startKey<=monthEnd && endKey>=monthStart;
+    })
     .sort((a,b)=>a[0].localeCompare(b[0]));
 
   if(!entries.length){
@@ -1292,20 +1345,25 @@ function renderCalMemoList(){
   }
 
   const days=['일','월','화','수','목','금','토'];
-  el.innerHTML=entries.map(([dateKey,memo])=>{
-    const dt=new Date(dateKey+'T00:00:00');
+  el.innerHTML=entries.map(([startKey,memo])=>{
+    const dt=new Date(startKey+'T00:00:00');
     const dayNum=dt.getDate();
     const wd=days[dt.getDay()];
-    const isToday=dateKey===TODAY_STR;
+    const isToday=TODAY_STR>=startKey && TODAY_STR<=(memo.endDate||startKey);
     const p=memo.project?proj(memo.project):null;
-    return `<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:7px;background:${isToday?'var(--pri-light)':'var(--bg)'};margin-bottom:6px;cursor:pointer;" onclick="openCalMemo('${dateKey}')">
+    const isRange = memo.endDate && memo.endDate!==startKey;
+    const dateLabel = isRange ? `${fmt(startKey)} ~ ${fmt(memo.endDate)}` : fmt(startKey);
+    return `<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:7px;background:${isToday?'var(--pri-light)':'var(--bg)'};margin-bottom:6px;cursor:pointer;" onclick="openCalMemo('${startKey}')">
       <div style="flex-shrink:0;text-align:center;min-width:38px;">
         <div style="font-size:0.95rem;font-weight:800;color:${isToday?'var(--primary)':'var(--text)'};">${dayNum}</div>
         <div style="font-size:0.65rem;color:var(--muted);">${wd}</div>
       </div>
       <div style="flex:1;min-width:0;">
-        ${p?`<span style="font-size:0.68rem;font-weight:700;color:${p.color};background:${p.color}1a;padding:1px 6px;border-radius:4px;">${p.name}</span>`:''}
-        <div style="font-size:0.83rem;color:${memo.color};margin-top:2px;white-space:pre-wrap;word-break:break-word;">${memo.text}</div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          ${p?`<span style="font-size:0.68rem;font-weight:700;color:${p.color};background:${p.color}1a;padding:1px 6px;border-radius:4px;">${p.name}</span>`:''}
+          ${isRange?`<span style="font-size:0.68rem;color:var(--muted);background:var(--border);padding:1px 6px;border-radius:4px;">📅 ${dateLabel}</span>`:''}
+        </div>
+        <div style="font-size:0.83rem;color:${memo.color};margin-top:3px;white-space:pre-wrap;word-break:break-word;">${memo.text}</div>
       </div>
       <span style="width:9px;height:9px;border-radius:50%;background:${memo.color};flex-shrink:0;margin-top:4px;"></span>
     </div>`;
