@@ -724,7 +724,10 @@ function getTimeElapsedPct(t){
   const todayD=new Date(TODAY.getFullYear(),TODAY.getMonth(),TODAY.getDate());
   const s=new Date(t.start); const sD=new Date(s.getFullYear(),s.getMonth(),s.getDate());
   const e=new Date(t.end);   const eD=new Date(e.getFullYear(),e.getMonth(),e.getDate());
-  const total=eD-sD; if(total<=0) return 100;
+  // 아직 시작일이 안 됐으면 경과 0%
+  if(todayD<sD) return 0;
+  const total=eD-sD;
+  if(total<=0) return 100; // 당일 업무이고 시작일이 이미 됐으면 100%
   const elapsed=todayD-sD;
   return Math.min(100,Math.max(0,Math.round(elapsed/total*100)));
 }
@@ -1043,7 +1046,8 @@ function renderGantt(list){
     const hCol=t.done?'#94a3b8':healthColor(health);
     // 위험 판정: 미완료 + 건강도가 심하게 나쁨(-30 이하) → 남은 기간 대비 진행 부족
     const elapsedPctForRow=!t.done?getTimeElapsedPct(t):0;
-    const isAtRisk = !t.done && !isOverdue(t) && health<=-15 && elapsedPctForRow>=20;
+    const notStartedYet = (()=>{ const sd2=d(t.start); const sD2=new Date(sd2.getFullYear(),sd2.getMonth(),sd2.getDate()); return todayD<sD2; })();
+    const isAtRisk = !t.done && !isOverdue(t) && !notStartedYet && health<=-15 && elapsedPctForRow>=20;
 
     // 바 배경: 항상 연한 회색, 채움: 진행% 만큼 건강도 색상
     // 사용자가 명시적으로 진행상태(in_progress_xx/delayed/on_track)를 선택했으면 그걸 우선 표시
@@ -1130,7 +1134,8 @@ function renderTaskList(list){
     // 위험 판정: 미완료 + 기한초과 아님 + 경과율 대비 진행률 심하게 부족
     const taskHealth=!t.done?getHealthScore(t):0;
     const taskElapsed=!t.done?getTimeElapsedPct(t):0;
-    const taskAtRisk = !t.done && !over && taskHealth<=-15 && taskElapsed>=20;
+    const taskNotStarted = (()=>{ const sd3=new Date(t.start); const sD3=new Date(sd3.getFullYear(),sd3.getMonth(),sd3.getDate()); const td3=new Date(TODAY.getFullYear(),TODAY.getMonth(),TODAY.getDate()); return td3<sD3; })();
+    const taskAtRisk = !t.done && !over && !taskNotStarted && taskHealth<=-15 && taskElapsed>=20;
     const item=document.createElement('div');
     item.className=`task-item ${t.done?'completed':''} ${over?'overdue':''} ${taskAtRisk?'at-risk':''}`;
     item.setAttribute('draggable','true');
