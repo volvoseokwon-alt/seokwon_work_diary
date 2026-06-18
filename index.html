@@ -1135,17 +1135,42 @@ function renderGantt(list){
   }).forEach(t=>{
     // 날짜만 비교 (시간 제거)
     const sd=d(t.start); const sD=new Date(sd.getFullYear(),sd.getMonth(),sd.getDate());
-    const ed=d(t.done&&t.actualEnd?t.actualEnd:t.end); const eD=new Date(ed.getFullYear(),ed.getMonth(),ed.getDate());
-    const s=sD.getTime(), eChart=eD.getTime();
+    // 완료된 업무는 "계획종료일 vs 실제완료일" 중 더 늦은 날까지 바를 그림 (둘 다 표시하기 위해)
+    const planEd=d(t.end); const planED=new Date(planEd.getFullYear(),planEd.getMonth(),planEd.getDate());
+    const actualEd=t.done&&t.actualEnd?d(t.actualEnd):null;
+    const actualED=actualEd?new Date(actualEd.getFullYear(),actualEd.getMonth(),actualEd.getDate()):null;
+    const ed = t.done ? (actualED && actualED>planED ? actualED : planED) : planED;
+    const s=sD.getTime(), eChart=ed.getTime();
     let left=Math.max(0,((s-mStart.getTime())/mDur)*100);
     let width=Math.min(100-left,((eChart-s)/mDur)*100);
     if(width<=0) width=3;
+
+    // 완료된 업무의 계획구간/지연구간 분리 비율 계산 (전체 바 너비 기준 %)
+    let planRatio=100, diffRatio=0, isLate=false, isEarlyFinish=false;
+    if(t.done && actualED){
+      const totalSpan = Math.max(eD2Diff(sD,ed), 1);
+      const planSpan = eD2Diff(sD, planED);
+      const actualSpan = eD2Diff(sD, actualED);
+      if(actualED.getTime()===planED.getTime()){
+        planRatio=100; diffRatio=0;
+      } else if(actualED>planED){
+        // 늦게 끝남: 계획구간(초록) + 지연구간(남색)
+        isLate=true;
+        planRatio = Math.max(0,Math.min(100, (planSpan/totalSpan)*100));
+        diffRatio = 100-planRatio;
+      } else {
+        // 일찍 끝남: 실제완료구간(초록, 전체) — 계획보다 짧게 끝난 것이므로 바 자체가 짧음
+        isEarlyFinish=true;
+        planRatio=100; diffRatio=0;
+      }
+    }
+
     const st2=getTaskStatus(t);
     const prio=t.priority||'';
     const pc=t.done?'#94a3b8':prioColor(prio);
     const progPct=getTaskProgress(t);
     const health=!t.done?getHealthScore(t):0;
-    const hCol=t.done?'#94a3b8':healthColor(health);
+    const hCol=t.done?'#10b981':healthColor(health);
     // 위험 판정: 미완료 + 건강도가 심하게 나쁨(-30 이하) → 남은 기간 대비 진행 부족
     const elapsedPctForRow=!t.done?getTimeElapsedPct(t):0;
     const notStartedYet = (()=>{ const sd2=d(t.start); const sD2=new Date(sd2.getFullYear(),sd2.getMonth(),sd2.getDate()); return todayD<sD2; })();
@@ -1155,7 +1180,13 @@ function renderGantt(list){
     // 사용자가 명시적으로 진행상태(in_progress_xx/delayed/on_track)를 선택했으면 그걸 우선 표시
     let barLabel='미진행'; let barBg='#e2e8f0';
     const userPicked = st2==='delayed'||st2==='on_track'||st2.startsWith('in_progress');
-    if(t.done){ barLabel=isEarly(t)?'⚡ 조기':'✓ 완료'; barBg='#94a3b8'; }
+    if(t.done){
+      const dateNote = actualED && actualED.getTime()!==planED.getTime()
+        ? (isLate?` (${fmt(t.end)}→${fmt(t.actualEnd)})`:` (${fmt(t.actualEnd)} 조기완료)`)
+        : '';
+      barLabel=(isEarly(t)?'⚡ 조기':'✓ 완료')+dateNote;
+      barBg='#94a3b8';
+    }
     else if(userPicked){
       if(st2==='delayed') barLabel='⚠ 지연';
       else if(st2==='on_track') barLabel='✅ 완료';
@@ -1186,11 +1217,16 @@ function renderGantt(list){
         <div class="chart-today-line" style="left:${todayPct}%"></div>
         <!-- 바 전체 배경 (기간) -->
         <div class="${isAtRisk?'gantt-risk':''}" style="position:absolute;left:${left}%;width:${width}%;height:100%;background:#e2e8f0;border-radius:4px;overflow:hidden;max-width:${100-left}%;">
-          <!-- 진행% 채움 -->
-          <div style="height:100%;width:${t.done?100:progPct}%;background:${hCol};transition:width .4s;display:flex;align-items:center;justify-content:center;min-width:${barLabel?'auto':'0'};">
-          </div>
+          ${t.done ? `
+            <!-- 완료: 계획구간(초록) + 지연구간(남색, 늦게 끝났을 때만) -->
+            <div style="position:absolute;left:0;top:0;height:100%;width:${planRatio}%;background:#10b981;"></div>
+            ${isLate?`<div style="position:absolute;left:${planRatio}%;top:0;height:100%;width:${diffRatio}%;background:#0c4a6e;"></div>`:''}
+          ` : `
+            <!-- 진행중: 진행% 채움 -->
+            <div style="height:100%;width:${progPct}%;background:${hCol};transition:width .4s;display:flex;align-items:center;justify-content:center;min-width:${barLabel?'auto':'0'};"></div>
+          `}
           <!-- 라벨 (중앙 고정) -->
-          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:${progPct>40||t.done?'white':'#334155'};font-size:0.67rem;font-weight:700;pointer-events:none;">
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:${t.done||progPct>40?'white':'#334155'};font-size:0.67rem;font-weight:700;pointer-events:none;white-space:nowrap;">
             ${barLabel}
           </div>
         </div>
@@ -1198,6 +1234,7 @@ function renderGantt(list){
     container.appendChild(row);
   });
 }
+function eD2Diff(a,b){ return Math.max(0,(b.getTime()-a.getTime()))/86400000 || 0.5; }
 
 /* ══════════════════════════════════════
    TASK LIST
@@ -1274,7 +1311,7 @@ function renderTaskList(list){
             onchange="setTaskStatus(${t.id},this.value)">
           ${st==='overdue'?`<option value="overdue" selected>🔴 기한초과</option>`:''}
           ${Object.entries(TASK_STATUS).filter(([k])=>k!=='done'&&k!=='early_done'&&k!=='overdue').map(([k,v])=>`<option value="${k}" ${st===k?'selected':''}>${v.icon} ${v.label}</option>`).join('')}
-        </select>`:`<span class="status-chip" style="background:${stInfo.color};flex-shrink:0;">${stInfo.icon} ${stInfo.label}</span>`}
+        </select>`:`<span class="status-chip" style="background:${stInfo.color};flex-shrink:0;display:flex;align-items:center;gap:4px;">${stInfo.icon} ${stInfo.label}${t.actualEnd?`<span style="font-size:0.68rem;opacity:0.85;font-weight:400;">(${fmt(t.actualEnd)})</span>`:''}</span>`}
         <!-- 예상/투입 시간 인라인 입력 -->
         ${(()=>{
           const eh=t.estHours;
