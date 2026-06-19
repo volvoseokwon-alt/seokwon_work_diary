@@ -228,6 +228,7 @@ if ('serviceWorker' in navigator) {
       <span id="save-icon">💾</span>
       <span id="save-time">--</span>
     </span>
+    <button onclick="forceSaveToServer()" title="지금 화면에 보이는 데이터를 서버(Firebase)에 강제로 저장합니다" style="background:#f59e0b;border:none;color:white;font-size:0.7rem;font-weight:700;padding:4px 9px;border-radius:5px;cursor:pointer;">⬆️ 지금 화면을 서버에 저장</button>
     <button onclick="downloadFullBackup()" title="전체 데이터를 파일로 다운로드 (만약을 위한 백업)" style="background:rgba(255,255,255,0.15);border:none;color:white;font-size:0.7rem;padding:4px 8px;border-radius:5px;cursor:pointer;">📥 백업</button>
     <button onclick="document.getElementById('restore-file-input').click()" title="백업 파일에서 복원" style="background:rgba(255,255,255,0.15);border:none;color:white;font-size:0.7rem;padding:4px 8px;border-radius:5px;cursor:pointer;">📤 복원</button>
     <input type="file" id="restore-file-input" accept=".json" style="display:none;" onchange="restoreFromFile(this.files[0])">
@@ -853,6 +854,46 @@ function setLoadWarning(msg){
 /* ══════════════════════════════════════
    수동 백업 다운로드 / 복원 (최후의 안전망)
 ══════════════════════════════════════ */
+/* ══════════════════════════════════════
+   강제 서버 저장 (지금 화면 데이터를 무조건 Firebase에 저장)
+   - _fbLoaded 안전장치를 의도적으로 우회
+   - 사용자가 명확히 확인한 경우에만 실행
+══════════════════════════════════════ */
+async function forceSaveToServer(){
+  if (!db) { alert('Firebase에 연결되어 있지 않습니다. 인터넷 연결을 확인해주세요.'); return; }
+
+  const confirmed = confirm(
+    `지금 화면에 보이는 데이터를 서버에 강제로 저장합니다.\n\n`+
+    `업무 수: ${tasks.length}개\n`+
+    `프로젝트 수: ${projects.length}개\n\n`+
+    `⚠️ 이 작업은 서버에 있던 기존 데이터를 지금 화면 내용으로 덮어씁니다.\n`+
+    `계속하시겠습니까?`
+  );
+  if (!confirmed) return;
+
+  setSaveStatus('saving');
+  try {
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const payload = {
+      projects, tasks, weeklyLogs, trash, completedProjects,
+      repeatTasks, calMemos, taskTags,
+      sidebarNote: document.getElementById('sidebar-note')?.value || '',
+      updatedAt: nowIso
+    };
+    await db.collection('userData').doc('main').set(payload);
+    window._lastSavedAt = nowIso;
+    window._fbLoaded = true; // 이제부터는 정상적인 저장도 허용
+    saveLocalBackup(payload); // 로컬 백업도 동시 갱신
+    setSaveStatus('saved', now);
+    alert('✅ 서버에 저장되었습니다! 이제 다른 기기에서도 이 데이터를 볼 수 있습니다.');
+  } catch(e) {
+    console.error('강제 저장 실패:', e);
+    setSaveStatus('error');
+    alert('❌ 저장에 실패했습니다: ' + (e.message||e));
+  }
+}
+
 function downloadFullBackup(){
   const payload = {
     projects, tasks, weeklyLogs, trash, completedProjects,
