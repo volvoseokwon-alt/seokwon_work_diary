@@ -228,6 +228,9 @@ if ('serviceWorker' in navigator) {
       <span id="save-icon">💾</span>
       <span id="save-time">--</span>
     </span>
+    <button onclick="downloadFullBackup()" title="전체 데이터를 파일로 다운로드 (만약을 위한 백업)" style="background:rgba(255,255,255,0.15);border:none;color:white;font-size:0.7rem;padding:4px 8px;border-radius:5px;cursor:pointer;">📥 백업</button>
+    <button onclick="document.getElementById('restore-file-input').click()" title="백업 파일에서 복원" style="background:rgba(255,255,255,0.15);border:none;color:white;font-size:0.7rem;padding:4px 8px;border-radius:5px;cursor:pointer;">📤 복원</button>
+    <input type="file" id="restore-file-input" accept=".json" style="display:none;" onchange="restoreFromFile(this.files[0])">
     <span class="week-badge" id="hdr-week">W?</span>
     <span class="score-badge">효율 <span id="efficiency-score">0</span>%</span>
   </div>
@@ -241,7 +244,10 @@ if ('serviceWorker' in navigator) {
     <button class="add-proj-btn" onclick="openModal_proj_add()">+ 프로젝트 추가</button>
     <div class="sidebar-note">
       <h3 style="margin-top:0;">📝 메모</h3>
-      <textarea class="note-area" id="sidebar-note" placeholder="간단한 메모를 남겨보세요..."></textarea>
+      <textarea class="note-area" id="sidebar-note" placeholder="간단한 메모를 남겨보세요...">퇴근차량 5시40분, 6시 30분
+
+7월1일(토) ~7월 13일(월) NA 출장
+ZB 교체 둘</textarea>
     </div>
   </aside>
   <!-- 프로젝트 노트 패널 -->
@@ -675,13 +681,16 @@ async function saveToFirebase() {
     const now = new Date();
     const nowIso = now.toISOString();
     window._lastSavedAt = nowIso;
-    await db.collection('userData').doc('main').set({
+    const payload = {
       projects, tasks, weeklyLogs, trash, completedProjects,
       repeatTasks, calMemos, taskTags,
       sidebarNote: document.getElementById('sidebar-note')?.value || '',
       updatedAt: nowIso
-    });
+    };
+    await db.collection('userData').doc('main').set(payload);
     setSaveStatus('saved', now);
+    // 서버 저장 성공 → 로컬 백업도 동시에 갱신 (이중 안전망)
+    saveLocalBackup(payload);
   } catch(e) {
     console.warn('Firebase save error:', e);
     setSaveStatus('error');
@@ -704,31 +713,201 @@ function setSaveStatus(state, time){
   }
 }
 
+/* ══════════════════════════════════════
+   로컬 백업 (이중 안전망)
+   - 서버에서 정상적으로 데이터를 받은 직후 localStorage에도 복사
+   - 서버 응답이 의심스러울 때 비교용으로 사용
+══════════════════════════════════════ */
+const LOCAL_BACKUP_KEY = 'workdiary_local_backup_v1';
+
+function saveLocalBackup(data){
+  try{
+    localStorage.setItem(LOCAL_BACKUP_KEY, JSON.stringify({
+      ...data,
+      _backupAt: new Date().toISOString()
+    }));
+  }catch(e){ console.warn('로컬 백업 저장 실패:', e); }
+}
+
+function getLocalBackup(){
+  try{
+    const raw=localStorage.getItem(LOCAL_BACKUP_KEY);
+    return raw ? JSON.parse(raw) : null;
+  }catch(e){ return null; }
+}
+
 async function loadFromFirebase() {
-  if (!db) return;
+  if (!db) {
+    // Firebase 자체가 연결 안 됨 → 로컬 백업이라도 시도
+    restoreFromLocalBackupIfNeeded();
+    window._fbLoaded = true;
+    return;
+  }
+
+  let snap;
   try {
-    const snap = await db.collection('userData').doc('main').get();
-    if (snap.exists) {
-      const data = snap.data();
-      if (data.projects?.length)          projects          = data.projects;
-      if (data.tasks?.length)             tasks             = data.tasks;
-      if (data.weeklyLogs?.length)        weeklyLogs        = data.weeklyLogs;
-      if (data.trash?.length)             trash             = data.trash;
-      if (data.completedProjects?.length) completedProjects = data.completedProjects;
-      if (data.repeatTasks?.length)       repeatTasks       = data.repeatTasks;
-      if (data.calMemos)                  calMemos          = data.calMemos;
-      if (data.taskTags)                  taskTags          = data.taskTags;
-      if (data.sidebarNote) {
-        const noteEl = document.getElementById('sidebar-note');
-        if (noteEl) noteEl.value = data.sidebarNote;
-      }
-      // 마지막 저장 시각 표시
-      if (data.updatedAt) {
-        try { setSaveStatus('saved', new Date(data.updatedAt)); } catch(e){}
-      }
+    // 캐시 무시하고 무조건 서버에서 강제로 가져오기
+    snap = await db.collection('userData').doc('main').get({ source: 'server' });
+  } catch(e) {
+    console.warn('Firebase 서버 조회 실패 (네트워크 문제 가능):', e);
+    // 네트워크 실패 → 절대 덮어쓰지 않음. 화면에 있던 데이터(초기 복구 데이터) 그대로 유지
+    setLoadWarning('⚠️ 서버 연결 실패 — 마지막으로 본 화면을 유지합니다');
+    restoreFromLocalBackupIfNeeded();
+    window._fbLoaded = true;
+    return;
+  }
+
+  if (!snap.exists) {
+    // 문서 자체가 없음 → 진짜 첫 사용이거나 심각한 문제. 덮어쓰지 않고 경고.
+    console.warn('Firebase에 저장된 문서가 없습니다.');
+    setLoadWarning('⚠️ 서버에 저장된 데이터가 없습니다 — 화면 데이터를 유지합니다');
+    restoreFromLocalBackupIfNeeded();
+    window._fbLoaded = true;
+    return;
+  }
+
+  const data = snap.data();
+
+  // ── 빈 데이터 의심 검증 ──
+  // 서버에서 받은 tasks가 비어있는데, 로컬 백업엔 데이터가 있다면 의심스러운 상황.
+  // 이 경우 자동으로 덮어쓰지 않고, 사용자에게 확인받음.
+  const serverTasksEmpty = !data.tasks || data.tasks.length===0;
+  const localBackup = getLocalBackup();
+  const localHasData = localBackup && localBackup.tasks && localBackup.tasks.length>0;
+
+  if (serverTasksEmpty && localHasData) {
+    const useLocal = confirm(
+      '⚠️ 서버 데이터가 비어있는데, 이 기기에 저장된 백업에는 업무가 있습니다.\n\n'+
+      `로컬 백업 시각: ${localBackup._backupAt||'알수없음'}\n`+
+      `로컬 백업 업무 수: ${localBackup.tasks.length}개\n\n`+
+      '로컬 백업으로 복원하시겠습니까?\n'+
+      '(취소를 누르면 서버의 빈 상태를 그대로 따릅니다)'
+    );
+    if (useLocal) {
+      projects = localBackup.projects || projects;
+      tasks = localBackup.tasks || tasks;
+      weeklyLogs = localBackup.weeklyLogs || weeklyLogs;
+      trash = localBackup.trash || trash;
+      completedProjects = localBackup.completedProjects || completedProjects;
+      repeatTasks = localBackup.repeatTasks || repeatTasks;
+      calMemos = localBackup.calMemos || calMemos;
+      taskTags = localBackup.taskTags || taskTags;
+      setLoadWarning('✅ 로컬 백업으로 복원했습니다 — 곧 서버에 다시 저장됩니다');
+      window._fbLoaded = true;
+      // 복원한 데이터를 서버에 즉시 재저장해서 다음에도 안전하게
+      setTimeout(()=>saveToFirebase(), 800);
+      return;
     }
-  } catch(e) { console.warn('Firebase load error:', e); }
+    // 사용자가 취소 → 서버의 빈 상태를 그대로 따름 (아래 정상 흐름 계속)
+  }
+
+  // ── 정상 로드 ──
+  if (data.projects?.length)          projects          = data.projects;
+  if (data.tasks?.length)             tasks             = data.tasks;
+  if (data.weeklyLogs?.length)        weeklyLogs        = data.weeklyLogs;
+  if (data.trash?.length)             trash             = data.trash;
+  if (data.completedProjects?.length) completedProjects = data.completedProjects;
+  if (data.repeatTasks?.length)       repeatTasks       = data.repeatTasks;
+  if (data.calMemos)                  calMemos          = data.calMemos;
+  if (data.taskTags)                  taskTags          = data.taskTags;
+  if (data.sidebarNote) {
+    const noteEl = document.getElementById('sidebar-note');
+    if (noteEl) noteEl.value = data.sidebarNote;
+  }
+  if (data.updatedAt) {
+    try { setSaveStatus('saved', new Date(data.updatedAt)); } catch(e){}
+  }
+
+  // 정상적으로 서버 데이터를 받았으니 로컬 백업도 갱신 (다음번 안전망)
+  saveLocalBackup({ projects, tasks, weeklyLogs, trash, completedProjects, repeatTasks, calMemos, taskTags });
+
   window._fbLoaded = true;
+}
+
+function restoreFromLocalBackupIfNeeded(){
+  // Firebase 자체에 접근 못 했을 때, 로컬 백업이라도 화면에 보여줄지 시도
+  // (단, 이미 화면에 초기 복구 데이터가 있다면 그게 더 최신일 수 있으므로 비교)
+  const backup = getLocalBackup();
+  if (backup && backup.tasks && backup.tasks.length > (tasks?.length||0)) {
+    projects = backup.projects || projects;
+    tasks = backup.tasks || tasks;
+    weeklyLogs = backup.weeklyLogs || weeklyLogs;
+    trash = backup.trash || trash;
+    completedProjects = backup.completedProjects || completedProjects;
+    repeatTasks = backup.repeatTasks || repeatTasks;
+    calMemos = backup.calMemos || calMemos;
+    taskTags = backup.taskTags || taskTags;
+    setLoadWarning('📦 오프라인 — 이 기기의 로컬 백업을 표시 중입니다');
+  }
+}
+
+function setLoadWarning(msg){
+  // 헤더 저장상태 영역에 경고 메시지 임시 표시
+  const timeEl=document.getElementById('save-time');
+  const iconEl=document.getElementById('save-icon');
+  if (timeEl) timeEl.textContent = msg;
+  if (iconEl) iconEl.textContent = '⚠️';
+  console.warn('[데이터 로드 경고]', msg);
+}
+
+/* ══════════════════════════════════════
+   수동 백업 다운로드 / 복원 (최후의 안전망)
+══════════════════════════════════════ */
+function downloadFullBackup(){
+  const payload = {
+    projects, tasks, weeklyLogs, trash, completedProjects,
+    repeatTasks, calMemos, taskTags,
+    sidebarNote: document.getElementById('sidebar-note')?.value || '',
+    _backupAt: new Date().toISOString(),
+    _exportedFrom: 'manual_download'
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const dateStr = `${TODAY.getFullYear()}${String(TODAY.getMonth()+1).padStart(2,'0')}${String(TODAY.getDate()).padStart(2,'0')}`;
+  a.href = url;
+  a.download = `업무다이어리_백업_${dateStr}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function restoreFromFile(file){
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      const taskCount = data.tasks?.length || 0;
+      const confirmed = confirm(
+        `백업 파일을 확인했습니다.\n\n`+
+        `업무 수: ${taskCount}개\n`+
+        `백업 시각: ${data._backupAt || '알수없음'}\n\n`+
+        `현재 화면의 데이터를 이 백업으로 교체합니다.\n계속하시겠습니까?`
+      );
+      if (!confirmed) return;
+
+      projects = data.projects || [];
+      tasks = data.tasks || [];
+      weeklyLogs = data.weeklyLogs || [];
+      trash = data.trash || [];
+      completedProjects = data.completedProjects || [];
+      repeatTasks = data.repeatTasks || [];
+      calMemos = data.calMemos || {};
+      taskTags = data.taskTags || {};
+      const noteEl = document.getElementById('sidebar-note');
+      if (noteEl && data.sidebarNote) noteEl.value = data.sidebarNote;
+
+      render();
+      saveToFirebase();
+      alert('복원이 완료되었습니다. 서버에도 저장됩니다.');
+    } catch(err) {
+      alert('백업 파일을 읽는 데 실패했습니다. 올바른 백업 파일인지 확인해주세요.');
+      console.error(err);
+    }
+  };
+  reader.readAsText(file);
 }
 
 /* 자동 저장 래퍼 */
@@ -745,9 +924,17 @@ const TODAY = new Date();
 const TODAY_STR = `${TODAY.getFullYear()}-${String(TODAY.getMonth()+1).padStart(2,'0')}-${String(TODAY.getDate()).padStart(2,'0')}`;
 
 let projects = [
-  {id:'p1',name:'A 시스템 제어', color:'#4f46e5',lastAction:'2026-06-14'},
-  {id:'p2',name:'B사 기능 안전', color:'#0284c7',lastAction:'2026-05-10'},
-  {id:'p3',name:'개인 역량 개발',color:'#10b981',lastAction:'2026-06-02'},
+  {id:'p_ec560f', name:'[NPD] EC560F ZB', color:'#4f46e5', lastAction:'2026-06-19'},
+  {id:'p_teleop', name:'[NPD] Tele OP', color:'#f59e0b', lastAction:'2026-06-19'},
+  {id:'p_eudata', name:'[C0] EU Data_Act3.1', color:'#7c3aed', lastAction:'2026-06-19'},
+  {id:'p_xwatch', name:'[C0] xWatch', color:'#06b6d4', lastAction:'2026-06-19'},
+  {id:'p_namhaCPS', name:'[C0] 남아공 CPS', color:'#10b981', lastAction:'2026-06-19'},
+  {id:'p_ehhybrid', name:'[C0] EH/Hybrid Opti', color:'#0284c7', lastAction:'2026-06-19'},
+  {id:'p_pmt', name:'PMT', color:'#4f46e5', lastAction:'2026-06-19'},
+  {id:'p_bucketw27', name:'Bucket W27', color:'#4f46e5', lastAction:'2026-06-19'},
+  {id:'p_trouble', name:'Trouble shooting Support', color:'#ef4444', lastAction:'2026-06-19'},
+  {id:'p_mailreply', name:'메일답변', color:'#10b981', lastAction:'2026-06-19'},
+  {id:'p_personal', name:'개인업무', color:'#10b981', lastAction:'2026-06-19'},
 ];
 /* ══════════════════════════════════════
    공휴일 데이터
@@ -864,22 +1051,39 @@ function prioSort(a,b){
   return (ai<0?99:ai)-(bi<0?99:bi);
 }
 let tasks = [
-  {id:1,text:'제어 알고리즘 코드 리뷰', project:'p1',done:false,start:'2026-06-01',end:'2026-06-12',actualEnd:null,priority:'A1',status:'delayed'},
-  {id:2,text:'안전 프로토콜 문서 수정', project:'p2',done:true, start:'2026-06-02',end:'2026-06-15',actualEnd:'2026-06-10',priority:'A2'},
-  {id:3,text:'영어 기술 문서 1챕터 읽기',project:'p3',done:false,start:'2026-06-10',end:'2026-06-25',actualEnd:null,priority:'C1',status:'in_progress'},
-  {id:4,text:'기능 검증 체크리스트 작성',project:'p2',done:true, start:'2026-06-05',end:'2026-06-10',actualEnd:'2026-06-10',priority:'B2'},
+  // ── 미완료 (긴급 A) ──
+  {id:101,text:'EU data CAN 정리하기',project:'p_eudata',done:false,start:'2026-06-15',end:'2026-06-16',actualEnd:null,priority:'A1',status:'overdue',estHours:1,actualHours:1},
+  {id:102,text:'EU DATA act Instruction',project:'p_eudata',done:false,start:'2026-06-16',end:'2026-06-22',actualEnd:null,priority:'A1',status:'in_progress_90',estHours:3,actualHours:null},
+  {id:103,text:'F-CP] 3rd party CAN message by API',project:'p_bucketw27',done:false,start:'2026-06-19',end:'2026-06-19',actualEnd:null,priority:'A1',status:'not_started',estHours:1,actualHours:null},
+  {id:104,text:'Engine RPM drop 원인 분석',project:'p_ec560f',done:false,start:'2026-06-17',end:'2026-07-11',actualEnd:null,priority:'A2',status:'in_progress_20',estHours:8,actualHours:null},
+  {id:105,text:'Variant EU Data Act용 확인 필요',project:'p_eudata',done:false,start:'2026-06-14',end:'2026-06-21',actualEnd:null,priority:'A2',status:'in_progress_30',estHours:4,actualHours:null},
+  {id:106,text:'합천 EC560F C03으로 업데이트 ( 19일 금요일) 방문',project:'p_ec560f',done:false,start:'2026-06-19',end:'2026-06-25',actualEnd:null,priority:'A2',status:'not_started',estHours:8,actualHours:null},
+  {id:107,text:'EC560F Pressure sensor Basic control에 넣기',project:'p_ec560f',done:false,start:'2026-06-15',end:'2026-07-16',actualEnd:null,priority:'A2',status:'not_started',estHours:6,actualHours:null},
+  {id:108,text:'남아공 CPS L9 (rpm control mode overried, 신호전달)',project:'p_bucketw27',done:false,start:'2026-06-14',end:'2026-06-26',actualEnd:null,priority:'A3',status:'in_progress_90',estHours:0.5,actualHours:null},
+  {id:109,text:'EU Data_ACt3.1',project:'p_bucketw27',done:false,start:'2026-06-14',end:'2026-06-26',actualEnd:null,priority:'A3',status:'in_progress_90',estHours:0.5,actualHours:null},
+  {id:110,text:'xWatch',project:'p_bucketw27',done:false,start:'2026-06-14',end:'2026-06-26',actualEnd:null,priority:'A3',status:'in_progress_90',estHours:0.5,actualHours:null},
+  {id:111,text:'E 시리즈 Q-fit close 이슈 , 0.8초 통신 진단 3초로 변경',project:'p_bucketw27',done:false,start:'2026-06-14',end:'2026-06-26',actualEnd:null,priority:'A3',status:'in_progress',estHours:0.5,actualHours:null},
+  // ── 미완료 (중요 B) ──
+  {id:112,text:'호텔예약, 렌트카예약',project:'p_ec560f',done:false,start:'2026-06-19',end:'2026-06-22',actualEnd:null,priority:'B1',status:'not_started',estHours:2,actualHours:null},
+  {id:113,text:'[TS3582645] ECR145F 410470 Steel wrist install and Vosch chainsaw grapple',project:'p_trouble',done:false,start:'2026-06-19',end:'2026-06-24',actualEnd:null,priority:'B2',status:'not_started',estHours:1,actualHours:null},
+  {id:114,text:'asdasd',project:'p_ec560f',done:false,start:'2026-06-19',end:'2026-06-26',actualEnd:null,priority:'B2',status:'not_started'},
+  {id:115,text:'asd',project:'p_ec560f',done:false,start:'2026-06-19',end:'2026-06-26',actualEnd:null,priority:'B2',status:'not_started'},
+  // ── 완료된 업무 ──
+  {id:201,text:'CHAIN 기본 질문문구 작성 -QC 진단애러',project:'p_bucketw27',done:true,start:'2026-06-18',end:'2026-06-18',actualEnd:'2026-06-18',priority:'A1',status:'done'},
+  {id:202,text:'Optive 작업',project:'p_ec560f',done:true,start:'2026-06-14',end:'2026-06-19',actualEnd:'2026-06-19',priority:'A1',status:'done',estHours:3,actualHours:0.5},
+  {id:203,text:'ew140e',project:'p_eudata',done:true,start:'2026-06-19',end:'2026-06-19',actualEnd:'2026-06-19',priority:'A1',status:'done',estHours:1.5,actualHours:1},
+  {id:204,text:'Re: Volvo F-series - Short Range Remote, bulletin information',project:'p_mailreply',done:true,start:'2026-06-18',end:'2026-06-18',actualEnd:'2026-06-18',priority:'A1',status:'done'},
+  {id:205,text:'CHAIN 기본 질문문구 작성 -Tilt rotator 끊김현상',project:'p_bucketw27',done:true,start:'2026-06-18',end:'2026-06-18',actualEnd:'2026-06-18',priority:'A1',status:'done'},
+  {id:206,text:'Tool manager PPT 작성',project:'p_ec560f',done:true,start:'2026-06-15',end:'2026-06-16',actualEnd:'2026-06-17',priority:'A1',status:'done'},
+  {id:207,text:'Chain 상정',project:'p_bucketw27',done:true,start:'2026-06-17',end:'2026-06-19',actualEnd:'2026-06-18',priority:'A1',status:'early_done'},
+  {id:208,text:'Work Mode PPT 작성',project:'p_ec560f',done:true,start:'2026-06-15',end:'2026-06-16',actualEnd:'2026-06-17',priority:'A1',status:'done'},
+  {id:209,text:'TR 통신 끊겼을 때 계속 회전되는 문제 PPT',project:'p_pmt',done:true,start:'2026-06-15',end:'2026-06-16',actualEnd:'2026-06-18',priority:'A1',status:'done'},
+  {id:210,text:'Qfit 3초 진단 변경 PPT',project:'p_pmt',done:true,start:'2026-06-15',end:'2026-06-16',actualEnd:'2026-06-18',priority:'A1',status:'done'},
+  {id:211,text:'통신 끊겼을 경우 Neutral로 가는거 사양서 적기',project:'p_namhaCPS',done:true,start:'2026-06-15',end:'2026-06-17',actualEnd:'2026-06-17',priority:'A2',status:'done'},
+  {id:212,text:'TS3575768 EC400F 410707/410779 CD',project:'p_trouble',done:true,start:'2026-06-16',end:'2026-06-19',actualEnd:'2026-06-19',priority:'B2',status:'done',estHours:0.5,actualHours:0.5},
+  {id:213,text:'TS3581340 EC380DL 271576 19,831hrs Hammer function activation',project:'p_trouble',done:true,start:'2026-06-15',end:'2026-06-19',actualEnd:'2026-06-19',priority:'B2',status:'done',estHours:0.5,actualHours:0.5},
 ];
-let weeklyLogs = [
-  {id:1,project:'p1',task:'CAN 신호 매핑 분석',    date:'2026-06-02',hours:3,  memo:'조이스틱 매핑 완료'},
-  {id:2,project:'p2',task:'ISO 26262 문서 검토',   date:'2026-06-03',hours:2,  memo:''},
-  {id:3,project:'p3',task:'영어 기술 문서 읽기',   date:'2026-06-04',hours:1.5,memo:''},
-  {id:4,project:'p1',task:'코드 리뷰 미팅',        date:'2026-06-09',hours:2,  memo:'팀 검토 완료'},
-  {id:5,project:'p2',task:'FMEA 항목 업데이트',    date:'2026-06-10',hours:3,  memo:''},
-  {id:6,project:'p1',task:'제어기 파라미터 튜닝',  date:'2026-06-11',hours:4,  memo:'굴삭기 테스트 반영'},
-  {id:7,project:'p3',task:'영어 회의 표현 연습',   date:'2026-06-12',hours:1,  memo:''},
-  {id:8,project:'p1',task:'CAN 버스 오류 분석',    date:'2026-06-14',hours:2.5,memo:'DTC 코드 분석'},
-  {id:9,project:'p2',task:'안전 리뷰 준비',        date:'2026-06-15',hours:2,  memo:''},
-];
+let weeklyLogs = [];
 
 let trash = [];
 let completedProjects = [];
