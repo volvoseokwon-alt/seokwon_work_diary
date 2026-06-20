@@ -300,7 +300,7 @@ ZB 교체 둘</textarea>
     </div>
 
     <div class="tabs">
-      <button class="tab-btn active" onclick="switchTab('today',this)">📋 할 일 &amp; 간트</button>
+      <button class="tab-btn active" onclick="switchTab('today',this)">📋 할 일</button>
       <button class="tab-btn" onclick="switchTab('home',this)">🏠 홈</button>
       <button class="tab-btn" onclick="switchTab('links',this)">🔗 링크</button>
       <button class="tab-btn" onclick="switchTab('calendar',this)">📅 캘린더</button>
@@ -477,6 +477,7 @@ ZB 교체 둘</textarea>
             <button class="btn-primary" onclick="generateReport()">📊 레포트 생성</button>
             <button class="btn-sm" style="background:#f0fdf4;color:#16a34a;padding:8px 12px;" onclick="copyReport()">📋 복사</button>
             <button class="btn-sm" style="background:#eff6ff;color:#4f46e5;padding:8px 12px;" onclick="downloadReportWord()">📄 Word 다운로드</button>
+            <button class="btn-sm" style="background:#fef9c3;color:#a16207;padding:8px 12px;" onclick="openHolidayManager()">🗓️ 휴무일 관리</button>
           </div>
         </div>
         <div id="report-output" style="margin-top:14px;"></div>
@@ -563,6 +564,28 @@ ZB 교체 둘</textarea>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal('modal-weekly')">취소</button>
       <button class="btn-primary" id="w-modal-btn" onclick="saveWeeklyLog()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 휴무일 관리 -->
+<div class="modal" id="modal-holidays">
+  <div class="modal-box" style="max-width:480px;">
+    <h3>🗓️ 휴무일 관리</h3>
+    <div style="font-size:0.78rem;color:var(--muted);margin-bottom:8px;">
+      대한민국 법정 공휴일은 자동으로 인식됩니다. 회사 자체 휴무일이나 연차·여름휴가는 아래에서 직접 추가하면, 레포트의 업무 부하 판정 기준(영업일×8시간)에서 자동으로 제외됩니다.
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <input type="date" id="holiday-date" style="flex:1;padding:7px;border:1.5px solid var(--border);border-radius:6px;">
+      <input type="text" id="holiday-label" placeholder="이름 (예: 여름휴가)" style="flex:1;padding:7px;border:1.5px solid var(--border);border-radius:6px;">
+      <button class="btn-primary" style="padding:7px 12px;font-size:0.82rem;" onclick="addCustomHoliday()">추가</button>
+    </div>
+    <div style="font-size:0.8rem;font-weight:700;color:#374151;margin:10px 0 6px;">📌 직접 추가한 휴무일</div>
+    <div id="custom-holiday-list" style="max-height:140px;overflow-y:auto;margin-bottom:12px;"></div>
+    <div style="font-size:0.8rem;font-weight:700;color:#374151;margin:10px 0 6px;">🇰🇷 올해 자동 인식된 법정 공휴일</div>
+    <div id="builtin-holiday-list" style="max-height:160px;overflow-y:auto;font-size:0.78rem;color:#64748b;"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modal-holidays')">닫기</button>
     </div>
   </div>
 </div>
@@ -758,7 +781,7 @@ async function saveToFirebase() {
     window._myKnownVersion = newVersion;
     const payload = {
       projects, tasks, weeklyLogs, trash, completedProjects,
-      repeatTasks, calMemos, taskTags, quickLinks,
+      repeatTasks, calMemos, taskTags, quickLinks, customHolidays,
       sidebarNote: document.getElementById('sidebar-note')?.value || '',
       updatedAt: nowIso,
       _version: newVersion
@@ -889,6 +912,7 @@ async function loadFromFirebase() {
       repeatTasks = localBackup.repeatTasks || repeatTasks;
       calMemos = localBackup.calMemos || calMemos;
       taskTags = localBackup.taskTags || taskTags;
+      customHolidays = localBackup.customHolidays || customHolidays;
       setLoadWarning('✅ 로컬 백업으로 복원했습니다 — 곧 서버에 다시 저장됩니다');
       window._fbLoaded = true;
       // 복원한 데이터를 서버에 즉시 재저장해서 다음에도 안전하게
@@ -908,6 +932,7 @@ async function loadFromFirebase() {
   if (data.calMemos)                  calMemos          = data.calMemos;
   if (data.taskTags)                  taskTags          = data.taskTags;
   if (data.quickLinks?.length)        quickLinks        = data.quickLinks;
+  if (data.customHolidays?.length)    customHolidays    = data.customHolidays;
   if (data.sidebarNote) {
     const noteEl = document.getElementById('sidebar-note');
     if (noteEl) noteEl.value = data.sidebarNote;
@@ -919,7 +944,7 @@ async function loadFromFirebase() {
   window._myKnownVersion = data._version || 0;
 
   // 정상적으로 서버 데이터를 받았으니 로컬 백업도 갱신 (다음번 안전망)
-  saveLocalBackup({ projects, tasks, weeklyLogs, trash, completedProjects, repeatTasks, calMemos, taskTags, quickLinks, _version: window._myKnownVersion });
+  saveLocalBackup({ projects, tasks, weeklyLogs, trash, completedProjects, repeatTasks, calMemos, taskTags, quickLinks, customHolidays, _version: window._myKnownVersion });
 
   window._fbLoaded = true;
 }
@@ -977,7 +1002,7 @@ async function forceSaveToServer(){
     const newVersion = (window._myKnownVersion||0) + 1;
     const payload = {
       projects, tasks, weeklyLogs, trash, completedProjects,
-      repeatTasks, calMemos, taskTags, quickLinks,
+      repeatTasks, calMemos, taskTags, quickLinks, customHolidays,
       sidebarNote: document.getElementById('sidebar-note')?.value || '',
       updatedAt: nowIso,
       _version: newVersion
@@ -1062,7 +1087,7 @@ function updateBackupFolderUI(connected){
 function downloadFullBackup(){
   const payload = {
     projects, tasks, weeklyLogs, trash, completedProjects,
-    repeatTasks, calMemos, taskTags, quickLinks,
+    repeatTasks, calMemos, taskTags, quickLinks, customHolidays,
     sidebarNote: document.getElementById('sidebar-note')?.value || '',
     _backupAt: new Date().toISOString(),
     _exportedFrom: 'manual_download'
@@ -1102,6 +1127,7 @@ function restoreFromFile(file){
       repeatTasks = data.repeatTasks || [];
       calMemos = data.calMemos || {};
       taskTags = data.taskTags || {};
+      customHolidays = data.customHolidays || [];
       const noteEl = document.getElementById('sidebar-note');
       if (noteEl && data.sidebarNote) noteEl.value = data.sidebarNote;
 
@@ -1290,6 +1316,45 @@ let tasks = [
   {id:213,text:'TS3581340 EC380DL 271576 19,831hrs Hammer function activation',project:'p_trouble',done:true,start:'2026-06-15',end:'2026-06-19',actualEnd:'2026-06-19',priority:'B2',status:'done',estHours:0.5,actualHours:0.5},
 ];
 let weeklyLogs = [];
+
+// 대한민국 법정 공휴일 (내장 데이터, 매년 갱신 필요)
+// 사용자가 직접 추가/삭제한 휴무일(customHolidays)과 합쳐져서 "휴무일"로 인지된다.
+const KR_HOLIDAYS_BUILTIN = {
+  '2025-01-01':'신정','2025-01-27':'임시공휴일','2025-01-28':'설날','2025-01-29':'설날','2025-01-30':'설날',
+  '2025-03-01':'삼일절','2025-03-03':'대체공휴일(삼일절)','2025-05-05':'어린이날/부처님오신날','2025-05-06':'대체공휴일',
+  '2025-06-06':'현충일','2025-08-15':'광복절','2025-10-03':'개천절','2025-10-05':'추석','2025-10-06':'추석',
+  '2025-10-07':'추석','2025-10-08':'대체공휴일(추석)','2025-10-09':'한글날','2025-12-25':'성탄절',
+  '2026-01-01':'신정','2026-02-16':'설날','2026-02-17':'설날','2026-02-18':'설날',
+  '2026-03-01':'삼일절','2026-03-02':'대체공휴일(삼일절)','2026-05-01':'근로자의날','2026-05-05':'어린이날',
+  '2026-05-24':'부처님오신날','2026-05-25':'대체공휴일(부처님오신날)','2026-06-03':'전국동시지방선거',
+  '2026-06-06':'현충일','2026-07-17':'제헌절','2026-08-15':'광복절','2026-08-17':'대체공휴일(광복절)',
+  '2026-09-24':'추석','2026-09-25':'추석','2026-09-26':'추석','2026-10-03':'개천절','2026-10-05':'대체공휴일(개천절)',
+  '2026-10-09':'한글날','2026-12-25':'성탄절',
+};
+// 사용자가 직접 추가한 휴무일/휴가 {date:'2026-07-01', label:'여름휴가'}
+let customHolidays = [];
+function isHoliday(dateStr){
+  if(KR_HOLIDAYS_BUILTIN[dateStr]) return true;
+  return customHolidays.some(h=>h.date===dateStr);
+}
+function getHolidayLabel(dateStr){
+  if(KR_HOLIDAYS_BUILTIN[dateStr]) return KR_HOLIDAYS_BUILTIN[dateStr];
+  const c=customHolidays.find(h=>h.date===dateStr);
+  return c?c.label:null;
+}
+// 주어진 기간(startKey~endKey, YYYY-MM-DD) 내 평일(월~금) 중 공휴일이 아닌 날의 수
+function countWorkdays(startKey,endKey){
+  let d=new Date(startKey+'T00:00:00');
+  const end=new Date(endKey+'T00:00:00');
+  let count=0;
+  while(d<=end){
+    const dow=d.getDay(); // 0=일 6=토
+    const ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    if(dow>=1 && dow<=5 && !isHoliday(ds)) count++;
+    d.setDate(d.getDate()+1);
+  }
+  return count;
+}
 
 let trash = [];
 let completedProjects = [];
@@ -3670,6 +3735,56 @@ function deleteLink(id){
   saveAndRender();
 }
 
+/* ══════════════════════════════════════
+   휴무일 관리 (공휴일 자동 인식 + 직접 추가)
+══════════════════════════════════════ */
+function openHolidayManager(){
+  renderHolidayManager();
+  openModal('modal-holidays');
+}
+
+function renderHolidayManager(){
+  // 직접 추가한 휴무일 목록
+  const sortedCustom=[...customHolidays].sort((a,b)=>a.date.localeCompare(b.date));
+  const listEl=document.getElementById('custom-holiday-list');
+  listEl.innerHTML = sortedCustom.length
+    ? sortedCustom.map(h=>`
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:0.82rem;">
+        <span style="color:var(--muted);white-space:nowrap;">${fmt(h.date)}</span>
+        <span style="flex:1;font-weight:600;">${h.label||'휴무일'}</span>
+        <button class="btn-sm" style="background:#fee2e2;color:var(--warn);" onclick="deleteCustomHoliday('${h.date}')">삭제</button>
+      </div>`).join('')
+    : '<div style="color:var(--muted);font-size:0.8rem;padding:8px 0;">직접 추가한 휴무일이 없습니다.</div>';
+
+  // 올해 + 내년 자동 인식 공휴일 목록 (참고용으로 표시)
+  const thisYear=TODAY.getFullYear();
+  const builtinEl=document.getElementById('builtin-holiday-list');
+  const entries=Object.entries(KR_HOLIDAYS_BUILTIN)
+    .filter(([d])=>d.startsWith(String(thisYear)))
+    .sort((a,b)=>a[0].localeCompare(b[0]));
+  builtinEl.innerHTML = entries.length
+    ? entries.map(([d,label])=>`<div style="padding:3px 0;">${fmt(d)} — ${label}</div>`).join('')
+    : '<div>해당 연도 공휴일 데이터가 없습니다.</div>';
+}
+
+function addCustomHoliday(){
+  const date=document.getElementById('holiday-date').value;
+  const label=document.getElementById('holiday-label').value.trim()||'휴무일';
+  if(!date) return;
+  if(isHoliday(date)){ alert('이미 휴무일로 등록되어 있습니다.'); return; }
+  customHolidays.push({date,label});
+  document.getElementById('holiday-date').value='';
+  document.getElementById('holiday-label').value='';
+  saveToFirebase();
+  renderHolidayManager();
+}
+
+function deleteCustomHoliday(date){
+  customHolidays=customHolidays.filter(h=>h.date!==date);
+  saveToFirebase();
+  renderHolidayManager();
+}
+
 function generateReport(){
   const {startKey, endKey}=getReportRange();
   const todayD2=new Date(TODAY.getFullYear(),TODAY.getMonth(),TODAY.getDate());
@@ -3685,16 +3800,37 @@ function generateReport(){
   const atRiskTasks = activeTasks.filter(t=>!isOverdue(t) && getHealthScore(t)<-20);
   const onTrackCount = activeTasks.length - overdueTasks.length - atRiskTasks.length;
 
-  // 업무 부하 판정 (활성 업무 수 + A등급 비중 + 지연 비율 기반 간단 신호)
-  const loadScore = activeTasks.length + byPrioCount.A*1.5 + overdueTasks.length*2 + atRiskTasks.length*1.5;
-  let loadLabel, loadColor;
-  if(loadScore>=18){ loadLabel='🔴 매우 바쁨'; loadColor='#dc2626'; }
-  else if(loadScore>=10){ loadLabel='🟠 바쁨'; loadColor='#f59e0b'; }
-  else if(loadScore>=4){ loadLabel='🟡 보통'; loadColor='#eab308'; }
-  else { loadLabel='🟢 여유'; loadColor='#10b981'; }
-
-  // ── 시간 기록 (보조 정보)
+  // ── 시간 기록 (실제 투입시간 - 업무 부하 판정의 핵심 지표)
   const logs=weeklyLogs.filter(l=>l.date&&l.date>=startKey&&l.date<=endKey);
+  const totalH=logs.reduce((s,l)=>s+(l.hours||0),0);
+
+  // 업무 부하 판정 (실제 투입시간 기준)
+  // 기준: 주5일×8시간=40시간을 기본 베이스라인으로 보되, 기간 내 공휴일은 제외한 영업일수로 환산.
+  // 베이스라인 ~ +4h: 보통 / +5~+10h: 바쁨 / +11h~: 매우 바쁨
+  // (예: 영업일 5일 → 40~44h 보통, 45~50h 바쁨, 51h~ 매우바쁨. 공휴일 1일 있으면 영업일 4일 → 기준이 32h로 자동 축소)
+  const workdaysInRange=countWorkdays(startKey,endKey);
+  const baselineH=workdaysInRange*8;
+  // 기간 내 공휴일 목록 (표시용)
+  const holidaysInRange=(()=>{
+    const list=[];
+    let d=new Date(startKey+'T00:00:00');
+    const end=new Date(endKey+'T00:00:00');
+    while(d<=end){
+      const ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const dow=d.getDay();
+      if(dow>=1&&dow<=5&&isHoliday(ds)) list.push({date:ds,label:getHolidayLabel(ds)});
+      d.setDate(d.getDate()+1);
+    }
+    return list;
+  })();
+  const holidaysInRangeStr = holidaysInRange.length
+    ? `, 공휴일 ${holidaysInRange.length}일: ${holidaysInRange.map(h=>`${h.date.slice(5).replace('-','/')} ${h.label}`).join(', ')}`
+    : '';
+  let loadLabel, loadColor;
+  if(totalH>=baselineH+11){ loadLabel='🔴 매우 바쁨'; loadColor='#dc2626'; }
+  else if(totalH>=baselineH+5){ loadLabel='🟠 바쁨'; loadColor='#f59e0b'; }
+  else if(totalH>=baselineH){ loadLabel='🟡 보통'; loadColor='#eab308'; }
+  else { loadLabel='🟢 여유'; loadColor='#10b981'; }
   const byWeek={};
   logs.forEach(l=>{
     const wk=isoWeekKey(l.date);
@@ -3704,7 +3840,6 @@ function generateReport(){
   });
   const byProj={};
   logs.forEach(l=>{ byProj[l.project]=(byProj[l.project]||0)+(l.hours||0); });
-  const totalH=logs.reduce((s,l)=>s+(l.hours||0),0);
   const weeks=Object.keys(byWeek).sort();
 
   // ── 회의시간 분석
@@ -3816,11 +3951,11 @@ function generateReport(){
   el.innerHTML=`
     <!-- 한눈에 보는 업무 부하 -->
     <div style="background:${loadColor}0f;border:1.5px solid ${loadColor}44;border-radius:10px;padding:14px 16px;margin-bottom:16px;">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap;">
         <span style="font-size:1.3rem;font-weight:800;color:${loadColor};">${loadLabel}</span>
-        <span style="font-size:0.78rem;color:#64748b;">현재 보유 업무 ${activeTasks.length}건 기준</span>
+        <span style="font-size:0.78rem;color:#64748b;">투입 <strong style="color:${loadColor};">${totalH}h</strong> / 기준 ${baselineH}h (영업일 ${workdaysInRange}일${holidaysInRangeStr})</span>
       </div>
-      <div style="display:flex;gap:18px;flex-wrap:wrap;font-size:0.82rem;">
+      <div style="display:flex;gap:18px;flex-wrap:wrap;font-size:0.82rem;margin-top:8px;">
         <div><strong style="color:#ef4444;">${byPrioCount.A}</strong> <span style="color:#64748b;">긴급(A)</span></div>
         <div><strong style="color:#f59e0b;">${byPrioCount.B}</strong> <span style="color:#64748b;">중요(B)</span></div>
         <div><strong style="color:#10b981;">${byPrioCount.C}</strong> <span style="color:#64748b;">일반(C)</span></div>
