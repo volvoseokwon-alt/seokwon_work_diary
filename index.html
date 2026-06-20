@@ -2118,6 +2118,8 @@ function renderWeekly(){
   logs.forEach(l=>{ if(byProj[l.project]!==undefined) byProj[l.project]+=l.hours; });
   const totalH=logs.reduce((s,l)=>s+l.hours,0);
   const maxH=Math.max(1,...Object.values(byProj));
+  const weekMeetingH=logs.filter(l=>l.type==='meeting').reduce((s,l)=>s+l.hours,0);
+  const weekMeetingCount=logs.filter(l=>l.type==='meeting').length;
 
   const {week}=(() =>{ const[y,w]=selectedWeekKey.split('-W'); return{week:parseInt(w)}; })();
   const wLabel=weekLabel(selectedWeekKey);
@@ -2139,17 +2141,18 @@ function renderWeekly(){
     const dayLogs=byDay[k].logs;
     const isToday=k===TODAY_STR;
     const pct=((h/maxDayH)*100).toFixed(1);
-    // 프로젝트별 색상 스택 (비율로)
+    // 프로젝트+미팅여부별 색상 스택 (비율로)
     let stackHTML='';
     if(h>0){
-      const projH={};
-      dayLogs.forEach(l=>{ projH[l.project]=(projH[l.project]||0)+l.hours; });
-      let cum=0;
-      Object.entries(projH).forEach(([pid,ph])=>{
+      const segH={};
+      dayLogs.forEach(l=>{ const key=l.project+'|'+(l.type==='meeting'?'m':'t'); segH[key]=(segH[key]||0)+l.hours; });
+      Object.entries(segH).forEach(([key,ph])=>{
+        const [pid,kind]=key.split('|');
+        const isM=kind==='m';
         const pw=(ph/h*100).toFixed(1);
         const pc=proj(pid).color;
-        stackHTML+=`<div style="height:100%;width:${pw}%;background:${pc};"></div>`;
-        cum+=ph;
+        const bg=isM?`repeating-linear-gradient(45deg, ${pc} 0px, ${pc} 4px, ${pc}cc 4px, ${pc}cc 8px)`:pc;
+        stackHTML+=`<div style="height:100%;width:${pw}%;background:${bg};${isM?'border-top:2px solid #a855f7;':''}" title="${isM?'📅 미팅 ':''}${proj(pid).name} ${ph}h"></div>`;
       });
     }
     return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;">
@@ -2175,15 +2178,18 @@ function renderWeekly(){
       <div style="flex:1;height:18px;background:#f8fafc;border-radius:4px;border:1px dashed #e2e8f0;"></div>
       <div style="width:30px;font-size:0.72rem;color:#cbd5e1;text-align:right;">—</div>
     </div>`;
-    // 스택 바 세그먼트
-    const projH={};
-    dayLogs.forEach(l=>{ projH[l.project]=(projH[l.project]||0)+l.hours; });
-    const segments=Object.entries(projH).map(([pid,ph])=>{
+    // 스택 바 세그먼트 (프로젝트+미팅여부별로 구분)
+    const segH={};
+    dayLogs.forEach(l=>{ const key=l.project+'|'+(l.type==='meeting'?'m':'t'); segH[key]=(segH[key]||0)+l.hours; });
+    const segments=Object.entries(segH).map(([key,ph])=>{
+      const [pid,kind]=key.split('|');
+      const isM=kind==='m';
       const w=(ph/maxDayHforBar*100).toFixed(1);
       const pc=proj(pid).color;
       const pn=proj(pid).name;
-      return `<div style="height:100%;width:${w}%;background:${pc};display:flex;align-items:center;justify-content:center;overflow:hidden;" title="${pn}: ${ph}h">
-        <span style="font-size:0.6rem;color:white;font-weight:700;white-space:nowrap;padding:0 3px;">${ph>=1?ph+'h':''}</span>
+      const bg=isM?`repeating-linear-gradient(45deg, ${pc} 0px, ${pc} 4px, ${pc}cc 4px, ${pc}cc 8px)`:pc;
+      return `<div style="height:100%;width:${w}%;background:${bg};display:flex;align-items:center;justify-content:center;overflow:hidden;${isM?'border-top:2px solid #a855f7;':''}" title="${isM?'📅 미팅 ':''}${pn}: ${ph}h">
+        <span style="font-size:0.6rem;color:white;font-weight:700;white-space:nowrap;padding:0 3px;">${ph>=1?(isM?'📅':'')+ph+'h':''}</span>
       </div>`;
     }).join('');
     return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid ${isToday?'var(--primary)22':'var(--border)'};">
@@ -2211,6 +2217,7 @@ function renderWeekly(){
         <div>
           <div style="font-size:1rem;font-weight:800;color:var(--primary)">${wLabel}</div>
           <div style="font-size:0.78rem;color:var(--muted);margin-top:2px;">총 <strong style="color:var(--text)">${totalH}시간</strong> · ${logs.length}건</div>
+          ${weekMeetingH>0?`<div style="font-size:0.74rem;color:#a855f7;margin-top:2px;font-weight:600;">📅 미팅 ${weekMeetingH}시간 (${weekMeetingCount}건)</div>`:''}
         </div>
         <div style="border-top:1px solid var(--border);padding-top:8px;display:flex;flex-direction:column;gap:5px;">
           ${projSumHTML||'<span style="color:var(--muted);font-size:0.78rem;">기록 없음</span>'}
@@ -2227,11 +2234,15 @@ function renderWeekly(){
   const sorted=[...logs].sort((a,b)=>b.date.localeCompare(a.date));
   document.getElementById('weekly-log').innerHTML=sorted.map(l=>{
     const p=proj(l.project);
-    return `<div class="wlog-item">
+    const isMeeting=l.type==='meeting';
+    return `<div class="wlog-item" style="${isMeeting?'background:#a855f70a;border-left:3px solid #a855f7;padding-left:6px;':''}">
       <span class="p-badge" style="background:${p.color}22;color:${p.color};flex-shrink:0">${p.name}</span>
-      <div style="flex:1"><div style="font-weight:600">${l.task}</div>${l.memo?`<div style="font-size:0.73rem;color:var(--muted);margin-top:1px">${l.memo}</div>`:''}</div>
+      <div style="flex:1">
+        <div style="font-weight:600">${isMeeting?'📅 ':''}${l.task}${isMeeting?' <span style="font-size:0.65rem;color:#a855f7;font-weight:700;background:#a855f718;padding:1px 6px;border-radius:8px;">미팅</span>':''}</div>
+        ${l.memo?`<div style="font-size:0.73rem;color:var(--muted);margin-top:1px">${l.memo}</div>`:''}
+      </div>
       <div style="color:var(--muted);font-size:0.78rem;white-space:nowrap">${fmt(l.date)}</div>
-      <div style="font-weight:700;color:var(--primary);white-space:nowrap;min-width:34px;text-align:right">${l.hours}h</div>
+      <div style="font-weight:700;color:${isMeeting?'#a855f7':'var(--primary)'};white-space:nowrap;min-width:34px;text-align:right">${l.hours}h</div>
       <button class="btn-sm" style="background:var(--pri-light);color:var(--primary)" onclick="openEditWeekly(${l.id})">수정</button>
       <button class="btn-sm" style="background:#fee2e2;color:var(--warn)" onclick="deleteWeekly(${l.id})">삭제</button>
     </div>`;
@@ -4249,15 +4260,23 @@ let editingWeeklyId=null;
 
 function syncWTaskList(){
   const projId=document.getElementById('w-project').value;
+  const projCustomInp=document.getElementById('w-proj-custom');
+
+  if(currentWeeklyType==='meeting'){
+    // 미팅 모드: 프로젝트 직접입력 토글만 처리, 업무선택 드롭다운은 건드리지 않음
+    projCustomInp.style.display = (projId==='__custom_proj__') ? '' : 'none';
+    return;
+  }
+
   const sel=document.getElementById('w-task-select');
   if(projId==='__custom_proj__'){
     // 프로젝트 직접 입력 모드: 업무도 직접 입력
     sel.innerHTML=`<option value="__custom__">✏️ 직접 입력</option>`;
-    document.getElementById('w-proj-custom').style.display='';
+    projCustomInp.style.display='';
     document.getElementById('w-task').style.display='';
     return;
   }
-  document.getElementById('w-proj-custom').style.display='none';
+  projCustomInp.style.display='none';
   const projTasks=tasks.filter(t=>t.project===projId);
   sel.innerHTML=`<option value="">-- 업무 선택 --</option>`
     +projTasks.map(t=>`<option value="${t.text}">${t.text}</option>`).join('')
@@ -4288,7 +4307,9 @@ function setWeeklyType(type){
   if(type==='meeting'){
     taskBtn.style.background='white'; taskBtn.style.color='#64748b'; taskBtn.style.borderColor='var(--border)';
     meetBtn.style.background='var(--primary)'; meetBtn.style.color='white'; meetBtn.style.borderColor='var(--primary)';
-    projSel.style.display='none'; projCustom.style.display='none';
+    // 프로젝트는 업무 추가와 동일하게 선택/직접입력 가능
+    projSel.style.display='';
+    // 업무 선택 대신 미팅 제목 입력만 사용
     taskSel.style.display='none'; taskInp.style.display='none';
     meetTitleInp.style.display='';
     document.getElementById('w-modal-title').textContent=editingWeeklyId?'✏️ 미팅 기록 수정':'📅 미팅 기록';
@@ -4325,6 +4346,12 @@ function openWeeklyAdd(){
 function openMeetingAdd(){
   editingWeeklyId=null;
   document.getElementById('w-modal-btn').textContent='저장';
+  const sel=document.getElementById('w-project');
+  sel.innerHTML=projects.map(p=>`<option value="${p.id}">${p.name}</option>`)
+    .join('')+`<option value="__custom_proj__">✏️ 프로젝트 직접 입력...</option>`;
+  if(currentFilter!=='all') sel.value=currentFilter;
+  document.getElementById('w-proj-custom').style.display='none';
+  document.getElementById('w-proj-custom').value='';
   document.getElementById('w-date').value=TODAY_STR;
   document.getElementById('w-hours').value='';
   document.getElementById('w-memo').value='';
@@ -4343,6 +4370,18 @@ function openEditWeekly(id){
     document.getElementById('w-date').value=l.date;
     document.getElementById('w-hours').value=l.hours;
     document.getElementById('w-memo').value=l.memo||'';
+    const pSel=document.getElementById('w-project');
+    pSel.innerHTML=projects.map(p=>`<option value="${p.id}">${p.name}</option>`)
+      .join('')+`<option value="__custom_proj__">✏️ 프로젝트 직접 입력...</option>`;
+    if(l.project==='__meeting__' || !l.project){
+      // 구버전 데이터(프로젝트 미지정 미팅): 첫 프로젝트 또는 직접입력으로 안내
+      pSel.value=projects[0]?.id||'__custom_proj__';
+    } else if(l.project.startsWith && l.project.startsWith('__ext__')){
+      pSel.value='__custom_proj__';
+      document.getElementById('w-proj-custom').value=l.projName||l.project.replace('__ext__','');
+    } else {
+      pSel.value=l.project;
+    }
     setWeeklyType('meeting');
     openModal('modal-weekly');
     return;
@@ -4377,10 +4416,17 @@ function saveWeeklyLog(){
   if(currentWeeklyType==='meeting'){
     const title=document.getElementById('w-meeting-title').value.trim();
     if(!title||!date||isNaN(hours)||hours<=0) return;
+    let projId=document.getElementById('w-project').value;
+    let projName='';
+    if(projId==='__custom_proj__'){
+      projName=document.getElementById('w-proj-custom').value.trim();
+      if(!projName) return;
+      projId='__ext__'+projName;
+    }
     if(editingWeeklyId){
-      weeklyLogs=weeklyLogs.map(l=>l.id===editingWeeklyId?{...l,type:'meeting',project:'__meeting__',projName:'',task:title,date,hours,memo}:l);
+      weeklyLogs=weeklyLogs.map(l=>l.id===editingWeeklyId?{...l,type:'meeting',project:projId,projName,task:title,date,hours,memo}:l);
     } else {
-      weeklyLogs.push({id:Date.now(),type:'meeting',project:'__meeting__',projName:'',task:title,date,hours,memo});
+      weeklyLogs.push({id:Date.now(),type:'meeting',project:projId,projName,task:title,date,hours,memo});
       selectedWeekKey=isoWeekKey(date);
     }
     editingWeeklyId=null;
