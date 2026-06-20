@@ -299,10 +299,7 @@ ZB 교체 둘</textarea>
     <!-- 할 일 & 간트 -->
     <div id="tab-today">
       <div class="card" style="margin-bottom:11px;">
-        <div style="display:flex;align-items:center;gap:8px;">
-          <strong id="gantt-title">📅 월간 타임라인</strong>
-          <button id="gantt-hide-done-btn" onclick="toggleGanttHideDone()" style="margin-left:auto;font-size:0.74rem;background:var(--bg);border:1px solid var(--border);color:var(--muted);padding:4px 10px;border-radius:6px;cursor:pointer;">👁️ 완료 숨기기</button>
-        </div>
+        <strong id="gantt-title">📅 월간 타임라인</strong>
         <div style="display:flex;font-size:0.78rem;font-weight:700;color:var(--muted);padding-bottom:5px;border-bottom:2px solid var(--border);gap:8px;align-items:flex-end;">
           <div style="width:28%;flex-shrink:0;">업무명</div>
           <div id="gantt-date-header" style="flex:1;position:relative;height:28px;overflow:visible;"></div>
@@ -1460,15 +1457,6 @@ function renderGantt(list){
   const container = document.getElementById('chart-rows');
   container.innerHTML='';
 
-  // 완료 숨기기 토글 버튼 상태 표시
-  const hideBtn = document.getElementById('gantt-hide-done-btn');
-  if (hideBtn) {
-    hideBtn.textContent = window._ganttHideDone ? '👁️‍🗨️ 완료 표시' : '👁️ 완료 숨기기';
-    hideBtn.style.background = window._ganttHideDone ? 'var(--primary)' : 'var(--bg)';
-    hideBtn.style.color = window._ganttHideDone ? 'white' : 'var(--muted)';
-    hideBtn.style.borderColor = window._ganttHideDone ? 'var(--primary)' : 'var(--border)';
-  }
-
   const todayD = new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
   const fmtD = dt => `\${dt.getMonth()+1}/\${dt.getDate()}`;
 
@@ -1536,16 +1524,41 @@ function renderGantt(list){
 
   if(!list.length){ container.innerHTML='<div style="color:var(--muted);font-size:0.82rem;padding:10px 0">표시할 업무가 없습니다.</div>'; return; }
 
-  const visibleList = window._ganttHideDone ? list.filter(t=>!t.done) : list;
-  if (window._ganttHideDone && !visibleList.length) {
-    container.innerHTML = '<div style="color:var(--muted);font-size:0.82rem;padding:10px 0">완료된 업무가 숨겨져 있습니다. 표시할 미완료 업무가 없습니다.</div>';
-    return;
+  const notDoneList = list.filter(t=>!t.done).sort(prioSort);
+  const doneList = list.filter(t=>t.done).sort(prioSort);
+  const isCollapsed = window._ganttHideDone;
+
+  // 미완료 업무 먼저 그리기
+  notDoneList.forEach(t=>{
+    container.appendChild(buildGanttRow(t));
+  });
+
+  // 완료/미완료 사이 구분줄 (완료 업무가 있을 때만 표시)
+  if (doneList.length > 0) {
+    const sep = document.createElement('div');
+    sep.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 0;margin:4px 0;cursor:pointer;user-select:none;';
+    sep.innerHTML = `
+      <div style="flex:1;border-top:1px dashed #cbd5e1;"></div>
+      <span style="font-size:0.74rem;color:var(--muted);background:var(--bg);padding:3px 10px;border-radius:10px;display:flex;align-items:center;gap:4px;white-space:nowrap;">
+        <span id="gantt-sep-arrow" style="display:inline-block;transition:transform .2s;transform:rotate(${isCollapsed?'0deg':'180deg'});">▼</span>
+        완료된 업무 ${doneList.length}개 ${isCollapsed?'숨김':'표시 중'}
+      </span>
+      <div style="flex:1;border-top:1px dashed #cbd5e1;"></div>
+    `;
+    sep.onclick = toggleGanttHideDone;
+    container.appendChild(sep);
+
+    // 완료 업무 (접혀있으면 display:none)
+    const doneWrap = document.createElement('div');
+    doneWrap.id = 'gantt-done-wrap';
+    doneWrap.style.display = isCollapsed ? 'none' : 'block';
+    doneList.forEach(t=>{
+      doneWrap.appendChild(buildGanttRow(t));
+    });
+    container.appendChild(doneWrap);
   }
 
-  visibleList.slice().sort((a,b)=>{
-    if(a.done!==b.done) return a.done?1:-1; // 완료는 맨 아래로
-    return prioSort(a,b);
-  }).forEach(t=>{
+  function buildGanttRow(t){
     // 날짜만 비교 (시간 제거)
     const sd=d(t.start); const sD=new Date(sd.getFullYear(),sd.getMonth(),sd.getDate());
     // 완료된 업무는 "계획종료일 vs 실제완료일" 중 더 늦은 날까지 바를 그림 (둘 다 표시하기 위해)
@@ -1644,8 +1657,8 @@ function renderGantt(list){
           </div>
         </div>
       </div>`;
-    container.appendChild(row);
-  });
+    return row;
+  }
 }
 function eD2Diff(a,b){ return Math.max(0,(b.getTime()-a.getTime()))/86400000 || 0.5; }
 
