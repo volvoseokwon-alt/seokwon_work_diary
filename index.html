@@ -3310,6 +3310,65 @@ function onLinkItemDrop(e, targetId){
   saveAndRender();
 }
 
+function startInlineEditGroupName(el, oldName){
+  el.contentEditable = 'true';
+  el.style.outline = '1px solid var(--primary)';
+  el.style.borderRadius = '3px';
+  el.style.whiteSpace = 'normal';
+  el.focus();
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+
+  function finish(){
+    el.contentEditable = 'false';
+    el.style.outline = 'none';
+    el.style.whiteSpace = 'nowrap';
+    const newName = el.textContent.trim();
+    el.removeEventListener('blur', finish);
+    el.removeEventListener('keydown', onKey);
+
+    if (!newName || newName === oldName) {
+      el.textContent = oldName;
+      return;
+    }
+
+    // 이름이 같은 다른 그룹이 이미 있으면 합쳐짐을 알리고 확인
+    const existingOther = quickLinks.some(l => (l.group||'기타') === newName);
+    if (existingOther) {
+      if (!confirm(`"${newName}" 그룹이 이미 있습니다. 합치시겠습니까?`)) {
+        el.textContent = oldName;
+        return;
+      }
+    }
+
+    // 이 그룹에 속한 모든 링크의 group 값을 일괄 변경
+    quickLinks = quickLinks.map(l => (l.group||'기타')===oldName ? {...l, group:newName} : l);
+
+    // 그룹 순서 저장값도 이름 변경 반영
+    const order = getLinkGroupOrder().map(g => g===oldName ? newName : g);
+    setLinkGroupOrder(order);
+
+    // 접힘 상태도 이름 변경 반영
+    const collapsedState = getLinkGroupCollapsed();
+    if (oldName in collapsedState) {
+      collapsedState[newName] = collapsedState[oldName];
+      delete collapsedState[oldName];
+      setLinkGroupCollapsed(collapsedState);
+    }
+
+    saveAndRender();
+  }
+  function onKey(e){
+    if (e.key==='Enter') { e.preventDefault(); el.blur(); }
+    if (e.key==='Escape') { el.textContent = oldName; el.blur(); }
+  }
+  el.addEventListener('blur', finish);
+  el.addEventListener('keydown', onKey);
+}
+
 function startInlineEditTitle(el, linkId){
   el.contentEditable = 'true';
   el.style.outline = '1px solid var(--primary)';
@@ -3399,7 +3458,7 @@ function renderLinks(){
           <span style="cursor:grab;color:${gc}88;font-size:0.75rem;flex-shrink:0;" title="드래그해서 순서 변경">⠿</span>
           <span onclick="toggleLinkGroup('${gEsc}')" style="display:inline-block;transition:transform .2s;transform:rotate(${isCollapsed?'-90deg':'0deg'});color:${gc};font-size:0.68rem;cursor:pointer;">▼</span>
           <span style="width:7px;height:7px;border-radius:50%;background:${gc};display:inline-block;flex-shrink:0;"></span>
-          <span onclick="toggleLinkGroup('${gEsc}')" style="font-weight:800;font-size:0.82rem;color:${gc};flex:1;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${g}</span>
+          <span onclick="toggleLinkGroup('${gEsc}')" ondblclick="event.preventDefault();event.stopPropagation();startInlineEditGroupName(this,'${gEsc}')" title="더블클릭해서 그룹명 수정" style="font-weight:800;font-size:0.82rem;color:${gc};flex:1;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${g}</span>
           <span style="font-size:0.62rem;color:var(--muted);background:white;padding:1px 6px;border-radius:9px;flex-shrink:0;">${links.length}</span>
         </div>
         ${isCollapsed?'':`<div>${cardsHtml}</div>`}
