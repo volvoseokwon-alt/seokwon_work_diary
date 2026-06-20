@@ -436,7 +436,8 @@ ZB 교체 둘</textarea>
       <div class="card">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <strong>⏱️ 주간 업무 기록</strong>
-          <button class="btn-primary" onclick="openWeeklyAdd()" style="margin-left:auto;font-size:0.8rem;padding:5px 12px;">+ 기록 추가</button>
+          <button class="btn-primary" onclick="openMeetingAdd()" style="margin-left:auto;font-size:0.8rem;padding:5px 12px;background:#a855f7;">📅 미팅 추가</button>
+          <button class="btn-primary" onclick="openWeeklyAdd()" style="font-size:0.8rem;padding:5px 12px;">+ 기록 추가</button>
         </div>
         <!-- 주차 선택 -->
         <div class="week-selector" id="week-selector"></div>
@@ -539,6 +540,10 @@ ZB 교체 둘</textarea>
 <div class="modal" id="modal-weekly">
   <div class="modal-box">
     <h3 id="w-modal-title">⏱️ 업무 시간 기록</h3>
+    <div id="w-type-toggle" style="display:flex;gap:6px;margin-bottom:6px;">
+      <button type="button" id="w-type-task-btn" onclick="setWeeklyType('task')" style="flex:1;padding:8px;border:1.5px solid var(--primary);border-radius:6px;background:var(--primary);color:white;font-weight:700;font-size:0.82rem;cursor:pointer;">📋 업무</button>
+      <button type="button" id="w-type-meeting-btn" onclick="setWeeklyType('meeting')" style="flex:1;padding:8px;border:1.5px solid var(--border);border-radius:6px;background:white;color:#64748b;font-weight:700;font-size:0.82rem;cursor:pointer;">📅 미팅</button>
+    </div>
     <select id="w-project" style="padding:8px;border:1.5px solid var(--border);border-radius:6px;" onchange="syncWTaskList()">
     </select>
     <input type="text" id="w-proj-custom" placeholder="프로젝트명 직접 입력" style="display:none;padding:7px 10px;border:1.5px solid var(--primary);border-radius:6px;font-size:0.85rem;width:100%;">
@@ -549,6 +554,7 @@ ZB 교체 둘</textarea>
       </select>
     </div>
     <input type="text" id="w-task" placeholder="업무 내용 직접 입력" style="display:none;">
+    <input type="text" id="w-meeting-title" placeholder="미팅 제목 (예: 주간 정례회의)" style="display:none;">
     <div style="display:flex;gap:8px;">
       <input type="date" id="w-date" style="flex:1;padding:7px;border:1.5px solid var(--border);border-radius:6px;">
       <input type="number" id="w-hours" placeholder="시간" min="0.5" max="24" step="0.5" style="width:80px;padding:7px;border:1.5px solid var(--border);border-radius:6px;">
@@ -1304,6 +1310,9 @@ let selectedWeekKey = null; // 'YYYY-Www'
 const d   = s => new Date(s);
 const fmt = s => s ? s.slice(5).replace('-','/') : '';
 const proj = id => {
+  if(id==='__meeting__'){
+    return {name:'📅 미팅', color:'#a855f7', id};
+  }
   if(id && id.startsWith('__ext__')){
     const name=id.replace('__ext__','');
     return {name, color:'#64748b', id};
@@ -3687,6 +3696,17 @@ function generateReport(){
   const totalH=logs.reduce((s,l)=>s+(l.hours||0),0);
   const weeks=Object.keys(byWeek).sort();
 
+  // ── 회의시간 분석
+  const meetingLogs=logs.filter(l=>l.type==='meeting'||l.project==='__meeting__');
+  const taskLogs=logs.filter(l=>!(l.type==='meeting'||l.project==='__meeting__'));
+  const meetingCount=meetingLogs.length;
+  const meetingH=meetingLogs.reduce((s,l)=>s+(l.hours||0),0);
+  const taskH=taskLogs.reduce((s,l)=>s+(l.hours||0),0);
+  const meetingPct=totalH>0?Math.round(meetingH/totalH*100):0;
+  // 일별 미팅시간 (가장 미팅 많은 날 파악용)
+  const meetingByDay={};
+  meetingLogs.forEach(l=>{ meetingByDay[l.date]=(meetingByDay[l.date]||0)+(l.hours||0); });
+
   // 완료 업무 (보조 정보)
   const doneTasks=[];
   tasks.forEach(t=>{ if(t.done&&t.actualEnd&&t.actualEnd>=startKey&&t.actualEnd<=endKey) doneTasks.push(t); });
@@ -3754,6 +3774,34 @@ function generateReport(){
     </div>`;
   }).join('')||'<div style="color:#94a3b8;font-size:0.8rem;">기록 없음</div>';
 
+  // 회의시간 분석 섹션 HTML
+  const meetingBarColor='#a855f7';
+  const meetingPctColor = meetingPct>=40?'#dc2626':meetingPct>=25?'#f59e0b':'#a855f7';
+  const meetingTopDays=Object.entries(meetingByDay).sort((a,b)=>b[1]-a[1]).slice(0,3);
+  const meetingSectionHtml = totalH>0 ? `
+    <div style="background:${meetingBarColor}0d;border:1.5px solid ${meetingBarColor}33;border-radius:10px;padding:14px 16px;margin-bottom:18px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <span style="font-size:0.95rem;font-weight:800;color:${meetingBarColor};">📅 회의시간 분석</span>
+      </div>
+      <div style="display:flex;gap:22px;flex-wrap:wrap;font-size:0.82rem;margin-bottom:10px;">
+        <div><strong style="color:${meetingBarColor};font-size:1.05rem;">${meetingCount}</strong> <span style="color:#64748b;">건</span></div>
+        <div><strong style="color:${meetingBarColor};font-size:1.05rem;">${meetingH}</strong> <span style="color:#64748b;">시간</span></div>
+        <div><strong style="color:${meetingPctColor};font-size:1.05rem;">${meetingPct}%</strong> <span style="color:#64748b;">전체 기록시간 중 회의 비중</span></div>
+        <div><strong style="color:#0ea5e9;font-size:1.05rem;">${taskH}</strong> <span style="color:#64748b;">시간 (순수 업무)</span></div>
+      </div>
+      <div style="background:#f1f5f9;border-radius:20px;height:16px;overflow:hidden;display:flex;margin-bottom:8px;">
+        <div style="height:100%;width:${meetingPct}%;background:${meetingBarColor};display:flex;align-items:center;justify-content:center;">
+          ${meetingPct>=12?`<span style="font-size:0.65rem;color:white;font-weight:700;">회의 ${meetingPct}%</span>`:''}
+        </div>
+        <div style="height:100%;flex:1;background:#0ea5e9;display:flex;align-items:center;justify-content:center;">
+          ${(100-meetingPct)>=12?`<span style="font-size:0.65rem;color:white;font-weight:700;">업무 ${100-meetingPct}%</span>`:''}
+        </div>
+      </div>
+      ${meetingPct>=40?`<div style="font-size:0.76rem;color:#dc2626;font-weight:600;">⚠️ 이 기간 회의가 전체 기록시간의 ${meetingPct}%를 차지합니다. 실제 업무에 쓸 시간이 부족했을 수 있어요.</div>`:''}
+      ${meetingTopDays.length?`<div style="font-size:0.76rem;color:#64748b;margin-top:6px;">회의가 많았던 날: ${meetingTopDays.map(([dt,h])=>`${dt.slice(5).replace('-','/')} (${h}h)`).join(', ')}</div>`:''}
+    </div>
+  ` : '';
+
   el.innerHTML=`
     <!-- 한눈에 보는 업무 부하 -->
     <div style="background:${loadColor}0f;border:1.5px solid ${loadColor}44;border-radius:10px;padding:14px 16px;margin-bottom:16px;">
@@ -3770,6 +3818,8 @@ function generateReport(){
       </div>
     </div>
 
+    ${meetingSectionHtml}
+
     <div style="font-size:0.85rem;font-weight:700;color:#374151;margin-bottom:8px;">📋 현재 진행중인 업무 (우선순위순)</div>
     <div style="margin-bottom:18px;">${activeHtml}</div>
 
@@ -3781,7 +3831,7 @@ function generateReport(){
   `;
 
   // Word 다운로드 버튼 활성화 (데이터 저장)
-  window._reportData={startKey,endKey,logs,byProj,totalH,weeks,byWeek,doneTasks,activeTasks,byPrioCount,overdueTasks,atRiskTasks,loadLabel};
+  window._reportData={startKey,endKey,logs,byProj,totalH,weeks,byWeek,doneTasks,activeTasks,byPrioCount,overdueTasks,atRiskTasks,loadLabel,meetingCount,meetingH,taskH,meetingPct};
 }
 
 function isoWeekStart(year, week){
@@ -4223,6 +4273,36 @@ function onWTaskSelect(){
   else { inp.style.display='none'; inp.value=''; }
 }
 
+let currentWeeklyType='task'; // 'task' or 'meeting'
+
+function setWeeklyType(type){
+  currentWeeklyType=type;
+  const taskBtn=document.getElementById('w-type-task-btn');
+  const meetBtn=document.getElementById('w-type-meeting-btn');
+  const projSel=document.getElementById('w-project');
+  const projCustom=document.getElementById('w-proj-custom');
+  const taskSel=document.getElementById('w-task-select');
+  const taskInp=document.getElementById('w-task');
+  const meetTitleInp=document.getElementById('w-meeting-title');
+
+  if(type==='meeting'){
+    taskBtn.style.background='white'; taskBtn.style.color='#64748b'; taskBtn.style.borderColor='var(--border)';
+    meetBtn.style.background='var(--primary)'; meetBtn.style.color='white'; meetBtn.style.borderColor='var(--primary)';
+    projSel.style.display='none'; projCustom.style.display='none';
+    taskSel.style.display='none'; taskInp.style.display='none';
+    meetTitleInp.style.display='';
+    document.getElementById('w-modal-title').textContent=editingWeeklyId?'✏️ 미팅 기록 수정':'📅 미팅 기록';
+  } else {
+    meetBtn.style.background='white'; meetBtn.style.color='#64748b'; meetBtn.style.borderColor='var(--border)';
+    taskBtn.style.background='var(--primary)'; taskBtn.style.color='white'; taskBtn.style.borderColor='var(--primary)';
+    projSel.style.display=''; 
+    taskSel.style.display='';
+    meetTitleInp.style.display='none';
+    document.getElementById('w-modal-title').textContent=editingWeeklyId?'✏️ 기록 수정':'⏱️ 업무 시간 기록';
+    syncWTaskList();
+  }
+}
+
 function openWeeklyAdd(){
   editingWeeklyId=null;
   document.getElementById('w-modal-title').textContent='⏱️ 업무 시간 기록';
@@ -4237,14 +4317,39 @@ function openWeeklyAdd(){
   document.getElementById('w-date').value=TODAY_STR;
   document.getElementById('w-hours').value='';
   document.getElementById('w-memo').value='';
+  document.getElementById('w-meeting-title').value='';
+  setWeeklyType('task');
+  openModal('modal-weekly');
+}
+
+function openMeetingAdd(){
+  editingWeeklyId=null;
+  document.getElementById('w-modal-btn').textContent='저장';
+  document.getElementById('w-date').value=TODAY_STR;
+  document.getElementById('w-hours').value='';
+  document.getElementById('w-memo').value='';
+  document.getElementById('w-meeting-title').value='';
+  setWeeklyType('meeting');
   openModal('modal-weekly');
 }
 
 function openEditWeekly(id){
   const l=weeklyLogs.find(x=>x.id===id); if(!l) return;
   editingWeeklyId=id;
-  document.getElementById('w-modal-title').textContent='✏️ 기록 수정';
   document.getElementById('w-modal-btn').textContent='수정 저장';
+
+  if(l.type==='meeting'){
+    document.getElementById('w-meeting-title').value=l.task||'';
+    document.getElementById('w-date').value=l.date;
+    document.getElementById('w-hours').value=l.hours;
+    document.getElementById('w-memo').value=l.memo||'';
+    setWeeklyType('meeting');
+    openModal('modal-weekly');
+    return;
+  }
+
+  setWeeklyType('task');
+  document.getElementById('w-modal-title').textContent='✏️ 기록 수정';
   const pSel=document.getElementById('w-project');
   pSel.innerHTML=projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
   pSel.value=l.project;
@@ -4265,6 +4370,24 @@ function openEditWeekly(id){
 }
 
 function saveWeeklyLog(){
+  const date=document.getElementById('w-date').value;
+  const hours=parseFloat(document.getElementById('w-hours').value);
+  const memo=document.getElementById('w-memo').value.trim();
+
+  if(currentWeeklyType==='meeting'){
+    const title=document.getElementById('w-meeting-title').value.trim();
+    if(!title||!date||isNaN(hours)||hours<=0) return;
+    if(editingWeeklyId){
+      weeklyLogs=weeklyLogs.map(l=>l.id===editingWeeklyId?{...l,type:'meeting',project:'__meeting__',projName:'',task:title,date,hours,memo}:l);
+    } else {
+      weeklyLogs.push({id:Date.now(),type:'meeting',project:'__meeting__',projName:'',task:title,date,hours,memo});
+      selectedWeekKey=isoWeekKey(date);
+    }
+    editingWeeklyId=null;
+    closeModal('modal-weekly'); saveAndRender();
+    return;
+  }
+
   let projId=document.getElementById('w-project').value;
   let projName='';
   if(projId==='__custom_proj__'){
@@ -4276,14 +4399,11 @@ function saveWeeklyLog(){
   const task=(selVal==='__custom__'||selVal==='')
     ? document.getElementById('w-task').value.trim()
     : selVal;
-  const date=document.getElementById('w-date').value;
-  const hours=parseFloat(document.getElementById('w-hours').value);
-  const memo=document.getElementById('w-memo').value.trim();
   if(!task||!date||isNaN(hours)||hours<=0) return;
   if(editingWeeklyId){
-    weeklyLogs=weeklyLogs.map(l=>l.id===editingWeeklyId?{...l,project:projId,projName,task,date,hours,memo}:l);
+    weeklyLogs=weeklyLogs.map(l=>l.id===editingWeeklyId?{...l,type:'task',project:projId,projName,task,date,hours,memo}:l);
   } else {
-    weeklyLogs.push({id:Date.now(),project:projId,projName,task,date,hours,memo});
+    weeklyLogs.push({id:Date.now(),type:'task',project:projId,projName,task,date,hours,memo});
     selectedWeekKey=isoWeekKey(date);
   }
   editingWeeklyId=null;
