@@ -3892,11 +3892,19 @@ function generateReport(){
   const logs=weeklyLogs.filter(l=>l.date&&l.date>=startKey&&l.date<=endKey);
   const totalH=logs.reduce((s,l)=>s+(l.hours||0),0);
 
+  // 실제 weeklyLogs에 기록이 시작된 가장 빠른 날짜를 "이 앱으로 시간을 기록하기 시작한 날"로 본다.
+  // 선택한 기간의 시작일이 이보다 이전이면(예: 이번 달 1일부터지만 실제론 이번 달 셋째 주부터 기록함),
+  // 업무 부하 기준(영업일×8h)을 "실제 기록 시작일~기간 종료일"로 좁혀서 계산해야 왜곡(허위 '여유' 판정)이 없다.
+  const allLogDates=weeklyLogs.map(l=>l.date).filter(Boolean).sort();
+  const earliestLogDate=allLogDates[0]||null;
+  const baselineStartKey = (earliestLogDate && earliestLogDate>startKey) ? earliestLogDate : startKey;
+  const isPartialPeriod = baselineStartKey>startKey; // 기록 시작일이 선택 기간 시작일보다 늦은 경우(=기록을 도중에 시작)
+
   // 업무 부하 판정 (실제 투입시간 기준)
   // 기준: 주5일×8시간=40시간을 기본 베이스라인으로 보되, 기간 내 공휴일은 제외한 영업일수로 환산.
   // 베이스라인 ~ +4h: 보통 / +5~+10h: 바쁨 / +11h~: 매우 바쁨
   // (예: 영업일 5일 → 40~44h 보통, 45~50h 바쁨, 51h~ 매우바쁨. 공휴일 1일 있으면 영업일 4일 → 기준이 32h로 자동 축소)
-  const workdaysInRange=countWorkdays(startKey,endKey);
+  const workdaysInRange=countWorkdays(baselineStartKey,endKey);
   const baselineH=workdaysInRange*8;
   // 기간 내 공휴일 목록 (표시용)
   const holidaysInRange=(()=>{
@@ -4121,6 +4129,7 @@ function generateReport(){
         <span style="font-size:1.3rem;font-weight:800;color:${loadColor};">${loadLabel}</span>
         <span style="font-size:0.78rem;color:#64748b;">투입 <strong style="color:${loadColor};">${totalH}h</strong> / 기준 ${baselineH}h (영업일 ${workdaysInRange}일${holidaysInRangeStr})</span>
       </div>
+      ${isPartialPeriod?`<div style="font-size:0.74rem;color:#92400e;background:#fef3c7;border-radius:6px;padding:4px 9px;display:inline-block;margin-top:2px;">ℹ️ 실제 기록은 ${fmt(earliestLogDate)}부터 시작되어, 기준 시간도 그 날부터로 계산했습니다 (기록 이전 기간은 제외).</div>`:''}
       <div style="display:flex;gap:18px;flex-wrap:wrap;font-size:0.82rem;margin-top:8px;">
         <div><strong style="color:#ef4444;">${byPrioCount.A}</strong> <span style="color:#64748b;">긴급(A)</span></div>
         <div><strong style="color:#f59e0b;">${byPrioCount.B}</strong> <span style="color:#64748b;">중요(B)</span></div>
@@ -4150,7 +4159,7 @@ function generateReport(){
   `;
 
   // Word 다운로드 버튼 활성화 (데이터 저장)
-  window._reportData={startKey,endKey,logs,byProj,totalH,weeks,byWeek,doneTasks,activeTasks,byPrioCount,overdueTasks,atRiskTasks,loadLabel,meetingCount,meetingH,taskH,meetingPct,taskLogs,meetingLogs,baselineH,workdaysInRange};
+  window._reportData={startKey,endKey,logs,byProj,totalH,weeks,byWeek,doneTasks,activeTasks,byPrioCount,overdueTasks,atRiskTasks,loadLabel,meetingCount,meetingH,taskH,meetingPct,taskLogs,meetingLogs,baselineH,workdaysInRange,isPartialPeriod,earliestLogDate,overdueTasks,atRiskTasks};
 }
 
 function isoWeekStart(year, week){
@@ -4207,14 +4216,24 @@ async function doGeminiAnalysis(apiKey){
   // 분석에 사용할 데이터를 정리해서 프롬프트로 구성
   const projSummary=Object.entries(d.byProj||{}).map(([pid,h])=>`${proj(pid).name}: ${h}시간`).join(', ');
   const taskDetail=(d.taskLogs||[]).map(l=>`- [${proj(l.project).name}] ${l.task} (${l.date}, ${l.hours}시간)${l.memo?' 메모:'+l.memo:''}`).join('\n');
-  const meetingDetail=(d.meetingLogs||[]).map(l=>`- ${l.task} (${l.date}, ${l.hours}시간)`).join('\n');
+  const meetingDetail=(d.meetingLogs||[]).map(l=>`- ${l.task} (${l.date}, ${l.hours}시간)${l.memo?' 메모:'+l.memo:''}`).join('\n');
+
+  // 데드라인 준수 현황 (지연/임박 업무 목록)
+  const overdueDetail=(d.overdueTasks||[]).map(t=>`- [${proj(t.project).name}] ${t.text} (마감 ${t.end})`).join('\n');
+  const atRiskDetail=(d.atRiskTasks||[]).map(t=>`- [${proj(t.project).name}] ${t.text} (마감 ${t.end}, 건강도 낮음/지연 위험)`).join('\n');
+
+  // 기록 시작일 보정 맥락: 앱을 막 쓰기 시작한 경우, AI가 "기간 전체가 여유롭다"고 잘못 판단하지 않도록 명시
+  const recordingContextNote = d.isPartialPeriod
+    ? `※ 중요: 이 사람은 이 업무 기록 앱을 ${fmt(d.earliestLogDate)}부터 사용하기 시작했습니다. 선택한 기간(${d.startKey}~${d.endKey}) 중 그 이전 날짜에는 기록이 없는 게 "실제로 일을 안 했다"는 뜻이 아니라 "아직 앱을 안 쓰고 있었다"는 뜻입니다. 업무 부하나 여유 판단은 ${fmt(d.earliestLogDate)} 이후의 실제 기록만 근거로 삼아주세요. 기록 이전 기간을 포함해서 "한가했다"고 판단하면 안 됩니다.`
+    : '';
 
   const prompt=`당신은 시스템 엔지니어(엑스카베이터/Volvo 관련 업무)의 업무 일지를 분석하는 어시스턴트입니다.
-아래는 ${d.startKey} ~ ${d.endKey} 기간 동안 기록된 실제 업무 시간 데이터입니다. 이 데이터를 바탕으로 한국어로 분석 요약을 작성해주세요.
+아래는 ${d.startKey} ~ ${d.endKey} 기간 동안 기록된 실제 업무 시간 데이터입니다. 이 데이터를 바탕으로 한국어로 분석해주세요.
+${recordingContextNote}
 
 [기간 정보]
-- 전체 투입 시간: ${d.totalH}시간 (기준 ${d.baselineH}시간, 영업일 ${d.workdaysInRange}일)
-- 업무 부하 판정: ${d.loadLabel}
+- 전체 투입 시간: ${d.totalH}시간 (기준 ${d.baselineH}시간, 영업일 ${d.workdaysInRange}일${d.isPartialPeriod?', 단 이 기준은 위에서 설명한 실제 기록 시작일부터 계산된 것임':''})
+- 업무 부하 판정(참고용, 위 맥락을 감안해서 재평가해도 됨): ${d.loadLabel}
 
 [프로젝트별 시간 합계]
 ${projSummary}
@@ -4225,38 +4244,77 @@ ${taskDetail||'(기록 없음)'}
 [미팅 기록]
 ${meetingDetail||'(기록 없음)'}
 
-다음 항목을 포함해서 분석해주세요:
-1. 이 기간 가장 많은 시간을 쓴 프로젝트와 업무 유형 (구체적으로 어떤 종류의 일이었는지)
-2. 업무 패턴에서 눈에 띄는 특징이나 경향 (예: 특정 이슈에 시간이 몰렸는지, 반복적인 작업이 많았는지 등)
-3. 회의시간 비중에 대한 평가
-4. 다음 기간을 위한 간단한 제안 (있다면)
+[현재 마감일을 넘긴 업무 (지연)]
+${overdueDetail||'(없음)'}
 
-5~7개의 불릿포인트로, 간결하고 구체적으로 작성해주세요. 너무 일반적인 말은 피하고 실제 데이터에 기반한 구체적인 인사이트를 주세요.`;
+[현재 마감 임박/진행 위험 업무]
+${atRiskDetail||'(없음)'}
+
+다음 4가지 항목에 대해 각각 분석해주세요. 각 항목 제목을 그대로 굵게 표시하고, 그 아래 구체적인 내용을 1~3개 불릿으로 적어주세요:
+
+**1. 데드라인 준수**
+지연된 업무와 마감 임박 업무를 보고, 데드라인을 잘 지키고 있는지, 어떤 업무에서 지연이 발생했는지 구체적으로 평가해주세요.
+
+**2. 업무 할당 및 종류**
+어떤 프로젝트와 업무명에 시간을 많이 썼는지, 그 업무명들을 보고 실제로 어떤 종류/성격의 일이었는지(예: 통신/CAN 이슈 대응, 문서화, 설계 검토 등) 구체적으로 해석해주세요.
+
+**3. 회의 영향도**
+전체적으로 어떤 종류의 회의가 많았는지, 회의시간이 실제 업무 진행에 방해가 될 정도였는지 아니면 무리 없는 수준이었는지 판단해주세요.
+
+**4. 추가 업무를 받을 여유가 있는지**
+위 맥락(특히 기록 시작일 관련 안내가 있다면 반드시 그것을 감안)을 종합해서, 지금 추가 업무를 더 받을 여유가 있는지 신중하게 판단해주세요. 기록 기간이 짧거나 막 시작한 경우라면 "아직 판단하기엔 데이터가 부족하다"고 솔직하게 말해주세요. 단정적으로 "여유있다"고 말해서 업무가 더 할당되는 근거로 잘못 쓰이지 않도록 주의해주세요.
+
+전체적으로 실제 데이터에 기반해서 구체적으로 작성하고, 근거 없는 일반론은 피해주세요.`;
+
+
+  // 계정/지역에 따라 사용 가능한 무료 모델이 다를 수 있어, 순서대로 시도
+  const MODEL_CANDIDATES=['gemini-2.5-flash','gemini-2.5-flash-lite','gemini-flash-latest','gemini-2.0-flash'];
+
+  let lastErr=null, text='';
+  for(const model of MODEL_CANDIDATES){
+    try{
+      const resp=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          contents:[{parts:[{text:prompt}]}]
+        })
+      });
+      if(!resp.ok){
+        const errData=await resp.json().catch(()=>({}));
+        const msg=errData?.error?.message || `HTTP ${resp.status}`;
+        lastErr=new Error(`[${model}] ${msg}`);
+        // 모델 없음/할당량 0/권한 문제면 다음 모델로 폴백, 그 외(키 자체가 잘못된 경우 등)는 바로 중단
+        if(resp.status===404 || resp.status===429 || /quota|not found|permission/i.test(msg)){
+          continue;
+        } else {
+          throw lastErr;
+        }
+      }
+      const data=await resp.json();
+      text=data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      if(text){ lastErr=null; break; }
+    } catch(e){
+      lastErr=e;
+      continue;
+    }
+  }
 
   try{
-    const resp=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        contents:[{parts:[{text:prompt}]}]
-      })
-    });
-    if(!resp.ok){
-      const errData=await resp.json().catch(()=>({}));
-      throw new Error(errData?.error?.message || `HTTP ${resp.status}`);
-    }
-    const data=await resp.json();
-    const text=data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    if(!text){ throw new Error('빈 응답을 받았습니다.'); }
+    if(!text){ throw lastErr || new Error('사용 가능한 모델을 찾지 못했습니다.'); }
 
-    // 간단한 마크다운(*, -, 줄바꿈) → HTML 변환
+    // 마크다운 → HTML 변환: "**제목**" 단독 줄은 섹션 헤더로, 나머지는 불릿으로 표시
     const html=text
       .split('\n')
       .map(line=>line.trim())
       .filter(line=>line)
       .map(line=>{
+        const headerMatch=line.match(/^\*\*(.+?)\*\*$/);
+        if(headerMatch){
+          return `<div style="font-weight:800;color:#4338ca;margin-top:12px;margin-bottom:4px;font-size:0.86rem;">${headerMatch[1]}</div>`;
+        }
         const cleaned=line.replace(/^[-*•]\s*/,'').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
-        return `<div style="margin-bottom:6px;">· ${cleaned}</div>`;
+        return `<div style="margin-bottom:5px;margin-left:4px;">· ${cleaned}</div>`;
       }).join('');
 
     resultEl.innerHTML=`
