@@ -50,6 +50,9 @@ aside h3{font-size:0.7rem;text-transform:uppercase;letter-spacing:.08em;color:va
 .proj-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
 .inactive-dot{width:7px;height:7px;border-radius:50%;margin-left:auto;flex-shrink:0;}
 .add-proj-btn{margin-top:6px;width:100%;background:none;border:1.5px dashed var(--border);border-radius:7px;padding:7px;font-size:0.78rem;color:var(--muted);cursor:pointer;}
+.proj-menu-dropdown{position:absolute;right:4px;top:calc(100% + 2px);background:white;border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,0.12);z-index:50;min-width:140px;padding:4px;}
+.proj-menu-dropdown div{padding:7px 10px;font-size:0.82rem;color:var(--text);border-radius:5px;cursor:pointer;white-space:nowrap;}
+.proj-menu-dropdown div:hover{background:var(--bg);}
 .add-proj-btn:hover{border-color:var(--primary);color:var(--primary);}
 .sidebar-note{border-top:1px solid var(--border);margin-top:8px;padding-top:10px;}
 .note-area{width:100%;border:1.5px solid var(--border);border-radius:6px;padding:7px 8px;font-size:0.78rem;resize:vertical;min-height:80px;font-family:inherit;color:var(--text);line-height:1.5;}
@@ -1381,10 +1384,13 @@ function renderSidebar(){
       <span class="proj-dot" style="background:${p.color};flex-shrink:0;cursor:pointer" onclick="setFilter('${p.id}')"></span>
       <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="setFilter('${p.id}')">${p.name}</span>
       ${dot}
-      <span onclick="openProjNote('${p.id}')" title="프로젝트 노트/일정" style="color:${iconCol};font-size:0.72rem;cursor:pointer;padding:2px 3px;flex-shrink:0;line-height:1;" onmouseover="this.style.color='#f59e0b'" onmouseout="this.style.color='${iconCol}'">📋</span>
-      <span onclick="openEditProject('${p.id}')" title="이름 수정" style="color:${iconCol};font-size:0.75rem;cursor:pointer;padding:2px 3px;flex-shrink:0;line-height:1;" onmouseover="this.style.color='#a5b4fc'" onmouseout="this.style.color='${iconCol}'">✏</span>
-      <span onclick="completeProject('${p.id}')" title="완료 처리 → 히스토리" style="color:${iconCol};font-size:0.72rem;cursor:pointer;padding:2px 3px;flex-shrink:0;line-height:1;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='${iconCol}'">✔</span>
-      <span onclick="deleteProject('${p.id}')" title="휴지통으로 이동" style="color:${iconCol};font-size:0.85rem;cursor:pointer;padding:2px 3px;flex-shrink:0;line-height:1;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='${iconCol}'">&times;</span>
+      <span onclick="event.stopPropagation();toggleProjMenu('${p.id}')" onmousedown="event.stopPropagation()" draggable="false" title="더보기" style="color:${iconCol};font-size:0.95rem;cursor:pointer;padding:2px 5px;flex-shrink:0;line-height:1;font-weight:700;" onmouseover="this.style.color='#a5b4fc'" onmouseout="this.style.color='${iconCol}'">⋮</span>
+      <div id="proj-menu-${p.id}" class="proj-menu-dropdown" style="display:none;" onclick="event.stopPropagation()" onmousedown="event.stopPropagation()">
+        <div onclick="closeAllProjMenus();openProjNote('${p.id}')">📋 노트/일정</div>
+        <div onclick="closeAllProjMenus();openEditProject('${p.id}')">✏ 이름 수정</div>
+        <div onclick="closeAllProjMenus();completeProject('${p.id}')">✔ 완료 처리</div>
+        <div onclick="closeAllProjMenus();deleteProject('${p.id}')" style="color:#ef4444;">✕ 휴지통으로</div>
+      </div>
     </div>`;
   });
   el.innerHTML = html;
@@ -1403,6 +1409,18 @@ function renderSidebar(){
 }
 
 function setFilter(id){ currentFilter=id; render(); }
+
+function toggleProjMenu(pid){
+  const menu = document.getElementById(`proj-menu-${pid}`);
+  if(!menu) return;
+  const isOpen = menu.style.display === 'block';
+  closeAllProjMenus();
+  if(!isOpen) menu.style.display = 'block';
+}
+function closeAllProjMenus(){
+  document.querySelectorAll('.proj-menu-dropdown').forEach(m=>m.style.display='none');
+}
+document.addEventListener('click', closeAllProjMenus);
 
 /* ══════════════════════════════════════
    ALERT (gradient inactivity)
@@ -3270,6 +3288,59 @@ function toggleLinkGroup(groupName){
   renderLinks();
 }
 
+function getLinkGroupOrder(){
+  try{ return JSON.parse(localStorage.getItem('linkGroupOrder')||'[]'); }catch(e){ return []; }
+}
+function setLinkGroupOrder(order){
+  localStorage.setItem('linkGroupOrder', JSON.stringify(order));
+}
+function sortGroupsByOrder(groupNames){
+  const saved = getLinkGroupOrder();
+  // 저장된 순서 중 현재 존재하는 그룹만 유지
+  const ordered = saved.filter(g => groupNames.includes(g));
+  // 저장된 순서에 없는 새 그룹은 뒤에 추가 (알파벳순)
+  const remaining = groupNames.filter(g => !ordered.includes(g)).sort();
+  return [...ordered, ...remaining];
+}
+
+let dragGroupName = null;
+
+function onLinkGroupDragStart(e, groupName){
+  dragGroupName = groupName;
+  e.currentTarget.style.opacity = '0.4';
+  e.dataTransfer.effectAllowed = 'move';
+}
+function onLinkGroupDragEnd(e){
+  e.currentTarget.style.opacity = '1';
+  dragGroupName = null;
+}
+function onLinkGroupDragOver(e, groupName){
+  e.preventDefault();
+  if (dragGroupName && dragGroupName !== groupName) {
+    e.currentTarget.style.outline = '2px dashed var(--primary)';
+  }
+}
+function onLinkGroupDragLeave(e){
+  e.currentTarget.style.outline = 'none';
+}
+function onLinkGroupDrop(e, targetGroup){
+  e.preventDefault();
+  e.currentTarget.style.outline = 'none';
+  if (!dragGroupName || dragGroupName === targetGroup) return;
+
+  const byGroup={};
+  quickLinks.forEach(l=>{ const g=l.group||'기타'; if(!byGroup[g]) byGroup[g]=[]; byGroup[g].push(l); });
+  let order = sortGroupsByOrder(Object.keys(byGroup));
+
+  order = order.filter(g => g !== dragGroupName);
+  const targetIdx = order.indexOf(targetGroup);
+  order.splice(targetIdx, 0, dragGroupName);
+
+  setLinkGroupOrder(order);
+  dragGroupName = null;
+  renderLinks();
+}
+
 function renderLinks(){
   const el=document.getElementById('links-groups');
   if(!el) return;
@@ -3284,7 +3355,7 @@ function renderLinks(){
     if(!byGroup[g]) byGroup[g]=[];
     byGroup[g].push(l);
   });
-  const groupNames=Object.keys(byGroup).sort();
+  const groupNames=sortGroupsByOrder(Object.keys(byGroup));
   const collapsedState=getLinkGroupCollapsed();
 
   el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;align-items:start;">`
@@ -3292,6 +3363,7 @@ function renderLinks(){
       const links=byGroup[g];
       const gc=groupColorFor(g);
       const isCollapsed=!!collapsedState[g];
+      const gEsc=g.replace(/'/g,"\\'");
       const cardsHtml=links.map(l=>{
         let hostname='';
         try{ hostname=new URL(l.url).hostname.replace('www.',''); }catch(e){ hostname=l.url; }
@@ -3307,11 +3379,18 @@ function renderLinks(){
           <button onclick="deleteLink(${l.id})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:0.9rem;flex-shrink:0;padding:3px;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#cbd5e1'" title="삭제">✕</button>
         </div>`;
       }).join('');
-      return `<div style="border:1.5px solid ${gc}33;border-radius:10px;padding:12px 14px;background:${gc}08;">
-        <div onclick="toggleLinkGroup('${g.replace(/'/g,"\\'")}')" style="display:flex;align-items:center;gap:7px;margin-bottom:${isCollapsed?'0':'10px'};padding-bottom:${isCollapsed?'0':'8px'};border-bottom:${isCollapsed?'none':'1.5px solid '+gc+'33'};cursor:pointer;user-select:none;">
-          <span id="link-group-arrow-${groupNames.indexOf(g)}" style="display:inline-block;transition:transform .2s;transform:rotate(${isCollapsed?'-90deg':'0deg'});color:${gc};font-size:0.75rem;">▼</span>
+      return `<div draggable="true"
+        ondragstart="onLinkGroupDragStart(event,'${gEsc}')"
+        ondragend="onLinkGroupDragEnd(event)"
+        ondragover="onLinkGroupDragOver(event,'${gEsc}')"
+        ondragleave="onLinkGroupDragLeave(event)"
+        ondrop="onLinkGroupDrop(event,'${gEsc}')"
+        style="border:1.5px solid ${gc}33;border-radius:10px;padding:12px 14px;background:${gc}08;transition:opacity .15s, outline .1s;">
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:${isCollapsed?'0':'10px'};padding-bottom:${isCollapsed?'0':'8px'};border-bottom:${isCollapsed?'none':'1.5px solid '+gc+'33'};">
+          <span style="cursor:grab;color:${gc}88;font-size:0.85rem;flex-shrink:0;" title="드래그해서 순서 변경">⠿</span>
+          <span onclick="toggleLinkGroup('${gEsc}')" style="display:inline-block;transition:transform .2s;transform:rotate(${isCollapsed?'-90deg':'0deg'});color:${gc};font-size:0.75rem;cursor:pointer;">▼</span>
           <span style="width:9px;height:9px;border-radius:50%;background:${gc};display:inline-block;flex-shrink:0;"></span>
-          <span style="font-weight:800;font-size:0.92rem;color:${gc};flex:1;">${g}</span>
+          <span onclick="toggleLinkGroup('${gEsc}')" style="font-weight:800;font-size:0.92rem;color:${gc};flex:1;cursor:pointer;">${g}</span>
           <span style="font-size:0.7rem;color:var(--muted);background:white;padding:2px 8px;border-radius:10px;">${links.length}개</span>
         </div>
         ${isCollapsed?'':`<div>${cardsHtml}</div>`}
