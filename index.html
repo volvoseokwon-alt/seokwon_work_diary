@@ -205,7 +205,13 @@ if ('serviceWorker' in navigator) {
 </head>
 <body>
 <header>
-  <h1>📔 Developed by KSW</h1>
+  <h1 style="display:flex;align-items:center;gap:9px;">
+    <img src="data:image/png;base64,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" alt="Wonder Diary" style="width:32px;height:32px;border-radius:8px;flex-shrink:0;">
+    <span style="display:flex;flex-direction:column;line-height:1.1;">
+      <span style="font-size:1.05rem;font-weight:800;letter-spacing:0.01em;">Wonder Diary</span>
+      <span style="font-size:0.62rem;font-weight:400;color:rgba(255,255,255,0.65);">developed by seokwon</span>
+    </span>
+  </h1>
   <div class="world-clocks" id="world-clocks">
     <div class="wclock" id="wc-kr">
       <span class="wc-flag">🇰🇷 한국</span>
@@ -286,13 +292,13 @@ ZB 교체 둘</textarea>
     <div class="tabs">
       <button class="tab-btn active" onclick="switchTab('today',this)">📋 할 일 &amp; 간트</button>
       <button class="tab-btn" onclick="switchTab('home',this)">🏠 홈</button>
+      <button class="tab-btn" onclick="switchTab('links',this)">🔗 링크</button>
       <button class="tab-btn" onclick="switchTab('calendar',this)">📅 캘린더</button>
       <button class="tab-btn" onclick="switchTab('weekly',this)">⏱️ 주간 기록</button>
       <button class="tab-btn" onclick="switchTab('search',this)">🔍 검색</button>
       <button class="tab-btn" onclick="switchTab('repeat',this)">🔄 반복업무</button>
       <button class="tab-btn" onclick="switchTab('history',this)">📂 완료 히스토리</button>
       <button class="tab-btn" onclick="switchTab('report',this)">📄 레포트</button>
-      <button class="tab-btn" onclick="switchTab('links',this)">🔗 링크</button>
       <button class="tab-btn" onclick="switchTab('trash',this)">🗑️ 휴지통 <span id="trash-badge" style="display:none;background:var(--warn);color:white;font-size:0.65rem;border-radius:10px;padding:1px 5px;margin-left:2px;"></span></button>
     </div>
 
@@ -3251,6 +3257,19 @@ function groupColorFor(groupName){
   return LINK_GROUP_COLORS[hash % LINK_GROUP_COLORS.length];
 }
 
+function getLinkGroupCollapsed(){
+  try{ return JSON.parse(localStorage.getItem('linkGroupCollapsed')||'{}'); }catch(e){ return {}; }
+}
+function setLinkGroupCollapsed(state){
+  localStorage.setItem('linkGroupCollapsed', JSON.stringify(state));
+}
+function toggleLinkGroup(groupName){
+  const state = getLinkGroupCollapsed();
+  state[groupName] = !state[groupName];
+  setLinkGroupCollapsed(state);
+  renderLinks();
+}
+
 function renderLinks(){
   const el=document.getElementById('links-groups');
   if(!el) return;
@@ -3266,11 +3285,13 @@ function renderLinks(){
     byGroup[g].push(l);
   });
   const groupNames=Object.keys(byGroup).sort();
+  const collapsedState=getLinkGroupCollapsed();
 
   el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;align-items:start;">`
     + groupNames.map(g=>{
       const links=byGroup[g];
       const gc=groupColorFor(g);
+      const isCollapsed=!!collapsedState[g];
       const cardsHtml=links.map(l=>{
         let hostname='';
         try{ hostname=new URL(l.url).hostname.replace('www.',''); }catch(e){ hostname=l.url; }
@@ -3287,12 +3308,13 @@ function renderLinks(){
         </div>`;
       }).join('');
       return `<div style="border:1.5px solid ${gc}33;border-radius:10px;padding:12px 14px;background:${gc}08;">
-        <div style="display:flex;align-items:center;gap:7px;margin-bottom:10px;padding-bottom:8px;border-bottom:1.5px solid ${gc}33;">
+        <div onclick="toggleLinkGroup('${g.replace(/'/g,"\\'")}')" style="display:flex;align-items:center;gap:7px;margin-bottom:${isCollapsed?'0':'10px'};padding-bottom:${isCollapsed?'0':'8px'};border-bottom:${isCollapsed?'none':'1.5px solid '+gc+'33'};cursor:pointer;user-select:none;">
+          <span id="link-group-arrow-${groupNames.indexOf(g)}" style="display:inline-block;transition:transform .2s;transform:rotate(${isCollapsed?'-90deg':'0deg'});color:${gc};font-size:0.75rem;">▼</span>
           <span style="width:9px;height:9px;border-radius:50%;background:${gc};display:inline-block;flex-shrink:0;"></span>
           <span style="font-weight:800;font-size:0.92rem;color:${gc};flex:1;">${g}</span>
           <span style="font-size:0.7rem;color:var(--muted);background:white;padding:2px 8px;border-radius:10px;">${links.length}개</span>
         </div>
-        <div>${cardsHtml}</div>
+        ${isCollapsed?'':`<div>${cardsHtml}</div>`}
       </div>`;
     }).join('')
     + `</div>`;
