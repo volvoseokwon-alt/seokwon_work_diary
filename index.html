@@ -41,6 +41,12 @@ aside{width:200px;background:var(--card);border-right:1px solid var(--border);pa
   0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.55);}
   50%{box-shadow:0 0 0 4px rgba(239,68,68,0.15);}
 }
+@keyframes spin{
+  from{transform:rotate(0deg);}
+  to{transform:rotate(360deg);}
+}
+#hard-refresh-btn:hover{background:rgba(255,255,255,0.28) !important;}
+#hard-refresh-btn:disabled{opacity:0.6;cursor:default;}
 .gantt-risk{animation:riskPulse 1.6s ease-in-out infinite;border:1.5px solid #ef4444 !important;}
 .risk-warn-icon{display:inline-flex;align-items:center;justify-content:center;font-size:0.7rem;animation:riskPulse 1.6s ease-in-out infinite;border-radius:50%;}
 aside h3{font-size:0.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:8px 0 4px;padding:0 4px;}
@@ -233,6 +239,7 @@ if ('serviceWorker' in navigator) {
     </div>
   </div>
   <div class="hdr-right">
+    <button id="hard-refresh-btn" onclick="hardRefresh()" title="캐시를 무시하고 서버에서 최신 데이터를 다시 불러옵니다" style="background:rgba(255,255,255,0.15);border:none;color:white;font-size:0.85rem;padding:5px 9px;border-radius:5px;cursor:pointer;display:flex;align-items:center;gap:4px;">🔄</button>
     <span id="save-status" style="font-size:0.72rem;color:rgba(255,255,255,0.75);display:flex;align-items:center;gap:4px;">
       <span id="save-icon">💾</span>
       <span id="save-time">--</span>
@@ -801,6 +808,23 @@ function getLocalBackup(){
     const raw=localStorage.getItem(LOCAL_BACKUP_KEY);
     return raw ? JSON.parse(raw) : null;
   }catch(e){ return null; }
+}
+
+/* ══════════════════════════════════════
+   완전 새로고침 (캐시 무시, 서버에서 강제로 다시 불러오기)
+══════════════════════════════════════ */
+async function hardRefresh(){
+  const btn = document.getElementById('hard-refresh-btn');
+  if (btn) { btn.style.animation = 'spin 0.8s linear infinite'; btn.disabled = true; }
+  try {
+    await loadFromFirebase();
+    render();
+    if (typeof renderHome === 'function' && currentTab === 'home') renderHome();
+  } catch(e) {
+    console.warn('완전 새로고침 실패:', e);
+  } finally {
+    if (btn) { btn.style.animation = ''; btn.disabled = false; }
+  }
 }
 
 async function loadFromFirebase() {
@@ -3433,7 +3457,7 @@ function renderLinks(){
   const groupNames=sortGroupsByOrder(Object.keys(byGroup));
   const collapsedState=getLinkGroupCollapsed();
 
-  el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(208px,1fr));gap:10px;align-items:start;">`
+  el.innerHTML=`<div style="column-width:208px;column-gap:10px;">`
     + groupNames.map(g=>{
       const links=byGroup[g];
       const gc=groupColorFor(g);
@@ -3467,7 +3491,7 @@ function renderLinks(){
         ondragover="onLinkGroupDragOver(event,'${gEsc}')"
         ondragleave="onLinkGroupDragLeave(event)"
         ondrop="onLinkGroupDrop(event,'${gEsc}')"
-        style="border:1.5px solid ${gc}33;border-radius:9px;padding:8px 9px;background:${gc}08;transition:opacity .15s, outline .1s;">
+        style="border:1.5px solid ${gc}33;border-radius:9px;padding:8px 9px;background:${gc}08;transition:opacity .15s, outline .1s;break-inside:avoid;margin-bottom:10px;display:inline-block;width:100%;">
         <div style="display:flex;align-items:center;gap:5px;margin-bottom:${isCollapsed?'0':'7px'};padding-bottom:${isCollapsed?'0':'6px'};border-bottom:${isCollapsed?'none':'1.5px solid '+gc+'33'};">
           <span style="cursor:grab;color:${gc}88;font-size:0.75rem;flex-shrink:0;" title="드래그해서 순서 변경">⠿</span>
           <span onclick="toggleLinkGroup('${gEsc}')" style="display:inline-block;transition:transform .2s;transform:rotate(${isCollapsed?'-90deg':'0deg'});color:${gc};font-size:0.68rem;cursor:pointer;">▼</span>
