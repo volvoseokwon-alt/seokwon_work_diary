@@ -346,18 +346,15 @@ ZB 교체 둘</textarea>
       <div class="card" style="margin-bottom:12px;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
           <span style="font-size:0.85rem;font-weight:700;color:var(--muted);">📌 오늘 할 일</span>
+          <span style="font-size:0.7rem;color:var(--muted);background:var(--bg);padding:2px 8px;border-radius:8px;">A1 우선순위</span>
           <span id="home-today-date" style="font-size:0.72rem;color:var(--muted);"></span>
         </div>
         <div id="home-today-tasks"></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-        <div class="card">
+        <div class="card" style="grid-column:1/-1;">
           <div style="font-size:0.85rem;font-weight:700;color:var(--muted);margin-bottom:8px;">🚨 마감 임박 (D-3 이내)</div>
           <div id="home-deadlines"></div>
-        </div>
-        <div class="card">
-          <div style="font-size:0.85rem;font-weight:700;color:var(--muted);margin-bottom:8px;">📋 이번 주 할 일</div>
-          <div id="home-thisweek"></div>
         </div>
         <div class="card" style="grid-column:1/-1;">
           <div style="font-size:0.85rem;font-weight:700;color:var(--muted);margin-bottom:8px;">⚠️ 지연·초과 업무</div>
@@ -366,7 +363,7 @@ ZB 교체 둘</textarea>
         <div class="card" style="grid-column:1/-1;">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
             <span style="font-size:0.85rem;font-weight:700;color:var(--muted);">🔥 월간 업무 강도</span>
-            <span style="font-size:0.72rem;color:var(--muted);">(주간기록 기준)</span>
+            <span style="font-size:0.72rem;color:var(--muted);">(하루 8시간 초과분 기준)</span>
           </div>
           <div id="home-heatmap"></div>
         </div>
@@ -375,17 +372,6 @@ ZB 교체 둘</textarea>
             <span style="font-size:0.85rem;font-weight:700;color:var(--muted);">📊 이번 달 프로젝트별 소요 시간</span>
           </div>
           <div id="home-proj-hours"></div>
-        </div>
-        <div class="card" style="grid-column:1/-1;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-            <span style="font-size:0.85rem;font-weight:700;color:var(--muted);">📝 주간/월간 요약 생성</span>
-          </div>
-          <div style="display:flex;gap:8px;margin-bottom:10px;">
-            <button class="btn-sm" style="background:var(--pri-light);color:var(--primary);" onclick="generateSummary('week')">이번 주 요약</button>
-            <button class="btn-sm" style="background:var(--pri-light);color:var(--primary);" onclick="generateSummary('month')">이번 달 요약</button>
-            <button class="btn-sm" style="background:#f0fdf4;color:#16a34a;" onclick="copySummary()">📋 복사</button>
-          </div>
-          <textarea id="summary-output" readonly placeholder="버튼을 눌러 요약을 생성하세요..." style="width:100%;min-height:160px;padding:10px;border:1.5px solid var(--border);border-radius:7px;font-size:0.82rem;font-family:inherit;resize:vertical;background:var(--bg);line-height:1.6;"></textarea>
         </div>
       </div>
     </div>
@@ -2761,24 +2747,7 @@ function renderHome(){
     </div>`;
   }).join('');
 
-  // 이번 주 할 일
-  const {week:curW,year:curY}=getISOWeek(todayD);
-  const thisWeek=ft.filter(t=>!t.done).filter(t=>{
-    const {week:tw,year:ty}=getISOWeek(new Date(t.end));
-    return tw===curW&&ty===curY;
-  }).slice(0,6);
-  const twEl=document.getElementById('home-thisweek');
-  if(!thisWeek.length){ twEl.innerHTML='<div style="color:var(--muted);font-size:0.82rem;padding:8px 0;">이번 주 마감 업무 없음</div>'; }
-  else twEl.innerHTML=thisWeek.map(t=>{
-    const p=proj(t.project);
-    return `<div style="display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:1px solid var(--border);font-size:0.82rem;">
-      <span style="width:8px;height:8px;border-radius:50%;background:${p.color};flex-shrink:0;display:inline-block;"></span>
-      <span style="flex:1">${t.text}</span>
-      <span style="font-size:0.72rem;color:var(--muted);">${fmt(t.end)}</span>
-    </div>`;
-  }).join('');
-
-  // 지연/초과
+  // 지연/초과 — 원래 마감일과 며칠 지났는지/뒤처졌는지 함께 표시
   const riskEl=document.getElementById('home-risk');
   const risk=ft.filter(t=>isOverdue(t)||(!t.done&&getHealthScore(t)<-20));
   if(!risk.length){ riskEl.innerHTML='<div style="color:var(--muted);font-size:0.82rem;padding:4px 0;">⭐ 모든 업무 순조롭게 진행 중!</div>'; }
@@ -2786,16 +2755,22 @@ function renderHome(){
     const p=proj(t.project);
     const h=getHealthScore(t);
     const hc=healthColor(h);
+    const eD=new Date(t.end); const endD=new Date(eD.getFullYear(),eD.getMonth(),eD.getDate());
+    const overdueDays = isOverdue(t) ? Math.round((todayD-endD)/86400000) : 0;
+    const statusTxt = isOverdue(t)
+      ? `🔴 ${fmt(t.end)} 마감 → ${overdueDays}일 지남`
+      : `⚠️ 진행 ${h}% 뒤처짐`;
     return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:0.82rem;">
       <span style="color:${p.color};font-weight:600;font-size:0.72rem;">${p.name}</span>
       <span style="flex:1">${t.text}</span>
-      <span style="font-size:0.72rem;color:${hc};font-weight:700;">${isOverdue(t)?'🔴 초과':`⚠️ ${h}%`}</span>
+      <span style="font-size:0.72rem;color:${hc};font-weight:700;white-space:nowrap;">${statusTxt}</span>
     </div>`;
   }).join('');
 
-  // ── 오늘 할 일 (시작~종료 범위에 오늘이 포함되는 업무)
+  // ── 오늘 할 일 (A1 우선순위만, 시작~종료 범위에 오늘이 포함되는 업무)
   document.getElementById('home-today-date').textContent = `${TODAY.getMonth()+1}/${TODAY.getDate()} (${['일','월','화','수','목','금','토'][TODAY.getDay()]})`;
   const todayTasks = ft.filter(t=>{
+    if(t.priority!=='A1') return false;
     const sD=new Date(t.start); const sd=new Date(sD.getFullYear(),sD.getMonth(),sD.getDate());
     const eD=new Date(t.end);   const ed=new Date(eD.getFullYear(),eD.getMonth(),eD.getDate());
     return todayD>=sd && todayD<=ed;
@@ -2805,7 +2780,7 @@ function renderHome(){
   });
   const ttEl=document.getElementById('home-today-tasks');
   if(!todayTasks.length){
-    ttEl.innerHTML='<div style="color:var(--muted);font-size:0.85rem;padding:10px 0;text-align:center;">오늘 진행 중인 업무가 없습니다.</div>';
+    ttEl.innerHTML='<div style="color:var(--muted);font-size:0.85rem;padding:10px 0;text-align:center;">오늘 진행 중인 A1 업무가 없습니다.</div>';
   } else {
     ttEl.innerHTML=todayTasks.map(t=>{
       const p=proj(t.project);
@@ -2843,42 +2818,53 @@ function renderHeatmap(){
 
   const colorFor=(h)=>{
     if(!h) return '#ebedf0';
-    const t=Math.min(1,h/maxH);
-    if(t<0.25) return '#c7e9c0';
-    if(t<0.5) return '#74c476';
-    if(t<0.75) return '#31a354';
-    return '#006d2c';
+    if(h<=8) return '#bfdbfe'; // 8시간 이하는 옅은 파란색 (정상 근무)
+    const over = h-8; // 8시간 초과분
+    // 초과 1시간마다 진해짐 (최대 6시간 초과=14시간 근무에서 가장 진함)
+    if(over<=1) return '#fde68a';
+    if(over<=2) return '#fbbf24';
+    if(over<=3) return '#f59e0b';
+    if(over<=4) return '#ea580c';
+    if(over<=5) return '#dc2626';
+    return '#991b1b';
   };
 
   const days=['일','월','화','수','목','금','토'];
   let cellsHtml='';
-  for(let i=0;i<firstDow;i++) cellsHtml+=`<div style="width:26px;height:26px;"></div>`;
+  for(let i=0;i<firstDow;i++) cellsHtml+=`<div style="width:30px;height:34px;"></div>`;
   for(let d=1;d<=lastDay;d++){
     const dateKey=`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const h=hoursByDate[dateKey]||0;
     const isToday=dateKey===TODAY_STR;
-    cellsHtml+=`<div title="${dateKey}: ${h}시간" style="width:26px;height:26px;border-radius:5px;background:${colorFor(h)};display:flex;align-items:center;justify-content:center;font-size:0.6rem;color:${h>maxH*0.5?'white':'#64748b'};border:${isToday?'2px solid #4f46e5':'1px solid rgba(0,0,0,0.04)'};cursor:default;">${d}</div>`;
+    const over = h>8 ? h-8 : 0;
+    const textColor = h>9 ? 'white' : '#475569';
+    cellsHtml+=`<div title="${dateKey}: ${h}시간${over?' (8h 초과 +'+over+'h)':''}" style="width:30px;height:34px;border-radius:6px;background:${colorFor(h)};display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:0.62rem;color:${textColor};border:${isToday?'2px solid #4f46e5':'1px solid rgba(0,0,0,0.04)'};cursor:default;line-height:1.15;">
+      <span>${d}</span>
+      ${over>0?`<span style="font-size:0.56rem;font-weight:700;">+${over}h</span>`:''}
+    </div>`;
   }
 
   const totalH=Object.values(hoursByDate).reduce((a,b)=>a+b,0);
   const workDays=Object.keys(hoursByDate).length;
+  const overDays=Object.values(hoursByDate).filter(h=>h>8).length;
 
   el.innerHTML=`
-    <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
+    <div style="display:flex;gap:14px;margin-bottom:10px;flex-wrap:wrap;">
       <div style="font-size:0.78rem;color:var(--muted);">이번 달 <strong style="color:var(--text);">${workDays}일</strong> 기록 · 총 <strong style="color:var(--primary);">${totalH}시간</strong></div>
+      ${overDays>0?`<div style="font-size:0.78rem;color:#dc2626;">⚠️ 8시간 초과 <strong>${overDays}일</strong></div>`:''}
     </div>
-    <div style="display:grid;grid-template-columns:repeat(7,26px);gap:3px;margin-bottom:8px;">
+    <div style="display:grid;grid-template-columns:repeat(7,30px);gap:3px;margin-bottom:8px;">
       ${days.map(d=>`<div style="font-size:0.62rem;color:var(--muted);text-align:center;">${d}</div>`).join('')}
     </div>
-    <div style="display:grid;grid-template-columns:repeat(7,26px);gap:3px;">${cellsHtml}</div>
-    <div style="display:flex;align-items:center;gap:5px;margin-top:8px;font-size:0.68rem;color:var(--muted);">
-      <span>적음</span>
-      <span style="width:12px;height:12px;border-radius:3px;background:#ebedf0;display:inline-block;"></span>
-      <span style="width:12px;height:12px;border-radius:3px;background:#c7e9c0;display:inline-block;"></span>
-      <span style="width:12px;height:12px;border-radius:3px;background:#74c476;display:inline-block;"></span>
-      <span style="width:12px;height:12px;border-radius:3px;background:#31a354;display:inline-block;"></span>
-      <span style="width:12px;height:12px;border-radius:3px;background:#006d2c;display:inline-block;"></span>
-      <span>많음</span>
+    <div style="display:grid;grid-template-columns:repeat(7,30px);gap:3px;">${cellsHtml}</div>
+    <div style="display:flex;align-items:center;gap:5px;margin-top:8px;font-size:0.68rem;color:var(--muted);flex-wrap:wrap;">
+      <span style="width:12px;height:12px;border-radius:3px;background:#bfdbfe;display:inline-block;"></span><span>~8h</span>
+      <span style="width:12px;height:12px;border-radius:3px;background:#fde68a;display:inline-block;margin-left:6px;"></span><span>+1h</span>
+      <span style="width:12px;height:12px;border-radius:3px;background:#fbbf24;display:inline-block;"></span><span>+2h</span>
+      <span style="width:12px;height:12px;border-radius:3px;background:#f59e0b;display:inline-block;"></span><span>+3h</span>
+      <span style="width:12px;height:12px;border-radius:3px;background:#ea580c;display:inline-block;"></span><span>+4h</span>
+      <span style="width:12px;height:12px;border-radius:3px;background:#dc2626;display:inline-block;"></span><span>+5h</span>
+      <span style="width:12px;height:12px;border-radius:3px;background:#991b1b;display:inline-block;"></span><span>+6h↑</span>
     </div>`;
 }
 
@@ -2916,89 +2902,6 @@ function renderProjHours(){
         </div>
       </div>`;
     }).join('');
-}
-
-// ── 주간/월간 요약 텍스트 생성
-function generateSummary(range){
-  const todayD2=new Date(TODAY.getFullYear(),TODAY.getMonth(),TODAY.getDate());
-  let startKey, endKey, titleLabel;
-
-  if(range==='week'){
-    const dow=todayD2.getDay()||7;
-    const monday=new Date(todayD2); monday.setDate(todayD2.getDate()-(dow-1));
-    const sunday=new Date(monday); sunday.setDate(monday.getDate()+6);
-    startKey=`${monday.getFullYear()}-${String(monday.getMonth()+1).padStart(2,'0')}-${String(monday.getDate()).padStart(2,'0')}`;
-    endKey=`${sunday.getFullYear()}-${String(sunday.getMonth()+1).padStart(2,'0')}-${String(sunday.getDate()).padStart(2,'0')}`;
-    titleLabel=`${monday.getMonth()+1}/${monday.getDate()} ~ ${sunday.getMonth()+1}/${sunday.getDate()} (이번 주)`;
-  } else {
-    const y=todayD2.getFullYear(), m=todayD2.getMonth();
-    startKey=`${y}-${String(m+1).padStart(2,'0')}-01`;
-    const lastD=new Date(y,m+1,0).getDate();
-    endKey=`${y}-${String(m+1).padStart(2,'0')}-${String(lastD).padStart(2,'0')}`;
-    titleLabel=`${y}년 ${m+1}월 (이번 달)`;
-  }
-
-  // 완료된 업무 (히스토리 + 현재 tasks 양쪽에서 수집)
-  const doneInRange=[];
-  tasks.forEach(t=>{
-    if(t.done && t.actualEnd && t.actualEnd>=startKey && t.actualEnd<=endKey) doneInRange.push(t);
-  });
-  completedProjects.forEach(cp=>{
-    cp.tasks.forEach(t=>{
-      const cdate=t._completedAt||cp.completedAt;
-      if(cdate && cdate>=startKey && cdate<=endKey && !doneInRange.find(x=>x.id===t.id)) doneInRange.push(t);
-    });
-  });
-
-  // 시간 기록
-  const logsInRange=weeklyLogs.filter(l=>l.date>=startKey && l.date<=endKey);
-  const totalH=logsInRange.reduce((s,l)=>s+(l.hours||0),0);
-  const byProj={};
-  logsInRange.forEach(l=>{ byProj[l.project]=(byProj[l.project]||0)+(l.hours||0); });
-
-  // 프로젝트별로 완료 업무 그룹
-  const byProjTasks={};
-  doneInRange.forEach(t=>{
-    if(!byProjTasks[t.project]) byProjTasks[t.project]=[];
-    byProjTasks[t.project].push(t);
-  });
-
-  let out=`📔 ${titleLabel} 업무 요약\n`;
-  out+=`${'─'.repeat(30)}\n\n`;
-  out+=`✅ 완료한 업무: ${doneInRange.length}건\n`;
-  out+=`⏱️ 총 작업 시간: ${totalH}시간\n\n`;
-
-  if(Object.keys(byProjTasks).length){
-    out+=`【 완료 업무 】\n`;
-    Object.entries(byProjTasks).forEach(([pid,tks])=>{
-      const p=proj(pid);
-      out+=`\n▸ ${p.name}\n`;
-      tks.forEach(t=>{ out+=`  - ${t.text}\n`; });
-    });
-    out+='\n';
-  }
-
-  if(Object.keys(byProj).length){
-    out+=`【 프로젝트별 작업시간 】\n`;
-    Object.entries(byProj).sort((a,b)=>b[1]-a[1]).forEach(([pid,h])=>{
-      const p=proj(pid);
-      out+=`  - ${p.name}: ${h}시간\n`;
-    });
-  }
-
-  document.getElementById('summary-output').value=out;
-}
-
-function copySummary(){
-  const ta=document.getElementById('summary-output');
-  if(!ta.value){ alert('먼저 요약을 생성해주세요.'); return; }
-  ta.select();
-  navigator.clipboard?.writeText(ta.value).then(()=>{
-    alert('클립보드에 복사되었습니다!');
-  }).catch(()=>{
-    document.execCommand('copy');
-    alert('클립보드에 복사되었습니다!');
-  });
 }
 
 /* ══════════════════════════════════════
