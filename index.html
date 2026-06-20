@@ -1911,12 +1911,14 @@ function saveCalMemo(){
   closeModal('modal-cal-memo');
   saveToFirebase();
   renderCalendar();
+  if(currentProjNoteId) renderProjSched(currentProjNoteId);
 }
 function deleteCalMemo(){
   delete calMemos[calEditingDate];
   closeModal('modal-cal-memo');
   saveToFirebase();
   renderCalendar();
+  if(currentProjNoteId) renderProjSched(currentProjNoteId);
 }
 
 // 이번 달 메모 목록 (하단)
@@ -2588,14 +2590,36 @@ function closeProjNote(){
 
 function renderProjSched(pid){
   const p=projects.find(x=>x.id===pid); if(!p) return;
-  const scheds=p.schedules||[];
   const el=document.getElementById('proj-sched-list');
-  if(!scheds.length){ el.innerHTML='<div style="color:var(--muted);font-size:0.78rem;padding:6px 0;">일정이 없습니다.</div>'; return; }
-  el.innerHTML=scheds.map((s,i)=>`<div class="proj-sched-item">
-    <span style="font-size:0.75rem;color:var(--muted);white-space:nowrap">${s.date}</span>
-    <span style="flex:1">${s.text}</span>
-    <button onclick="deleteProjSched('${pid}',${i})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:0.8rem;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#cbd5e1'">✕</button>
-  </div>`).join('');
+
+  // 수동 입력 일정 (schedules)
+  const manualScheds = (p.schedules||[]).map((s,i)=>({
+    date: s.date, text: s.text, source: 'manual', idx: i
+  }));
+
+  // 캘린더 메모 중 이 프로젝트와 연결된 것
+  const calScheds = Object.entries(calMemos)
+    .filter(([startKey, memo]) => memo.project === pid)
+    .map(([startKey, memo]) => ({
+      date: memo.endDate && memo.endDate!==startKey ? `${startKey} ~ ${memo.endDate}` : startKey,
+      sortKey: startKey,
+      text: memo.text, source: 'calendar', startKey
+    }));
+
+  const allScheds = [...manualScheds.map(s=>({...s, sortKey:s.date})), ...calScheds]
+    .sort((a,b)=>a.sortKey.localeCompare(b.sortKey));
+
+  if(!allScheds.length){ el.innerHTML='<div style="color:var(--muted);font-size:0.78rem;padding:6px 0;">일정이 없습니다.</div>'; return; }
+
+  el.innerHTML=allScheds.map(s=>{
+    const isCalendar = s.source==='calendar';
+    return `<div class="proj-sched-item">
+      <span style="font-size:0.75rem;color:var(--muted);white-space:nowrap">${s.date}</span>
+      ${isCalendar?'<span title="캘린더에서 등록됨" style="font-size:0.68rem;color:var(--primary);flex-shrink:0;">📅</span>':''}
+      <span style="flex:1">${s.text}</span>
+      <button onclick="${isCalendar?`openCalMemo('${s.startKey}')`:`deleteProjSched('${pid}',${s.idx})`}" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:0.8rem;" onmouseover="this.style.color='${isCalendar?'var(--primary)':'#ef4444'}'" onmouseout="this.style.color='#cbd5e1'" title="${isCalendar?'캘린더에서 수정':'삭제'}">${isCalendar?'✎':'✕'}</button>
+    </div>`;
+  }).join('');
 }
 
 function toggleSchedForm(){
