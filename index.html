@@ -299,7 +299,10 @@ ZB 교체 둘</textarea>
     <!-- 할 일 & 간트 -->
     <div id="tab-today">
       <div class="card" style="margin-bottom:11px;">
-        <strong id="gantt-title">📅 월간 타임라인</strong>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <strong id="gantt-title">📅 월간 타임라인</strong>
+          <button id="gantt-hide-done-btn" onclick="toggleGanttHideDone()" style="margin-left:auto;font-size:0.74rem;background:var(--bg);border:1px solid var(--border);color:var(--muted);padding:4px 10px;border-radius:6px;cursor:pointer;">👁️ 완료 숨기기</button>
+        </div>
         <div style="display:flex;font-size:0.78rem;font-weight:700;color:var(--muted);padding-bottom:5px;border-bottom:2px solid var(--border);gap:8px;align-items:flex-end;">
           <div style="width:28%;flex-shrink:0;">업무명</div>
           <div id="gantt-date-header" style="flex:1;position:relative;height:28px;overflow:visible;"></div>
@@ -588,7 +591,7 @@ ZB 교체 둘</textarea>
 <!-- 링크 추가 -->
 <div class="modal" id="modal-add-link">
   <div class="modal-box">
-    <h3>🔗 링크 추가</h3>
+    <h3 id="link-modal-title">🔗 링크 추가</h3>
     <input type="text" id="link-title" placeholder="이름 (예: 회사업무 포털)">
     <input type="text" id="link-url" placeholder="https://...">
     <div style="display:flex;gap:8px;align-items:center;">
@@ -602,7 +605,7 @@ ZB 교체 둘</textarea>
     <input type="hidden" id="link-icon" value="🔗">
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal('modal-add-link')">취소</button>
-      <button class="btn-primary" onclick="saveLink()">추가</button>
+      <button class="btn-primary" id="link-modal-save-btn" onclick="saveLink()">추가</button>
     </div>
   </div>
 </div>
@@ -1445,14 +1448,31 @@ function switchTab(name,el){
 /* ══════════════════════════════════════
    GANTT
 ══════════════════════════════════════ */
+window._ganttHideDone = localStorage.getItem('ganttHideDone') === 'true';
+
+function toggleGanttHideDone(){
+  window._ganttHideDone = !window._ganttHideDone;
+  localStorage.setItem('ganttHideDone', window._ganttHideDone);
+  renderGantt(filteredTasks());
+}
+
 function renderGantt(list){
   const container = document.getElementById('chart-rows');
   container.innerHTML='';
 
+  // 완료 숨기기 토글 버튼 상태 표시
+  const hideBtn = document.getElementById('gantt-hide-done-btn');
+  if (hideBtn) {
+    hideBtn.textContent = window._ganttHideDone ? '👁️‍🗨️ 완료 표시' : '👁️ 완료 숨기기';
+    hideBtn.style.background = window._ganttHideDone ? 'var(--primary)' : 'var(--bg)';
+    hideBtn.style.color = window._ganttHideDone ? 'white' : 'var(--muted)';
+    hideBtn.style.borderColor = window._ganttHideDone ? 'var(--primary)' : 'var(--border)';
+  }
+
   const todayD = new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
   const fmtD = dt => `\${dt.getMonth()+1}/\${dt.getDate()}`;
 
-  // 범위: 업무 전체 날짜 기반 자동 조정 (최소 오늘±15일)
+  // 범위 계산은 항상 전체 업무 기준 (숨김 여부와 무관하게 타임라인 폭 유지)
   let rangeMin = new Date(todayD); rangeMin.setDate(todayD.getDate()-15);
   let rangeMax = new Date(todayD); rangeMax.setDate(todayD.getDate()+15);
   list.forEach(t=>{
@@ -1515,7 +1535,14 @@ function renderGantt(list){
   }
 
   if(!list.length){ container.innerHTML='<div style="color:var(--muted);font-size:0.82rem;padding:10px 0">표시할 업무가 없습니다.</div>'; return; }
-  list.slice().sort((a,b)=>{
+
+  const visibleList = window._ganttHideDone ? list.filter(t=>!t.done) : list;
+  if (window._ganttHideDone && !visibleList.length) {
+    container.innerHTML = '<div style="color:var(--muted);font-size:0.82rem;padding:10px 0">완료된 업무가 숨겨져 있습니다. 표시할 미완료 업무가 없습니다.</div>';
+    return;
+  }
+
+  visibleList.slice().sort((a,b)=>{
     if(a.done!==b.done) return a.done?1:-1; // 완료는 맨 아래로
     return prioSort(a,b);
   }).forEach(t=>{
@@ -3225,36 +3252,37 @@ function renderLinks(){
     if(!byGroup[g]) byGroup[g]=[];
     byGroup[g].push(l);
   });
-  const groupNames=Object.keys(byGroup);
+  const groupNames=Object.keys(byGroup).sort();
 
-  el.innerHTML=groupNames.map(g=>{
-    const links=byGroup[g];
-    const gc=groupColorFor(g);
-    const cardsHtml=links.map(l=>{
-      let hostname='';
-      try{ hostname=new URL(l.url).hostname.replace('www.',''); }catch(e){ hostname=l.url; }
-      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--card);margin-bottom:7px;">
-        <a href="${l.url}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:10px;flex:1;text-decoration:none;color:var(--text);min-width:0;">
-          <span style="font-size:1.3rem;flex-shrink:0;">${l.icon||'🔗'}</span>
-          <div style="min-width:0;flex:1;">
-            <div style="font-weight:600;font-size:0.88rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.title}</div>
-            <div style="font-size:0.72rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${hostname}</div>
-          </div>
-        </a>
-        <button onclick="deleteLink(${l.id})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:0.95rem;flex-shrink:0;padding:4px;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#cbd5e1'" title="삭제">✕</button>
+  el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;align-items:start;">`
+    + groupNames.map(g=>{
+      const links=byGroup[g];
+      const gc=groupColorFor(g);
+      const cardsHtml=links.map(l=>{
+        let hostname='';
+        try{ hostname=new URL(l.url).hostname.replace('www.',''); }catch(e){ hostname=l.url; }
+        return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:7px;background:white;margin-bottom:6px;border:1px solid #f1f5f9;">
+          <a href="${l.url}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:9px;flex:1;text-decoration:none;color:var(--text);min-width:0;">
+            <span style="font-size:1.15rem;flex-shrink:0;">${l.icon||'🔗'}</span>
+            <div style="min-width:0;flex:1;">
+              <div style="font-weight:600;font-size:0.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.title}</div>
+              <div style="font-size:0.7rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${hostname}</div>
+            </div>
+          </a>
+          <button onclick="openEditLinkModal(${l.id})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:0.8rem;flex-shrink:0;padding:3px;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='#cbd5e1'" title="수정">✎</button>
+          <button onclick="deleteLink(${l.id})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:0.9rem;flex-shrink:0;padding:3px;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#cbd5e1'" title="삭제">✕</button>
+        </div>`;
+      }).join('');
+      return `<div style="border:1.5px solid ${gc}33;border-radius:10px;padding:12px 14px;background:${gc}08;">
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:10px;padding-bottom:8px;border-bottom:1.5px solid ${gc}33;">
+          <span style="width:9px;height:9px;border-radius:50%;background:${gc};display:inline-block;flex-shrink:0;"></span>
+          <span style="font-weight:800;font-size:0.92rem;color:${gc};flex:1;">${g}</span>
+          <span style="font-size:0.7rem;color:var(--muted);background:white;padding:2px 8px;border-radius:10px;">${links.length}개</span>
+        </div>
+        <div>${cardsHtml}</div>
       </div>`;
-    }).join('');
-    return `<div style="margin-bottom:18px;">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-        <span style="width:9px;height:9px;border-radius:50%;background:${gc};display:inline-block;"></span>
-        <span style="font-weight:700;font-size:0.9rem;color:${gc};">${g}</span>
-        <span style="font-size:0.72rem;color:var(--muted);">${links.length}개</span>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:0;">
-        ${cardsHtml}
-      </div>
-    </div>`;
-  }).join('');
+    }).join('')
+    + `</div>`;
 }
 
 function openAddLinkModal(){
@@ -3275,6 +3303,44 @@ function openAddLinkModal(){
   const palette=document.getElementById('link-icon-palette');
   palette.innerHTML=LINK_ICONS.map(ic=>`<span onclick="selectLinkIcon('${ic}',this)" style="font-size:1.3rem;text-align:center;padding:6px;border-radius:6px;cursor:pointer;border:2px solid ${ic==='🔗'?'var(--primary)':'transparent'};">${ic}</span>`).join('');
 
+  editingLinkId = null;
+  document.getElementById('link-modal-title').textContent='🔗 링크 추가';
+  document.getElementById('link-modal-save-btn').textContent='추가';
+  openModal('modal-add-link');
+}
+
+let editingLinkId = null;
+
+function openEditLinkModal(id){
+  const link = quickLinks.find(l=>l.id===id);
+  if(!link) return;
+  editingLinkId = id;
+
+  document.getElementById('link-title').value = link.title;
+  document.getElementById('link-url').value = link.url;
+  document.getElementById('link-icon').value = link.icon || '🔗';
+
+  // 그룹 목록 채우고 현재 그룹 선택
+  const groups=[...new Set(quickLinks.map(l=>l.group||'기타'))];
+  const gSel=document.getElementById('link-group-select');
+  gSel.innerHTML='<option value="__new__">+ 새 그룹 만들기</option>'
+    + groups.map(g=>`<option value="${g}">${g}</option>`).join('');
+  const currentGroup = link.group || '기타';
+  if (groups.includes(currentGroup)) {
+    gSel.value = currentGroup;
+    document.getElementById('link-group-new').style.display = 'none';
+  } else {
+    gSel.value = '__new__';
+    document.getElementById('link-group-new').style.display = '';
+  }
+  document.getElementById('link-group-new').value = currentGroup;
+
+  // 아이콘 팔레트 렌더 (현재 아이콘 선택 표시)
+  const palette=document.getElementById('link-icon-palette');
+  palette.innerHTML=LINK_ICONS.map(ic=>`<span onclick="selectLinkIcon('${ic}',this)" style="font-size:1.3rem;text-align:center;padding:6px;border-radius:6px;cursor:pointer;border:2px solid ${ic===(link.icon||'🔗')?'var(--primary)':'transparent'};">${ic}</span>`).join('');
+
+  document.getElementById('link-modal-title').textContent='✏️ 링크 수정';
+  document.getElementById('link-modal-save-btn').textContent='수정 완료';
   openModal('modal-add-link');
 }
 
@@ -3301,7 +3367,12 @@ function saveLink(){
     : gSelVal;
   const icon=document.getElementById('link-icon').value || '🔗';
 
-  quickLinks.push({ id: Date.now(), title, url, group, icon });
+  if (editingLinkId) {
+    quickLinks = quickLinks.map(l => l.id===editingLinkId ? {...l, title, url, group, icon} : l);
+    editingLinkId = null;
+  } else {
+    quickLinks.push({ id: Date.now(), title, url, group, icon });
+  }
   closeModal('modal-add-link');
   saveAndRender();
 }
