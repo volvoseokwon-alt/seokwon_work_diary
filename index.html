@@ -3285,7 +3285,7 @@ function onLinkGroupDrop(e, targetGroup){
 
   order = order.filter(g => g !== dragGroupName);
   const targetIdx = order.indexOf(targetGroup);
-  order.splice(targetIdx, 0, dragGroupName);
+  order.splice(targetIdx + 1, 0, dragGroupName);
 
   setLinkGroupOrder(order);
   dragGroupName = null;
@@ -3514,11 +3514,32 @@ function layoutLinksMasonry(){
   const cards=Array.from(wrap.querySelectorAll('.link-group-card'));
   if(!cards.length) return;
   const rowH=1; // grid-auto-rows 값과 일치
+  const gap=10; // 카드 간 가로/세로 간격(px)
+  const minColWidth=208;
+
+  // 컬럼 수 계산 (grid-template-columns: repeat(auto-fill, minmax(208px,1fr)) 와 동일한 로직)
+  const wrapWidth=wrap.getBoundingClientRect().width;
+  let colCount=Math.max(1, Math.floor((wrapWidth+gap)/(minColWidth+gap)));
+  if(colCount<1) colCount=1;
+
   requestAnimationFrame(()=>{
-    cards.forEach(c=>{
-      const h=c.getBoundingClientRect().height;
-      const span=Math.ceil(h/rowH);
-      c.style.gridRowEnd='span '+span;
+    // 1) 먼저 모든 카드를 1열 너비로 렌더링한 상태에서 실제 높이 측정
+    //    (gridColumn을 임시로 지정하지 않아도 카드 자체 너비는 컬럼폭과 동일)
+    const heights=cards.map(c=>c.getBoundingClientRect().height);
+
+    // 2) 각 컬럼의 현재 누적 row 수(=다음 카드가 시작할 row)를 추적
+    const colRows=new Array(colCount).fill(1); // grid-row는 1부터 시작
+
+    cards.forEach((c,idx)=>{
+      // 원래 가로 순서 그대로: idx번째 카드는 (idx % colCount) 컬럼에 배정
+      // (순서/열 위치를 정확히 보존하는 것이 우선이며, 약간의 빈 공간은 감수)
+      const col=idx%colCount;
+      const span=Math.ceil(heights[idx]/rowH)+Math.ceil(gap/rowH); // 카드 높이 + 간격만큼 행 차지
+      const rowStart=colRows[col];
+      c.style.gridColumn=(col+1)+'';
+      c.style.gridRowStart=rowStart+'';
+      c.style.gridRowEnd='span '+Math.ceil(heights[idx]/rowH);
+      colRows[col]=rowStart+span;
     });
   });
 }
