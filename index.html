@@ -1781,10 +1781,12 @@ function renderTaskList(list){
           ${st==='overdue'?`<option value="overdue" selected>🔴 기한초과</option>`:''}
           ${Object.entries(TASK_STATUS).filter(([k])=>k!=='done'&&k!=='early_done'&&k!=='overdue').map(([k,v])=>`<option value="${k}" ${st===k?'selected':''}>${v.icon} ${v.label}</option>`).join('')}
         </select>`:`<span class="status-chip" style="background:${stInfo.color};flex-shrink:0;display:flex;align-items:center;gap:4px;">${stInfo.icon} ${stInfo.label}${t.actualEnd?`<span style="font-size:0.68rem;opacity:0.85;font-weight:400;">(${fmt(t.actualEnd)})</span>`:''}</span>`}
-        <!-- 예상/투입 시간 인라인 입력 -->
+        <!-- 예상 시간 입력 + 실제 투입시간(자동 집계, 시간기록 버튼으로 입력된 값의 합) -->
         ${(()=>{
           const eh=t.estHours;
-          const ah=t.actualHours;
+          const loggedH = weeklyLogs.filter(l=>l.project===t.project && l.task===t.text).reduce((s,l)=>s+(l.hours||0),0);
+          const todayH = weeklyLogs.filter(l=>l.project===t.project && l.task===t.text && l.date===TODAY_STR).reduce((s,l)=>s+(l.hours||0),0);
+          const ah = loggedH>0?loggedH:(t.actualHours||0);
           const over=eh&&ah&&ah>eh;
           return `<div style="display:flex;align-items:center;gap:3px;flex-shrink:0;">
             <span style="font-size:0.68rem;color:var(--muted);">예상</span>
@@ -1793,16 +1795,14 @@ function renderTaskList(list){
               onmousedown="event.stopPropagation()"
               onchange="updateEstHours(${t.id},this.value)"
               style="width:38px;font-size:0.75rem;border:1px solid var(--border);border-radius:4px;padding:1px 4px;text-align:center;background:white;color:#64748b;">
-            <span style="font-size:0.68rem;color:var(--muted);">h&nbsp;투입</span>
-            <input type="number" min="0" step="0.5" value="${ah||''}" placeholder="-"
-              title="실제 투입 시간(h)"
-              onmousedown="event.stopPropagation()"
-              onchange="updateActualHours(${t.id},this.value)"
-              style="width:38px;font-size:0.75rem;border:1px solid ${over?'#fca5a5':'var(--border)'};border-radius:4px;padding:1px 4px;text-align:center;background:${over?'#fff1f2':'white'};color:${over?'#ef4444':'#64748b'};">
-            <span style="font-size:0.68rem;color:${over?'#ef4444':'var(--muted)'};">h</span>
+            <span style="font-size:0.68rem;color:var(--muted);">h</span>
+            <span style="font-size:0.68rem;color:${over?'#ef4444':'var(--muted)'};border-left:1px solid var(--border);padding-left:5px;margin-left:2px;" title="시간 입력 버튼으로 기록된 누적 투입시간${todayH>0?` (오늘 ${todayH}h 포함)`:''}">
+              투입 <strong style="color:${over?'#ef4444':'#64748b'};">${ah>0?ah:'-'}</strong>h${todayH>0?` <span style="color:#a855f7;">(오늘 ${todayH}h)</span>`:''}
+            </span>
           </div>`;
         })()}
         <div style="display:flex;gap:5px;flex-shrink:0;">
+          <button class="btn-sm" style="background:#f3e8ff;color:#a855f7" onclick="openLogHoursForTask(${t.id})" onmousedown="event.stopPropagation()" draggable="false" title="오늘(또는 다른 날짜) 투입 시간 기록">⏱ 시간 입력</button>
           <button class="btn-sm" style="background:#eef2ff;color:#6366f1" onclick="duplicateTask(${t.id})" onmousedown="event.stopPropagation()" draggable="false" title="이 업무를 복제">복제</button>
           <button class="btn-sm" style="background:var(--pri-light);color:var(--primary)" onclick="openEdit(${t.id})" onmousedown="event.stopPropagation()" draggable="false">수정</button>
           <button class="btn-sm" style="background:#fee2e2;color:var(--warn)" onclick="deleteTask(${t.id})" onmousedown="event.stopPropagation()" draggable="false">삭제</button>
@@ -4357,6 +4357,39 @@ function openMeetingAdd(){
   document.getElementById('w-memo').value='';
   document.getElementById('w-meeting-title').value='';
   setWeeklyType('meeting');
+  openModal('modal-weekly');
+}
+
+// 오늘(또는 과거 누락된 날짜) 특정 업무에 투입한 시간을 빠르게 기록
+// taskId가 있으면 해당 업무의 프로젝트/업무명을 자동으로 채워서 모달을 연다.
+// 날짜는 기본값 오늘이지만, 모달에서 직접 바꿀 수 있어 "어제 깜빡한 시간" 같은
+// 소급 입력도 동일한 흐름으로 처리할 수 있다.
+function openLogHoursForTask(taskId){
+  const t=tasks.find(x=>x.id===taskId);
+  if(!t) return;
+  editingWeeklyId=null;
+  document.getElementById('w-modal-title').textContent='⏱️ 오늘 투입 시간 기록';
+  document.getElementById('w-modal-btn').textContent='저장';
+
+  const sel=document.getElementById('w-project');
+  sel.innerHTML=projects.map(p=>`<option value="${p.id}">${p.name}</option>`)
+    .join('')+`<option value="__custom_proj__">✏️ 프로젝트 직접 입력...</option>`;
+  sel.value=t.project;
+  document.getElementById('w-proj-custom').style.display='none';
+  document.getElementById('w-proj-custom').value='';
+
+  setWeeklyType('task');
+  syncWTaskList();
+  // 업무 선택 드롭다운에 이 업무를 기본 선택
+  const tSel=document.getElementById('w-task-select');
+  const exists=[...tSel.options].find(o=>o.value===t.text);
+  if(exists){ tSel.value=t.text; document.getElementById('w-task').style.display='none'; }
+  else { tSel.value='__custom__'; document.getElementById('w-task').style.display=''; document.getElementById('w-task').value=t.text; }
+
+  document.getElementById('w-date').value=TODAY_STR; // 기본은 오늘. 날짜 칸에서 직접 바꾸면 과거 날짜로도 기록 가능.
+  document.getElementById('w-hours').value='';
+  document.getElementById('w-memo').value='';
+  document.getElementById('w-meeting-title').value='';
   openModal('modal-weekly');
 }
 
