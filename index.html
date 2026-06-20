@@ -229,6 +229,7 @@ if ('serviceWorker' in navigator) {
       <span id="save-time">--</span>
     </span>
     <button onclick="forceSaveToServer()" title="지금 화면에 보이는 데이터를 서버(Firebase)에 강제로 저장합니다" style="background:#f59e0b;border:none;color:white;font-size:0.7rem;font-weight:700;padding:4px 9px;border-radius:5px;cursor:pointer;">⬆️ 지금 화면을 서버에 저장</button>
+    <button id="backup-folder-btn" onclick="connectBackupFolder()" title="C:\WorkDiary 같은 PC 폴더를 연결하면 저장할 때마다 자동으로 그 폴더에 백업됩니다 (Chrome/Edge PC 전용)" style="background:rgba(255,255,255,0.15);border:none;color:white;font-size:0.7rem;padding:4px 8px;border-radius:5px;cursor:pointer;">📁 PC 폴더 연결</button>
     <button onclick="downloadFullBackup()" title="전체 데이터를 파일로 다운로드 (만약을 위한 백업)" style="background:rgba(255,255,255,0.15);border:none;color:white;font-size:0.7rem;padding:4px 8px;border-radius:5px;cursor:pointer;">📥 백업</button>
     <button onclick="document.getElementById('restore-file-input').click()" title="백업 파일에서 복원" style="background:rgba(255,255,255,0.15);border:none;color:white;font-size:0.7rem;padding:4px 8px;border-radius:5px;cursor:pointer;">📤 복원</button>
     <input type="file" id="restore-file-input" accept=".json" style="display:none;" onchange="restoreFromFile(this.files[0])">
@@ -291,6 +292,7 @@ ZB 교체 둘</textarea>
       <button class="tab-btn" onclick="switchTab('repeat',this)">🔄 반복업무</button>
       <button class="tab-btn" onclick="switchTab('history',this)">📂 완료 히스토리</button>
       <button class="tab-btn" onclick="switchTab('report',this)">📄 레포트</button>
+      <button class="tab-btn" onclick="switchTab('links',this)">🔗 링크</button>
       <button class="tab-btn" onclick="switchTab('trash',this)">🗑️ 휴지통 <span id="trash-badge" style="display:none;background:var(--warn);color:white;font-size:0.65rem;border-radius:10px;padding:1px 5px;margin-left:2px;"></span></button>
     </div>
 
@@ -478,6 +480,18 @@ ZB 교체 둘</textarea>
       </div>
     </div>
 
+    <!-- 링크 모음 -->
+    <div id="tab-links" style="display:none;">
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <strong>🔗 자주 가는 링크</strong>
+          <span style="font-size:0.78rem;color:var(--muted);">업무용/개인용 등 그룹으로 정리</span>
+          <button class="btn-primary" style="margin-left:auto;font-size:0.8rem;padding:6px 14px;" onclick="openAddLinkModal()">+ 링크 추가</button>
+        </div>
+        <div id="links-groups" style="margin-top:14px;"></div>
+      </div>
+    </div>
+
     <!-- 완료 히스토리 -->
     <div id="tab-history" style="display:none;">
       <div class="card">
@@ -567,6 +581,28 @@ ZB 교체 둘</textarea>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal('modal-repeat')">취소</button>
       <button class="btn-primary" onclick="addRepeatTask()">추가</button>
+    </div>
+  </div>
+</div>
+
+<!-- 링크 추가 -->
+<div class="modal" id="modal-add-link">
+  <div class="modal-box">
+    <h3>🔗 링크 추가</h3>
+    <input type="text" id="link-title" placeholder="이름 (예: 회사업무 포털)">
+    <input type="text" id="link-url" placeholder="https://...">
+    <div style="display:flex;gap:8px;align-items:center;">
+      <select id="link-group-select" style="flex:1;padding:8px;border:1.5px solid var(--border);border-radius:6px;" onchange="onLinkGroupSelectChange()">
+        <option value="__new__">+ 새 그룹 만들기</option>
+      </select>
+    </div>
+    <input type="text" id="link-group-new" placeholder="새 그룹 이름 (예: 업무용, 개인용, 회사도구)">
+    <div style="font-size:0.74rem;color:var(--muted);margin-top:-4px;">아이콘 선택 (선택사항)</div>
+    <div id="link-icon-palette" style="display:grid;grid-template-columns:repeat(8,1fr);gap:5px;"></div>
+    <input type="hidden" id="link-icon" value="🔗">
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modal-add-link')">취소</button>
+      <button class="btn-primary" onclick="saveLink()">추가</button>
     </div>
   </div>
 </div>
@@ -674,24 +710,57 @@ function initDB() {
   } catch(e) { console.warn('Firebase init error:', e); }
 }
 
+/* ══════════════════════════════════════
+   버전 체크 (다른 기기 간 저장 충돌 방지)
+   - 서버에 버전 번호(_version)를 같이 저장
+   - 저장 직전에 "내가 마지막으로 본 버전"과 "서버 실제 버전"을 비교
+   - 다르면(=다른 기기가 그 사이 저장함) 덮어쓰지 않고 경고
+══════════════════════════════════════ */
+window._myKnownVersion = 0; // 이 탭이 마지막으로 확인한 서버 버전
+
 async function saveToFirebase() {
   if (!db) return;
   if (!window._fbLoaded) { console.warn('Firebase 로드 전 저장 시도 차단'); return; }
   setSaveStatus('saving');
   try {
+    // 저장 직전, 서버의 실제 최신 버전을 다시 확인 (캐시 무시)
+    const checkSnap = await db.collection('userData').doc('main').get({ source: 'server' });
+    const serverVersion = checkSnap.exists ? (checkSnap.data()._version || 0) : 0;
+
+    if (serverVersion > window._myKnownVersion) {
+      // 다른 기기가 이 사이에 더 최신 버전을 저장함 → 충돌!
+      setSaveStatus('conflict');
+      const reload = confirm(
+        '⚠️ 다른 기기에서 더 최신 데이터가 저장되었습니다.\n\n'+
+        '지금 화면의 내용을 저장하면 그 최신 데이터를 덮어쓰게 됩니다.\n\n'+
+        '[확인] = 페이지를 새로고침해서 최신 데이터를 가져옵니다 (지금 화면의 변경사항은 사라집니다)\n'+
+        '[취소] = 그래도 지금 화면 내용으로 강제 저장합니다 (위험)'
+      );
+      if (reload) {
+        location.reload();
+        return;
+      }
+      // 취소 선택 시 사용자가 위험을 감수하고 강제 진행 (아래로 계속)
+    }
+
     const now = new Date();
     const nowIso = now.toISOString();
+    const newVersion = serverVersion + 1;
     window._lastSavedAt = nowIso;
+    window._myKnownVersion = newVersion;
     const payload = {
       projects, tasks, weeklyLogs, trash, completedProjects,
-      repeatTasks, calMemos, taskTags,
+      repeatTasks, calMemos, taskTags, quickLinks,
       sidebarNote: document.getElementById('sidebar-note')?.value || '',
-      updatedAt: nowIso
+      updatedAt: nowIso,
+      _version: newVersion
     };
     await db.collection('userData').doc('main').set(payload);
     setSaveStatus('saved', now);
     // 서버 저장 성공 → 로컬 백업도 동시에 갱신 (이중 안전망)
     saveLocalBackup(payload);
+    // PC 자동 백업 폴더에도 기록 (File System Access API 연결된 경우)
+    autoBackupToFolder(payload);
   } catch(e) {
     console.warn('Firebase save error:', e);
     setSaveStatus('error');
@@ -709,6 +778,8 @@ function setSaveStatus(state, time){
     const hh=String(time.getHours()).padStart(2,'0');
     const mm=String(time.getMinutes()).padStart(2,'0');
     timeEl.textContent=`${hh}:${mm} 저장됨`;
+  } else if(state==='conflict'){
+    icon.textContent='⚡'; timeEl.textContent='충돌 감지!';
   } else {
     icon.textContent='❌'; timeEl.textContent='저장 실패';
   }
@@ -811,6 +882,7 @@ async function loadFromFirebase() {
   if (data.repeatTasks?.length)       repeatTasks       = data.repeatTasks;
   if (data.calMemos)                  calMemos          = data.calMemos;
   if (data.taskTags)                  taskTags          = data.taskTags;
+  if (data.quickLinks?.length)        quickLinks        = data.quickLinks;
   if (data.sidebarNote) {
     const noteEl = document.getElementById('sidebar-note');
     if (noteEl) noteEl.value = data.sidebarNote;
@@ -818,9 +890,11 @@ async function loadFromFirebase() {
   if (data.updatedAt) {
     try { setSaveStatus('saved', new Date(data.updatedAt)); } catch(e){}
   }
+  // 이 탭이 알고 있는 서버 버전 기록 (다음 저장 시 충돌 체크용)
+  window._myKnownVersion = data._version || 0;
 
   // 정상적으로 서버 데이터를 받았으니 로컬 백업도 갱신 (다음번 안전망)
-  saveLocalBackup({ projects, tasks, weeklyLogs, trash, completedProjects, repeatTasks, calMemos, taskTags });
+  saveLocalBackup({ projects, tasks, weeklyLogs, trash, completedProjects, repeatTasks, calMemos, taskTags, quickLinks, _version: window._myKnownVersion });
 
   window._fbLoaded = true;
 }
@@ -875,16 +949,20 @@ async function forceSaveToServer(){
   try {
     const now = new Date();
     const nowIso = now.toISOString();
+    const newVersion = (window._myKnownVersion||0) + 1;
     const payload = {
       projects, tasks, weeklyLogs, trash, completedProjects,
-      repeatTasks, calMemos, taskTags,
+      repeatTasks, calMemos, taskTags, quickLinks,
       sidebarNote: document.getElementById('sidebar-note')?.value || '',
-      updatedAt: nowIso
+      updatedAt: nowIso,
+      _version: newVersion
     };
     await db.collection('userData').doc('main').set(payload);
     window._lastSavedAt = nowIso;
+    window._myKnownVersion = newVersion;
     window._fbLoaded = true; // 이제부터는 정상적인 저장도 허용
     saveLocalBackup(payload); // 로컬 백업도 동시 갱신
+    autoBackupToFolder(payload); // PC 폴더 자동백업도 동시 갱신
     setSaveStatus('saved', now);
     alert('✅ 서버에 저장되었습니다! 이제 다른 기기에서도 이 데이터를 볼 수 있습니다.');
   } catch(e) {
@@ -894,10 +972,72 @@ async function forceSaveToServer(){
   }
 }
 
+/* ══════════════════════════════════════
+   PC 폴더 자동 백업 (File System Access API)
+   - Chrome/Edge 데스크톱에서만 지원 (아이패드 Safari 미지원)
+   - 한 번 폴더를 선택해두면, 매 저장마다 그 폴더에 자동으로 백업 파일 기록
+   - 권한은 브라우저 탭을 새로 열 때마다 다시 확인 필요 (브라우저 보안 정책)
+══════════════════════════════════════ */
+let backupDirHandle = null; // 선택된 폴더 핸들 (메모리에만 보관, 새로고침하면 사라짐)
+
+function isFileSystemAccessSupported(){
+  return 'showDirectoryPicker' in window;
+}
+
+async function connectBackupFolder(){
+  if (!isFileSystemAccessSupported()){
+    alert('이 브라우저는 폴더 자동 저장을 지원하지 않습니다.\nChrome 또는 Edge(PC)에서 사용해주세요.\n\n대신 "📥 백업" 버튼으로 수동 다운로드는 가능합니다.');
+    return;
+  }
+  try {
+    backupDirHandle = await window.showDirectoryPicker({
+      id: 'workdiary-backup',
+      mode: 'readwrite',
+      startIn: 'documents'
+    });
+    localStorage.setItem('backupFolderConnected', 'true');
+    updateBackupFolderUI(true);
+    alert(`✅ 백업 폴더가 연결되었습니다: ${backupDirHandle.name}\n\n이제부터 저장할 때마다 이 폴더에 자동으로 백업됩니다.`);
+    // 연결 직후 한 번 즉시 백업
+    autoBackupToFolder({ projects, tasks, weeklyLogs, trash, completedProjects, repeatTasks, calMemos, taskTags, quickLinks });
+  } catch(e) {
+    if (e.name !== 'AbortError') console.warn('폴더 선택 취소 또는 실패:', e);
+  }
+}
+
+async function autoBackupToFolder(payload){
+  if (!backupDirHandle) return; // 폴더가 연결 안 되어 있으면 조용히 스킵
+  try {
+    // 매번 같은 파일명으로 덮어써서 최신 1개만 유지 (날짜별로 쌓고 싶으면 파일명에 날짜 추가 가능)
+    const fileHandle = await backupDirHandle.getFileHandle('업무다이어리_최신백업.json', { create: true });
+    const writable = await fileHandle.createWritable();
+    await writable.write(JSON.stringify({...payload, _backupAt: new Date().toISOString(), _exportedFrom: 'auto_folder'}, null, 2));
+    await writable.close();
+
+    // 날짜별 백업도 하나 더 (최근 7개만 유지하도록 별도 관리는 추후 필요시 추가)
+    const dateStr = `${TODAY.getFullYear()}${String(TODAY.getMonth()+1).padStart(2,'0')}${String(TODAY.getDate()).padStart(2,'0')}`;
+    const dateFileHandle = await backupDirHandle.getFileHandle(`백업_${dateStr}.json`, { create: true });
+    const dateWritable = await dateFileHandle.createWritable();
+    await dateWritable.write(JSON.stringify({...payload, _backupAt: new Date().toISOString()}, null, 2));
+    await dateWritable.close();
+  } catch(e) {
+    console.warn('폴더 자동 백업 실패 (권한이 풀렸을 수 있음):', e);
+    backupDirHandle = null;
+    updateBackupFolderUI(false);
+  }
+}
+
+function updateBackupFolderUI(connected){
+  const btn = document.getElementById('backup-folder-btn');
+  if (!btn) return;
+  btn.textContent = connected ? '📁 PC 자동백업 ON' : '📁 PC 폴더 연결';
+  btn.style.background = connected ? '#10b981' : 'rgba(255,255,255,0.15)';
+}
+
 function downloadFullBackup(){
   const payload = {
     projects, tasks, weeklyLogs, trash, completedProjects,
-    repeatTasks, calMemos, taskTags,
+    repeatTasks, calMemos, taskTags, quickLinks,
     sidebarNote: document.getElementById('sidebar-note')?.value || '',
     _backupAt: new Date().toISOString(),
     _exportedFrom: 'manual_download'
@@ -1131,6 +1271,7 @@ let completedProjects = [];
 let repeatTasks = [];     // {id, text, project, priority, cycle:'weekly'|'biweekly'|'monthly', duration:3, lastGenDate:''}
 let calMemos = {};        // {'2026-06-17': {text:'...', color:'#4f46e5'}}
 let taskTags = {};        // {taskId: ['#회의','#문서']}
+let quickLinks = [];      // {id, title, url, group, icon}
 let currentFilter = 'all';
 let currentTab    = 'today';
 let calYear  = TODAY.getFullYear();
@@ -1292,7 +1433,7 @@ function checkAlerts(){
 /* ══════════════════════════════════════
    TABS
 ══════════════════════════════════════ */
-const TAB_IDS=['today','home','calendar','weekly','search','repeat','history','report','trash'];
+const TAB_IDS=['today','home','calendar','weekly','search','repeat','history','report','links','trash'];
 function switchTab(name,el){
   currentTab=name;
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
@@ -3057,6 +3198,120 @@ function getReportRange(){
 
 function renderReport(){ /* 탭 진입 시 초기 렌더 */ }
 
+/* ══════════════════════════════════════
+   링크 모음
+══════════════════════════════════════ */
+const LINK_ICONS = ['🔗','🏢','💼','📊','📁','💻','📧','📅','🛠️','📚','🎯','⭐','🌐','📌','🔧','🚀'];
+const LINK_GROUP_COLORS = ['#4f46e5','#0284c7','#10b981','#f59e0b','#ef4444','#7c3aed','#06b6d4','#64748b'];
+
+function groupColorFor(groupName){
+  // 그룹명 문자열을 기반으로 항상 같은 색을 반환 (간단한 해시)
+  let hash=0;
+  for(let i=0;i<groupName.length;i++) hash=(hash*31+groupName.charCodeAt(i))>>>0;
+  return LINK_GROUP_COLORS[hash % LINK_GROUP_COLORS.length];
+}
+
+function renderLinks(){
+  const el=document.getElementById('links-groups');
+  if(!el) return;
+  if(!quickLinks.length){
+    el.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-size:0.85rem;">등록된 링크가 없습니다.<br><span style="font-size:0.78rem;">+ 링크 추가 버튼으로 자주 가는 사이트를 등록해보세요.</span></div>';
+    return;
+  }
+  // 그룹별로 묶기
+  const byGroup={};
+  quickLinks.forEach(l=>{
+    const g=l.group||'기타';
+    if(!byGroup[g]) byGroup[g]=[];
+    byGroup[g].push(l);
+  });
+  const groupNames=Object.keys(byGroup);
+
+  el.innerHTML=groupNames.map(g=>{
+    const links=byGroup[g];
+    const gc=groupColorFor(g);
+    const cardsHtml=links.map(l=>{
+      let hostname='';
+      try{ hostname=new URL(l.url).hostname.replace('www.',''); }catch(e){ hostname=l.url; }
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--card);margin-bottom:7px;">
+        <a href="${l.url}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:10px;flex:1;text-decoration:none;color:var(--text);min-width:0;">
+          <span style="font-size:1.3rem;flex-shrink:0;">${l.icon||'🔗'}</span>
+          <div style="min-width:0;flex:1;">
+            <div style="font-weight:600;font-size:0.88rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.title}</div>
+            <div style="font-size:0.72rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${hostname}</div>
+          </div>
+        </a>
+        <button onclick="deleteLink(${l.id})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:0.95rem;flex-shrink:0;padding:4px;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#cbd5e1'" title="삭제">✕</button>
+      </div>`;
+    }).join('');
+    return `<div style="margin-bottom:18px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <span style="width:9px;height:9px;border-radius:50%;background:${gc};display:inline-block;"></span>
+        <span style="font-weight:700;font-size:0.9rem;color:${gc};">${g}</span>
+        <span style="font-size:0.72rem;color:var(--muted);">${links.length}개</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:0;">
+        ${cardsHtml}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openAddLinkModal(){
+  document.getElementById('link-title').value='';
+  document.getElementById('link-url').value='';
+  document.getElementById('link-group-new').value='';
+  document.getElementById('link-icon').value='🔗';
+
+  // 기존 그룹 목록 채우기
+  const groups=[...new Set(quickLinks.map(l=>l.group||'기타'))];
+  const gSel=document.getElementById('link-group-select');
+  gSel.innerHTML='<option value="__new__">+ 새 그룹 만들기</option>'
+    + groups.map(g=>`<option value="${g}">${g}</option>`).join('');
+  gSel.value='__new__';
+  document.getElementById('link-group-new').style.display='';
+
+  // 아이콘 팔레트 렌더
+  const palette=document.getElementById('link-icon-palette');
+  palette.innerHTML=LINK_ICONS.map(ic=>`<span onclick="selectLinkIcon('${ic}',this)" style="font-size:1.3rem;text-align:center;padding:6px;border-radius:6px;cursor:pointer;border:2px solid ${ic==='🔗'?'var(--primary)':'transparent'};">${ic}</span>`).join('');
+
+  openModal('modal-add-link');
+}
+
+function onLinkGroupSelectChange(){
+  const v=document.getElementById('link-group-select').value;
+  document.getElementById('link-group-new').style.display = v==='__new__' ? '' : 'none';
+}
+
+function selectLinkIcon(icon, el){
+  document.getElementById('link-icon').value=icon;
+  el.parentElement.querySelectorAll('span').forEach(s=>{ s.style.borderColor='transparent'; });
+  el.style.borderColor='var(--primary)';
+}
+
+function saveLink(){
+  const title=document.getElementById('link-title').value.trim();
+  let url=document.getElementById('link-url').value.trim();
+  if(!title||!url) { alert('이름과 URL을 입력해주세요.'); return; }
+  if(!/^https?:\/\//i.test(url)) url='https://'+url;
+
+  const gSelVal=document.getElementById('link-group-select').value;
+  const group = gSelVal==='__new__'
+    ? (document.getElementById('link-group-new').value.trim() || '기타')
+    : gSelVal;
+  const icon=document.getElementById('link-icon').value || '🔗';
+
+  quickLinks.push({ id: Date.now(), title, url, group, icon });
+  closeModal('modal-add-link');
+  saveAndRender();
+}
+
+function deleteLink(id){
+  if(!confirm('이 링크를 삭제하시겠습니까?')) return;
+  quickLinks = quickLinks.filter(l=>l.id!==id);
+  saveAndRender();
+}
+
 function generateReport(){
   const {startKey, endKey}=getReportRange();
   const logs=weeklyLogs.filter(l=>l.date&&l.date>=startKey&&l.date<=endKey);
@@ -3350,6 +3605,7 @@ function render(){
   else if(currentTab==='repeat'){ renderRepeat(); }
   else if(currentTab==='history'){ renderHistory(); }
   else if(currentTab==='report'){ renderReport(); }
+  else if(currentTab==='links'){ renderLinks(); }
   else if(currentTab==='trash'){ renderTrash(); }
 }
 
@@ -3688,6 +3944,13 @@ document.getElementById('sidebar-note')?.addEventListener('input', ()=>{
   // 시계는 DOM 완전 로드 후 시작
   updateWorldClocks();
   setInterval(updateWorldClocks, 30000);
+  // 이전에 PC 폴더 자동백업을 연결했던 적이 있으면 재연결 안내 (보안정책상 자동 재연결 불가)
+  if (localStorage.getItem('backupFolderConnected')==='true' && isFileSystemAccessSupported()) {
+    setTimeout(()=>{
+      const btn=document.getElementById('backup-folder-btn');
+      if(btn){ btn.textContent='📁 PC 폴더 재연결 필요'; btn.style.background='#f59e0b'; }
+    }, 1000);
+  }
 })();
 </script>
 </body>
