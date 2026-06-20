@@ -3426,9 +3426,29 @@ function deleteLink(id){
 
 function generateReport(){
   const {startKey, endKey}=getReportRange();
-  const logs=weeklyLogs.filter(l=>l.date&&l.date>=startKey&&l.date<=endKey);
+  const todayD2=new Date(TODAY.getFullYear(),TODAY.getMonth(),TODAY.getDate());
 
-  // 주별 그룹화
+  // ── 현재 보유 업무 현황 (이 기간에 걸쳐있는 미완료 업무 전체) — 팀장이 가장 궁금해할 부분
+  const activeTasks = tasks.filter(t=>{
+    if(t.done) return false;
+    return t.start<=endKey && t.end>=startKey; // 기간과 겹치는 업무
+  });
+  const byPrioCount={A:0,B:0,C:0};
+  activeTasks.forEach(t=>{ const tier=(t.priority||'C3')[0]; if(byPrioCount[tier]!=null) byPrioCount[tier]++; });
+  const overdueTasks = activeTasks.filter(t=>isOverdue(t));
+  const atRiskTasks = activeTasks.filter(t=>!isOverdue(t) && getHealthScore(t)<-20);
+  const onTrackCount = activeTasks.length - overdueTasks.length - atRiskTasks.length;
+
+  // 업무 부하 판정 (활성 업무 수 + A등급 비중 + 지연 비율 기반 간단 신호)
+  const loadScore = activeTasks.length + byPrioCount.A*1.5 + overdueTasks.length*2 + atRiskTasks.length*1.5;
+  let loadLabel, loadColor;
+  if(loadScore>=18){ loadLabel='🔴 매우 바쁨'; loadColor='#dc2626'; }
+  else if(loadScore>=10){ loadLabel='🟠 바쁨'; loadColor='#f59e0b'; }
+  else if(loadScore>=4){ loadLabel='🟡 보통'; loadColor='#eab308'; }
+  else { loadLabel='🟢 여유'; loadColor='#10b981'; }
+
+  // ── 시간 기록 (보조 정보)
+  const logs=weeklyLogs.filter(l=>l.date&&l.date>=startKey&&l.date<=endKey);
   const byWeek={};
   logs.forEach(l=>{
     const wk=isoWeekKey(l.date);
@@ -3436,43 +3456,62 @@ function generateReport(){
     byWeek[wk].logs.push(l);
     byWeek[wk].days[l.date]=(byWeek[wk].days[l.date]||0)+(l.hours||0);
   });
-
-  // 프로젝트별 합산
   const byProj={};
   logs.forEach(l=>{ byProj[l.project]=(byProj[l.project]||0)+(l.hours||0); });
   const totalH=logs.reduce((s,l)=>s+(l.hours||0),0);
   const weeks=Object.keys(byWeek).sort();
 
-  // 완료 업무
+  // 완료 업무 (보조 정보)
   const doneTasks=[];
   tasks.forEach(t=>{ if(t.done&&t.actualEnd&&t.actualEnd>=startKey&&t.actualEnd<=endKey) doneTasks.push(t); });
   completedProjects.forEach(cp=>{ cp.tasks.forEach(t=>{ const cd=t._completedAt||cp.completedAt; if(cd&&cd>=startKey&&cd<=endKey&&!doneTasks.find(x=>x.id===t.id)) doneTasks.push(t); }); });
 
-  // 레포트 렌더링
   const el=document.getElementById('report-output');
+
+  // 현재 진행중인 업무 목록 (우선순위순, 지연 표시 포함)
+  const activeSorted = [...activeTasks].sort((a,b)=>{
+    const ai=PRIORITY_ORDER.indexOf(a.priority||'C3'), bi=PRIORITY_ORDER.indexOf(b.priority||'C3');
+    return ai-bi;
+  });
+  const activeHtml = activeSorted.map(t=>{
+    const p=proj(t.project);
+    const pc=prioColor(t.priority||'');
+    const isOver=isOverdue(t);
+    const h=getHealthScore(t);
+    let statusTxt, statusCol;
+    if(isOver){
+      const eD=new Date(t.end); const endD=new Date(eD.getFullYear(),eD.getMonth(),eD.getDate());
+      const days=Math.round((todayD2-endD)/86400000);
+      statusTxt=`🔴 ${days}일 지연`; statusCol='#dc2626';
+    } else if(h<-20){ statusTxt=`⚠️ 진행 ${h}%`; statusCol='#f59e0b'; }
+    else { statusTxt=`🔵 진행 ${getTaskProgress(t)}%`; statusCol='#64748b'; }
+    return `<div style="display:flex;align-items:center;gap:7px;font-size:0.8rem;padding:5px 0;border-bottom:1px solid #f1f5f9;">
+      ${t.priority?`<span style="color:${pc};font-weight:700;font-size:0.68rem;min-width:24px;">${t.priority}</span>`:'<span style="min-width:24px;"></span>'}
+      <span style="color:${p.color};font-weight:600;font-size:0.72rem;min-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name}</span>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${t.text}</span>
+      <span style="color:${statusCol};font-size:0.72rem;font-weight:600;white-space:nowrap;">${statusTxt}</span>
+      <span style="color:#94a3b8;font-size:0.7rem;white-space:nowrap;">~${fmt(t.end)}</span>
+    </div>`;
+  }).join('') || '<div style="color:#94a3b8;padding:10px;text-align:center;">진행중인 업무가 없습니다.</div>';
 
   const weekHtml=weeks.map(wk=>{
     const wData=byWeek[wk];
-    const wLogs=wData.logs;
-    const wTotal=wLogs.reduce((s,l)=>s+(l.hours||0),0);
+    const wTotal=wData.logs.reduce((s,l)=>s+(l.hours||0),0);
     const wByProj={};
-    wLogs.forEach(l=>{ wByProj[l.project]=(wByProj[l.project]||0)+(l.hours||0); });
+    wData.logs.forEach(l=>{ wByProj[l.project]=(wByProj[l.project]||0)+(l.hours||0); });
     const [wy,wn]=wk.split('-W');
     const wStart=isoWeekStart(parseInt(wy),parseInt(wn));
     const wEnd=new Date(wStart); wEnd.setDate(wStart.getDate()+6);
     const fmtShort=dt2=>`${dt2.getMonth()+1}/${dt2.getDate()}`;
-    return `<div style="margin-bottom:14px;padding:12px 14px;border:1px solid #e2e8f0;border-radius:8px;background:white;">
-      <div style="font-weight:700;font-size:0.88rem;color:#4f46e5;margin-bottom:8px;">
+    return `<div style="margin-bottom:10px;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;background:white;">
+      <div style="font-weight:700;font-size:0.84rem;color:#4f46e5;margin-bottom:6px;">
         W${wn} (${fmtShort(wStart)} ~ ${fmtShort(wEnd)}) — 총 <strong>${wTotal}h</strong>
       </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
         ${Object.entries(wByProj).sort((a,b)=>b[1]-a[1]).map(([pid,h])=>{
           const p=proj(pid);
-          return `<span style="font-size:0.75rem;background:${p.color}18;color:${p.color};padding:3px 9px;border-radius:12px;font-weight:600;">${p.name} ${h}h</span>`;
+          return `<span style="font-size:0.72rem;background:${p.color}18;color:${p.color};padding:2px 8px;border-radius:10px;font-weight:600;">${p.name} ${h}h</span>`;
         }).join('')}
-      </div>
-      <div style="font-size:0.76rem;color:#94a3b8;">
-        ${Object.entries(wData.days).sort().map(([date,h])=>`${fmt(date)} ${h}h`).join(' · ')}
       </div>
     </div>`;
   }).join('');
@@ -3480,54 +3519,43 @@ function generateReport(){
   const projBarsHtml=Object.entries(byProj).sort((a,b)=>b[1]-a[1]).map(([pid,h])=>{
     const p=proj(pid);
     const pct=Math.round(h/Math.max(totalH,1)*100);
-    return `<div style="display:flex;align-items:center;gap:8px;font-size:0.82rem;margin-bottom:6px;">
-      <span style="width:120px;font-weight:600;color:${p.color};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name}</span>
-      <div style="flex:1;background:#f1f5f9;border-radius:20px;height:16px;overflow:hidden;">
-        <div style="height:100%;width:${pct}%;background:${p.color};border-radius:20px;display:flex;align-items:center;padding-left:6px;">
-          ${pct>15?`<span style="font-size:0.65rem;color:white;font-weight:700;">${h}h</span>`:''}
-        </div>
+    return `<div style="display:flex;align-items:center;gap:8px;font-size:0.8rem;margin-bottom:5px;">
+      <span style="width:110px;font-weight:600;color:${p.color};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name}</span>
+      <div style="flex:1;background:#f1f5f9;border-radius:20px;height:14px;overflow:hidden;">
+        <div style="height:100%;width:${pct}%;background:${p.color};border-radius:20px;"></div>
       </div>
-      <span style="width:42px;text-align:right;color:#64748b;">${h}h / ${pct}%</span>
+      <span style="width:50px;text-align:right;color:#64748b;font-size:0.76rem;">${h}h</span>
     </div>`;
-  }).join('')||'<div style="color:#94a3b8;">기록 없음</div>';
-
-  const doneHtml=doneTasks.slice(0,20).map(t=>{
-    const p=proj(t.project);
-    const pc=prioColor(t.priority||'');
-    return `<div style="display:flex;align-items:center;gap:7px;font-size:0.8rem;padding:5px 0;border-bottom:1px solid #f1f5f9;">
-      ${t.priority?`<span style="color:${pc};font-weight:700;font-size:0.68rem;min-width:24px;">${t.priority}</span>`:'<span style="min-width:24px;"></span>'}
-      <span style="color:${p.color};font-weight:600;font-size:0.72rem;min-width:80px;">${p.name}</span>
-      <span style="flex:1;">${t.text}</span>
-      <span style="color:#94a3b8;font-size:0.72rem;">${fmt(t.actualEnd||t._completedAt||'')}</span>
-    </div>`;
-  }).join('');
+  }).join('')||'<div style="color:#94a3b8;font-size:0.8rem;">기록 없음</div>';
 
   el.innerHTML=`
-    <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
-      <div style="background:#eff6ff;border-radius:8px;padding:10px 18px;text-align:center;">
-        <div style="font-size:1.6rem;font-weight:800;color:#4f46e5;">${totalH}h</div>
-        <div style="font-size:0.72rem;color:#64748b;">총 작업 시간</div>
+    <!-- 한눈에 보는 업무 부하 -->
+    <div style="background:${loadColor}0f;border:1.5px solid ${loadColor}44;border-radius:10px;padding:14px 16px;margin-bottom:16px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <span style="font-size:1.3rem;font-weight:800;color:${loadColor};">${loadLabel}</span>
+        <span style="font-size:0.78rem;color:#64748b;">현재 보유 업무 ${activeTasks.length}건 기준</span>
       </div>
-      <div style="background:#f0fdf4;border-radius:8px;padding:10px 18px;text-align:center;">
-        <div style="font-size:1.6rem;font-weight:800;color:#10b981;">${doneTasks.length}</div>
-        <div style="font-size:0.72rem;color:#64748b;">완료 업무</div>
-      </div>
-      <div style="background:#faf5ff;border-radius:8px;padding:10px 18px;text-align:center;">
-        <div style="font-size:1.6rem;font-weight:800;color:#7c3aed;">${weeks.length}</div>
-        <div style="font-size:0.72rem;color:#64748b;">기록 주차</div>
+      <div style="display:flex;gap:18px;flex-wrap:wrap;font-size:0.82rem;">
+        <div><strong style="color:#ef4444;">${byPrioCount.A}</strong> <span style="color:#64748b;">긴급(A)</span></div>
+        <div><strong style="color:#f59e0b;">${byPrioCount.B}</strong> <span style="color:#64748b;">중요(B)</span></div>
+        <div><strong style="color:#10b981;">${byPrioCount.C}</strong> <span style="color:#64748b;">일반(C)</span></div>
+        <div><strong style="color:#dc2626;">${overdueTasks.length}</strong> <span style="color:#64748b;">지연</span></div>
+        <div><strong style="color:#10b981;">${doneTasks.length}</strong> <span style="color:#64748b;">완료(이 기간)</span></div>
       </div>
     </div>
-    <div style="font-size:0.82rem;font-weight:700;color:#64748b;margin-bottom:8px;">📅 주별 업무 부하</div>
-    ${weekHtml||'<div style="color:#94a3b8;padding:16px;text-align:center;">이 기간에 주간기록이 없습니다.</div>'}
-    <div style="font-size:0.82rem;font-weight:700;color:#64748b;margin:12px 0 8px;">📊 프로젝트별 시간 분배</div>
+
+    <div style="font-size:0.85rem;font-weight:700;color:#374151;margin-bottom:8px;">📋 현재 진행중인 업무 (우선순위순)</div>
+    <div style="margin-bottom:18px;">${activeHtml}</div>
+
+    <div style="font-size:0.85rem;font-weight:700;color:#374151;margin-bottom:8px;">📅 주별 작업시간 기록</div>
+    ${weekHtml||'<div style="color:#94a3b8;padding:14px;text-align:center;font-size:0.85rem;">이 기간에 주간기록이 없습니다.</div>'}
+
+    <div style="font-size:0.85rem;font-weight:700;color:#374151;margin:14px 0 8px;">📊 프로젝트별 시간 분배</div>
     ${projBarsHtml}
-    <div style="font-size:0.82rem;font-weight:700;color:#64748b;margin:12px 0 8px;">✅ 완료 업무 (${doneTasks.length}건)</div>
-    ${doneHtml}
-    ${doneTasks.length>20?`<div style="color:#94a3b8;font-size:0.78rem;padding:4px 0;">외 ${doneTasks.length-20}건...</div>`:''}
   `;
 
   // Word 다운로드 버튼 활성화 (데이터 저장)
-  window._reportData={startKey,endKey,logs,byProj,totalH,weeks,byWeek,doneTasks};
+  window._reportData={startKey,endKey,logs,byProj,totalH,weeks,byWeek,doneTasks,activeTasks,byPrioCount,overdueTasks,atRiskTasks,loadLabel};
 }
 
 function isoWeekStart(year, week){
@@ -3539,14 +3567,35 @@ function isoWeekStart(year, week){
 }
 
 function generateReportText(d){
-  const {startKey,endKey,byProj,totalH,doneTasks,weeks,byWeek}=d;
+  const {startKey,endKey,byProj,totalH,doneTasks,weeks,byWeek,activeTasks,byPrioCount,overdueTasks,loadLabel}=d;
+  const todayD2=new Date(TODAY.getFullYear(),TODAY.getMonth(),TODAY.getDate());
   let t=`${'='.repeat(40)}\n`;
   t+=`📔 업무 레포트\n`;
   t+=`기간: ${fmt(startKey)} ~ ${fmt(endKey)}\n`;
   t+=`${'='.repeat(40)}\n\n`;
+  t+=`■ 현재 업무 부하: ${loadLabel||''} (보유 업무 ${(activeTasks||[]).length}건)\n`;
+  t+=`  - 긴급(A): ${byPrioCount?.A||0}건 · 중요(B): ${byPrioCount?.B||0}건 · 일반(C): ${byPrioCount?.C||0}건\n`;
+  t+=`  - 지연 업무: ${(overdueTasks||[]).length}건\n\n`;
+  if(activeTasks && activeTasks.length){
+    t+=`■ 현재 진행중인 업무\n`;
+    [...activeTasks].sort((a,b)=>PRIORITY_ORDER.indexOf(a.priority||'C3')-PRIORITY_ORDER.indexOf(b.priority||'C3')).forEach(at=>{
+      const p=proj(at.project);
+      const isOver=isOverdue(at);
+      let tag='';
+      if(isOver){
+        const eD=new Date(at.end); const endD=new Date(eD.getFullYear(),eD.getMonth(),eD.getDate());
+        const days=Math.round((todayD2-endD)/86400000);
+        tag=` [지연 ${days}일]`;
+      } else {
+        tag=` [진행 ${getTaskProgress(at)}%]`;
+      }
+      t+=`  [${at.priority||'-'}] ${p.name} - ${at.text}${tag} (~${fmt(at.end)})\n`;
+    });
+    t+='\n';
+  }
   t+=`■ 요약\n`;
   t+=`  - 총 작업시간: ${totalH}h\n`;
-  t+=`  - 완료 업무: ${doneTasks.length}건\n\n`;
+  t+=`  - 완료 업무(이 기간): ${doneTasks.length}건\n\n`;
   t+=`■ 프로젝트별 투입시간\n`;
   Object.entries(byProj).sort((a,b)=>b[1]-a[1]).forEach(([pid,h])=>{
     const p=proj(pid);
@@ -3592,6 +3641,29 @@ function downloadReportWord(){
   const d=window._reportData;
   const rangeLabel=`${fmt(d.startKey)} ~ ${fmt(d.endKey)}`;
   const generatedAt=`${TODAY.getFullYear()}.${TODAY.getMonth()+1}.${TODAY.getDate()}`;
+
+  // 현재 진행중 업무 행
+  const activeRows=(d.activeTasks||[]).slice().sort((a,b)=>PRIORITY_ORDER.indexOf(a.priority||'C3')-PRIORITY_ORDER.indexOf(b.priority||'C3')).map(t=>{
+    const p=proj(t.project);
+    const pc=prioColor(t.priority||'');
+    const isOver=isOverdue(t);
+    const todayD3=new Date(TODAY.getFullYear(),TODAY.getMonth(),TODAY.getDate());
+    let statusStr, statusColor;
+    if(isOver){
+      const eD=new Date(t.end); const endD=new Date(eD.getFullYear(),eD.getMonth(),eD.getDate());
+      const days=Math.round((todayD3-endD)/86400000);
+      statusStr=`지연 ${days}일`; statusColor='#dc2626';
+    } else {
+      statusStr=`진행 ${getTaskProgress(t)}%`; statusColor='#374151';
+    }
+    return `<tr>
+      <td style="border:1px solid #ccc;padding:5px 8px;text-align:center;font-weight:700;color:${pc};">${t.priority||'-'}</td>
+      <td style="border:1px solid #ccc;padding:5px 8px;color:${p.color};font-weight:600;">${p.name}</td>
+      <td style="border:1px solid #ccc;padding:5px 8px;">${t.text}</td>
+      <td style="border:1px solid #ccc;padding:5px 8px;text-align:center;color:${statusColor};font-weight:600;">${statusStr}</td>
+      <td style="border:1px solid #ccc;padding:5px 8px;text-align:center;color:#666;">~${fmt(t.end)}</td>
+    </tr>`;
+  }).join('');
 
   // 주별 테이블 행
   const weekRows=d.weeks.map(wk=>{
@@ -3654,16 +3726,24 @@ function downloadReportWord(){
 <p style="color:#64748b;margin-bottom:12pt;"><strong>대상 기간:</strong> ${rangeLabel} &nbsp;|&nbsp; <strong>생성일:</strong> ${generatedAt}</p>
 
 <div class="summary-box">
-  <table style="border:none;width:auto;margin-bottom:0;">
+  <table style="border:none;width:auto;margin-bottom:8pt;">
     <tr>
-      <td style="border:none;padding:4px 24px;text-align:center;"><div class="summary-num">${d.totalH}h</div><div style="font-size:9pt;color:#64748b;">총 작업 시간</div></td>
-      <td style="border:none;padding:4px 24px;text-align:center;"><div class="summary-num" style="color:#10b981;">${d.doneTasks.length}</div><div style="font-size:9pt;color:#64748b;">완료 업무</div></td>
-      <td style="border:none;padding:4px 24px;text-align:center;"><div class="summary-num" style="color:#7c3aed;">${d.weeks.length}</div><div style="font-size:9pt;color:#64748b;">기록 주차</div></td>
+      <td style="border:none;padding:4px 24px;text-align:center;"><div class="summary-num">${(d.activeTasks||[]).length}</div><div style="font-size:9pt;color:#64748b;">보유 업무</div></td>
+      <td style="border:none;padding:4px 24px;text-align:center;"><div class="summary-num" style="color:#ef4444;">${d.byPrioCount?.A||0}</div><div style="font-size:9pt;color:#64748b;">긴급(A)</div></td>
+      <td style="border:none;padding:4px 24px;text-align:center;"><div class="summary-num" style="color:#dc2626;">${(d.overdueTasks||[]).length}</div><div style="font-size:9pt;color:#64748b;">지연 업무</div></td>
+      <td style="border:none;padding:4px 24px;text-align:center;"><div class="summary-num" style="color:#10b981;">${d.doneTasks.length}</div><div style="font-size:9pt;color:#64748b;">완료(이 기간)</div></td>
     </tr>
   </table>
+  <p style="margin:0;font-size:11pt;color:#374151;"><strong>현재 업무 부하: ${(d.loadLabel||'').replace(/[🔴🟠🟡🟢]/g,'')}</strong></p>
 </div>
 
-<h2>📅 주별 업무 부하</h2>
+<h2>📋 현재 진행중인 업무</h2>
+<table>
+  <tr><th style="width:50px;">우선순위</th><th style="width:110px;">프로젝트</th><th>업무명</th><th style="width:80px;">상태</th><th style="width:80px;">마감일</th></tr>
+  ${activeRows||'<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:16px;">진행중인 업무 없음</td></tr>'}
+</table>
+
+<h2>📅 주별 작업시간 기록</h2>
 <table>
   <tr><th>주차</th><th>총 시간</th><th>프로젝트별 시간</th><th>날짜별 기록</th></tr>
   ${weekRows||'<tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:16px;">기록 없음</td></tr>'}
