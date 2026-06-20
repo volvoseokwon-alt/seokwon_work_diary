@@ -3310,6 +3310,20 @@ function onLinkItemDrop(e, targetId){
   saveAndRender();
 }
 
+let _pendingGroupToggleTimer = null;
+
+function handleGroupTitleClick(e, groupName){
+  e.stopPropagation();
+  // 더블클릭으로 판정될 시간(250ms) 동안 토글 실행을 미룸
+  clearTimeout(_pendingGroupToggleTimer);
+  _pendingGroupToggleTimer = setTimeout(()=>{
+    toggleLinkGroup(groupName);
+  }, 250);
+}
+function cancelPendingGroupToggle(){
+  clearTimeout(_pendingGroupToggleTimer);
+}
+
 function startInlineEditGroupName(el, oldName){
   el.contentEditable = 'true';
   el.style.outline = '1px solid var(--primary)';
@@ -3458,7 +3472,7 @@ function renderLinks(){
           <span style="cursor:grab;color:${gc}88;font-size:0.75rem;flex-shrink:0;" title="드래그해서 순서 변경">⠿</span>
           <span onclick="toggleLinkGroup('${gEsc}')" style="display:inline-block;transition:transform .2s;transform:rotate(${isCollapsed?'-90deg':'0deg'});color:${gc};font-size:0.68rem;cursor:pointer;">▼</span>
           <span style="width:7px;height:7px;border-radius:50%;background:${gc};display:inline-block;flex-shrink:0;"></span>
-          <span onclick="toggleLinkGroup('${gEsc}')" ondblclick="event.preventDefault();event.stopPropagation();startInlineEditGroupName(this,'${gEsc}')" title="더블클릭해서 그룹명 수정" style="font-weight:800;font-size:0.82rem;color:${gc};flex:1;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${g}</span>
+          <span onclick="handleGroupTitleClick(event,'${gEsc}')" ondblclick="event.preventDefault();event.stopPropagation();cancelPendingGroupToggle();startInlineEditGroupName(this,'${gEsc}')" title="클릭: 펼치기/접기 · 더블클릭: 이름 수정" style="font-weight:800;font-size:0.82rem;color:${gc};flex:1;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${g}</span>
           <span style="font-size:0.62rem;color:var(--muted);background:white;padding:1px 6px;border-radius:9px;flex-shrink:0;">${links.length}</span>
         </div>
         ${isCollapsed?'':`<div>${cardsHtml}</div>`}
