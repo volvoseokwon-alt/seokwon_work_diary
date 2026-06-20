@@ -74,6 +74,8 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 .tab-btn{background:none;border:none;padding:8px 13px;cursor:pointer;font-size:0.85rem;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px;transition:.15s;white-space:nowrap;}
 .tab-btn:hover{color:var(--primary);}
 .tab-btn.active{color:var(--primary);font-weight:700;border-bottom-color:var(--primary);}
+.sub-tab-btn{border:1.5px solid var(--border)!important;background:white!important;color:var(--muted)!important;font-weight:600!important;border-bottom:1.5px solid var(--border)!important;padding:7px 14px!important;}
+.sub-tab-btn.active{border-color:var(--primary)!important;background:var(--primary)!important;color:white!important;border-bottom:1.5px solid var(--primary)!important;}
 /* Card */
 .card{background:var(--card);padding:14px 16px;border-radius:10px;border:1px solid var(--border);display:flex;flex-direction:column;gap:11px;}
 /* Input */
@@ -304,7 +306,7 @@ ZB 교체 둘</textarea>
       <button class="tab-btn" onclick="switchTab('home',this)">🏠 홈</button>
       <button class="tab-btn" onclick="switchTab('links',this)">🔗 링크</button>
       <button class="tab-btn" onclick="switchTab('calendar',this)">📅 캘린더</button>
-      <button class="tab-btn" onclick="switchTab('weekly',this)">⏱️ 주간 기록</button>
+      <button class="tab-btn" onclick="switchTab('weekly',this)">⏱️ 주간/월간 기록</button>
       <button class="tab-btn" onclick="switchTab('search',this)">🔍 검색</button>
       <button class="tab-btn" onclick="switchTab('repeat',this)">🔄 반복업무</button>
       <button class="tab-btn" onclick="switchTab('history',this)">📂 완료 히스토리</button>
@@ -367,19 +369,6 @@ ZB 교체 둘</textarea>
           <div style="font-size:0.85rem;font-weight:700;color:var(--muted);margin-bottom:8px;">⚠️ 지연·초과 업무</div>
           <div id="home-risk"></div>
         </div>
-        <div class="card" style="grid-column:1/-1;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-            <span style="font-size:0.85rem;font-weight:700;color:var(--muted);">🔥 월간 업무 강도</span>
-            <span style="font-size:0.72rem;color:var(--muted);">(하루 8시간 초과분 기준)</span>
-          </div>
-          <div id="home-heatmap"></div>
-        </div>
-        <div class="card" style="grid-column:1/-1;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-            <span style="font-size:0.85rem;font-weight:700;color:var(--muted);">📊 이번 달 프로젝트별 소요 시간</span>
-          </div>
-          <div id="home-proj-hours"></div>
-        </div>
       </div>
     </div>
 
@@ -433,19 +422,48 @@ ZB 교체 둘</textarea>
 
     <!-- 주간 기록 -->
     <div id="tab-weekly" style="display:none;">
-      <div class="card">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-          <strong>⏱️ 주간 업무 기록</strong>
-          <button class="btn-primary" onclick="openMeetingAdd()" style="margin-left:auto;font-size:0.8rem;padding:5px 12px;background:#a855f7;">📅 미팅 추가</button>
-          <button class="btn-primary" onclick="openWeeklyAdd()" style="font-size:0.8rem;padding:5px 12px;">+ 기록 추가</button>
+      <!-- 주간/월간 서브탭 -->
+      <div style="display:flex;gap:6px;margin-bottom:11px;">
+        <button class="tab-btn sub-tab-btn active" id="subtab-weekly-btn" onclick="switchWeeklySubTab('weekly')" style="border-radius:8px;">⏱️ 주간 업무 기록</button>
+        <button class="tab-btn sub-tab-btn" id="subtab-monthly-btn" onclick="switchWeeklySubTab('monthly')" style="border-radius:8px;">🔥 월간 업무 기록</button>
+      </div>
+
+      <!-- 주간 업무 기록 -->
+      <div id="subtab-weekly-content">
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <strong>⏱️ 주간 업무 기록</strong>
+            <button class="btn-primary" onclick="openMeetingAdd()" style="margin-left:auto;font-size:0.8rem;padding:5px 12px;background:#a855f7;">📅 미팅 추가</button>
+            <button class="btn-primary" onclick="openWeeklyAdd()" style="font-size:0.8rem;padding:5px 12px;">+ 기록 추가</button>
+          </div>
+          <!-- 주차 선택 -->
+          <div class="week-selector" id="week-selector"></div>
+          <!-- 선택 주 요약 -->
+          <div id="weekly-summary"></div>
+          <!-- 상세 로그 -->
+          <div style="font-size:0.82rem;font-weight:700;color:var(--muted);">상세 기록</div>
+          <div id="weekly-log"></div>
         </div>
-        <!-- 주차 선택 -->
-        <div class="week-selector" id="week-selector"></div>
-        <!-- 선택 주 요약 -->
-        <div id="weekly-summary"></div>
-        <!-- 상세 로그 -->
-        <div style="font-size:0.82rem;font-weight:700;color:var(--muted);">상세 기록</div>
-        <div id="weekly-log"></div>
+      </div>
+
+      <!-- 월간 업무 기록 -->
+      <div id="subtab-monthly-content" style="display:none;">
+        <div class="card" style="margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+            <strong>🔥 월간 업무 강도</strong>
+            <span style="font-size:0.72rem;color:var(--muted);">(하루 8시간 초과분 기준 · 전체적인 업무량 파악용)</span>
+            <div style="margin-left:auto;display:flex;align-items:center;gap:6px;">
+              <button class="btn-sm" style="background:var(--bg);color:var(--text);" onclick="monthlyHeatmapMove(-1)">◀</button>
+              <span id="monthly-heatmap-label" style="font-size:0.85rem;font-weight:700;color:var(--primary);min-width:90px;text-align:center;"></span>
+              <button class="btn-sm" style="background:var(--bg);color:var(--text);" onclick="monthlyHeatmapMove(1)">▶</button>
+            </div>
+          </div>
+          <div id="home-heatmap"></div>
+        </div>
+        <div class="card">
+          <div style="font-size:0.85rem;font-weight:700;color:var(--muted);margin-bottom:8px;">📊 이번 달 프로젝트별 소요 시간</div>
+          <div id="home-proj-hours"></div>
+        </div>
       </div>
     </div>
     <!-- 레포트 -->
@@ -1544,7 +1562,7 @@ function checkAlerts(){
 const TAB_IDS=['today','home','calendar','weekly','search','repeat','history','report','links','trash'];
 function switchTab(name,el){
   currentTab=name;
-  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-btn:not(.sub-tab-btn)').forEach(b=>b.classList.remove('active'));
   el.classList.add('active');
   TAB_IDS.forEach(t=>document.getElementById('tab-'+t).style.display=t===name?'':'none');
   render();
@@ -1943,11 +1961,15 @@ function renderCalendar(){
     const rangeLabel = memo && memo.endDate && memo.endDate!==memoStartKey
       ? (isRangeStart?'▶ ':isRangeEnd?'■ ':'· ')
       : '';
-    html+=`<div class="cal-cell ${isToday?'today-cell':''}" onclick="openCalMemo('${dateKey}')" style="cursor:pointer;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
+    const holidayLabel=isHoliday(dateKey)?getHolidayLabel(dateKey):null;
+    const dow=cellDate.getDay();
+    const isWeekend=dow===0||dow===6;
+    html+=`<div class="cal-cell ${isToday?'today-cell':''}" onclick="openCalMemo('${dateKey}')" style="cursor:pointer;${holidayLabel?'background:#fef2f2;':''}" onmouseover="this.style.background='${holidayLabel?'#fee2e2':'#f8fafc'}'" onmouseout="this.style.background='${holidayLabel?'#fef2f2':''}'">
       <div class="cal-day" style="display:flex;align-items:center;gap:3px;">
-        ${isToday?`<span class="today-num">${day}</span>`:day}
+        ${isToday?`<span class="today-num">${day}</span>`:`<span style="${holidayLabel||isWeekend?'color:#ef4444;':''}">${day}</span>`}
         ${isMonday?`<span style="font-size:0.58rem;color:var(--muted);">W${week}</span>`:''}
       </div>
+      ${holidayLabel?`<div style="border-radius:4px;padding:2px 5px;margin-top:2px;font-size:0.65rem;background:#ef444422;color:#dc2626;border-left:2px solid #ef4444;line-height:1.3;font-weight:700;">🎌 ${holidayLabel}</div>`:''}
       ${memo?`<div style="border-radius:4px;padding:2px 5px;margin-top:2px;font-size:0.65rem;background:${memo.color}22;color:${memo.color};border-left:2px solid ${memo.color};line-height:1.3;word-break:break-all;">${rangeLabel}${memoP?`<span style="font-weight:700;">[${memoP.name}]</span> `:''}${memo.text}</div>`:''}
     </div>`;
   }
@@ -2169,6 +2191,28 @@ function renderWeekSelector(){
 }
 
 function selectWeek(key){ selectedWeekKey=key; renderWeekly(); }
+
+// 주간/월간 기록 탭 내부 서브탭 전환
+function switchWeeklySubTab(which){
+  const weeklyBtn=document.getElementById('subtab-weekly-btn');
+  const monthlyBtn=document.getElementById('subtab-monthly-btn');
+  const weeklyContent=document.getElementById('subtab-weekly-content');
+  const monthlyContent=document.getElementById('subtab-monthly-content');
+  if(which==='monthly'){
+    weeklyBtn.classList.remove('active');
+    monthlyBtn.classList.add('active');
+    weeklyContent.style.display='none';
+    monthlyContent.style.display='';
+    renderHeatmap();
+    renderProjHours();
+  } else {
+    monthlyBtn.classList.remove('active');
+    weeklyBtn.classList.add('active');
+    monthlyContent.style.display='none';
+    weeklyContent.style.display='';
+    renderWeekly();
+  }
+}
 
 function renderWeekly(){
   renderWeekSelector();
@@ -2905,17 +2949,29 @@ function renderHome(){
     }).join('');
   }
 
+}
+
+// ── 월간 히트맵 (주간/월간기록 기준, 깃허브 스타일) — 화살표로 월 이동 가능
+let monthlyHeatmapYear=TODAY.getFullYear();
+let monthlyHeatmapMonth=TODAY.getMonth(); // 0-indexed
+
+function monthlyHeatmapMove(dir){
+  monthlyHeatmapMonth+=dir;
+  if(monthlyHeatmapMonth>11){ monthlyHeatmapMonth=0; monthlyHeatmapYear++; }
+  else if(monthlyHeatmapMonth<0){ monthlyHeatmapMonth=11; monthlyHeatmapYear--; }
   renderHeatmap();
   renderProjHours();
 }
 
-// ── 월간 히트맵 (주간기록 기준, 깃허브 스타일)
 function renderHeatmap(){
   const el=document.getElementById('home-heatmap');
   if(!el) return;
-  const year=TODAY.getFullYear(), month=TODAY.getMonth();
+  const year=monthlyHeatmapYear, month=monthlyHeatmapMonth;
+  const labelEl=document.getElementById('monthly-heatmap-label');
+  if(labelEl) labelEl.textContent=`${year}년 ${month+1}월`;
   const lastDay=new Date(year,month+1,0).getDate();
   const firstDow=new Date(year,month,1).getDay();
+  const isCurrentMonth = year===TODAY.getFullYear() && month===TODAY.getMonth();
 
   // 날짜별 합산 시간
   const hoursByDate={};
@@ -2947,7 +3003,8 @@ function renderHeatmap(){
     const isToday=dateKey===TODAY_STR;
     const over = h>8 ? h-8 : 0;
     const textColor = h>9 ? 'white' : '#475569';
-    cellsHtml+=`<div title="${dateKey}: ${h}시간${over?' (8h 초과 +'+over+'h)':''}" style="width:30px;height:34px;border-radius:6px;background:${colorFor(h)};display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:0.62rem;color:${textColor};border:${isToday?'2px solid #4f46e5':'1px solid rgba(0,0,0,0.04)'};cursor:default;line-height:1.15;">
+    const holLabel=isHoliday(dateKey)?getHolidayLabel(dateKey):null;
+    cellsHtml+=`<div title="${dateKey}: ${h}시간${over?' (8h 초과 +'+over+'h)':''}${holLabel?' · '+holLabel:''}" style="width:30px;height:34px;border-radius:6px;background:${colorFor(h)};display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:0.62rem;color:${holLabel&&!h?'#ef4444':textColor};border:${isToday?'2px solid #4f46e5':holLabel?'1.5px solid #ef444466':'1px solid rgba(0,0,0,0.04)'};cursor:default;line-height:1.15;">
       <span>${d}</span>
       ${over>0?`<span style="font-size:0.56rem;font-weight:700;">+${over}h</span>`:''}
     </div>`;
@@ -2956,10 +3013,11 @@ function renderHeatmap(){
   const totalH=Object.values(hoursByDate).reduce((a,b)=>a+b,0);
   const workDays=Object.keys(hoursByDate).length;
   const overDays=Object.values(hoursByDate).filter(h=>h>8).length;
+  const monthLabel = isCurrentMonth ? '이번 달' : `${month+1}월`;
 
   el.innerHTML=`
     <div style="display:flex;gap:14px;margin-bottom:10px;flex-wrap:wrap;">
-      <div style="font-size:0.78rem;color:var(--muted);">이번 달 <strong style="color:var(--text);">${workDays}일</strong> 기록 · 총 <strong style="color:var(--primary);">${totalH}시간</strong></div>
+      <div style="font-size:0.78rem;color:var(--muted);">${monthLabel} <strong style="color:var(--text);">${workDays}일</strong> 기록 · 총 <strong style="color:var(--primary);">${totalH}시간</strong></div>
       ${overDays>0?`<div style="font-size:0.78rem;color:#dc2626;">⚠️ 8시간 초과 <strong>${overDays}일</strong></div>`:''}
     </div>
     <div style="display:grid;grid-template-columns:repeat(7,30px);gap:3px;margin-bottom:8px;">
@@ -2974,6 +3032,7 @@ function renderHeatmap(){
       <span style="width:12px;height:12px;border-radius:3px;background:#ea580c;display:inline-block;"></span><span>+4h</span>
       <span style="width:12px;height:12px;border-radius:3px;background:#dc2626;display:inline-block;"></span><span>+5h</span>
       <span style="width:12px;height:12px;border-radius:3px;background:#991b1b;display:inline-block;"></span><span>+6h↑</span>
+      <span style="margin-left:6px;border:1.5px solid #ef444466;width:12px;height:12px;border-radius:3px;display:inline-block;"></span><span>공휴일</span>
     </div>`;
 }
 
@@ -2981,7 +3040,9 @@ function renderHeatmap(){
 function renderProjHours(){
   const el=document.getElementById('home-proj-hours');
   if(!el) return;
-  const year=TODAY.getFullYear(), month=TODAY.getMonth();
+  const year=monthlyHeatmapYear, month=monthlyHeatmapMonth;
+  const isCurrentMonth = year===TODAY.getFullYear() && month===TODAY.getMonth();
+  const monthLabel = isCurrentMonth ? '이번 달' : `${year}년 ${month+1}월`;
   const monthPrefix=`${year}-${String(month+1).padStart(2,'0')}`;
   const monthLogs=weeklyLogs.filter(l=>l.date&&l.date.startsWith(monthPrefix));
 
@@ -2992,11 +3053,11 @@ function renderProjHours(){
   const totalH=entries.reduce((s,e)=>s+e[1],0);
 
   if(!entries.length){
-    el.innerHTML='<div style="color:var(--muted);font-size:0.82rem;padding:10px 0;text-align:center;">이번 달 기록된 시간이 없습니다.</div>';
+    el.innerHTML=`<div style="color:var(--muted);font-size:0.82rem;padding:10px 0;text-align:center;">${monthLabel} 기록된 시간이 없습니다.</div>`;
     return;
   }
 
-  el.innerHTML=`<div style="font-size:0.78rem;color:var(--muted);margin-bottom:10px;">이번 달 총 <strong style="color:var(--primary);">${totalH}시간</strong> 기록됨</div>`
+  el.innerHTML=`<div style="font-size:0.78rem;color:var(--muted);margin-bottom:10px;">${monthLabel} 총 <strong style="color:var(--primary);">${totalH}시간</strong> 기록됨</div>`
     + entries.map(([pid,h])=>{
       const p=proj(pid);
       const pct=Math.round(h/totalH*100);
@@ -3777,12 +3838,14 @@ function addCustomHoliday(){
   document.getElementById('holiday-label').value='';
   saveToFirebase();
   renderHolidayManager();
+  if(typeof renderCalendar==='function' && document.getElementById('cal-body')) renderCalendar();
 }
 
 function deleteCustomHoliday(date){
   customHolidays=customHolidays.filter(h=>h.date!==date);
   saveToFirebase();
   renderHolidayManager();
+  if(typeof renderCalendar==='function' && document.getElementById('cal-body')) renderCalendar();
 }
 
 function generateReport(){
@@ -4214,7 +4277,10 @@ function render(){
   if(currentTab==='today'){ renderGantt(ft); renderTaskList(ft); }
   else if(currentTab==='home'){ renderHome(); }
   else if(currentTab==='calendar'){ renderCalendar(); }
-  else if(currentTab==='weekly'){ renderWeekly(); }
+  else if(currentTab==='weekly'){
+    const monthlyActive=document.getElementById('subtab-monthly-content')?.style.display!=='none' && document.getElementById('subtab-monthly-btn')?.classList.contains('active');
+    if(monthlyActive){ renderHeatmap(); renderProjHours(); } else { renderWeekly(); }
+  }
   else if(currentTab==='search'){ renderSearch(); }
   else if(currentTab==='repeat'){ renderRepeat(); }
   else if(currentTab==='history'){ renderHistory(); }
