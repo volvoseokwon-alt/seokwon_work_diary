@@ -3457,8 +3457,8 @@ function renderLinks(){
   const groupNames=sortGroupsByOrder(Object.keys(byGroup));
   const collapsedState=getLinkGroupCollapsed();
 
-  el.innerHTML=`<div style="column-width:208px;column-gap:10px;">`
-    + groupNames.map(g=>{
+  el.innerHTML=`<div id="links-masonry-wrap" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(208px,1fr));grid-auto-rows:1px;gap:0;align-items:start;">`
+    + groupNames.map((g,gi)=>{
       const links=byGroup[g];
       const gc=groupColorFor(g);
       const isCollapsed=!!collapsedState[g];
@@ -3486,12 +3486,14 @@ function renderLinks(){
         </div>`;
       }).join('');
       return `<div draggable="true"
+        class="link-group-card"
+        data-gi="${gi}"
         ondragstart="onLinkGroupDragStart(event,'${gEsc}')"
         ondragend="onLinkGroupDragEnd(event)"
         ondragover="onLinkGroupDragOver(event,'${gEsc}')"
         ondragleave="onLinkGroupDragLeave(event)"
         ondrop="onLinkGroupDrop(event,'${gEsc}')"
-        style="border:1.5px solid ${gc}33;border-radius:9px;padding:8px 9px;background:${gc}08;transition:opacity .15s, outline .1s;break-inside:avoid;margin-bottom:10px;display:inline-block;width:100%;">
+        style="border:1.5px solid ${gc}33;border-radius:9px;padding:8px 9px;background:${gc}08;transition:opacity .15s, outline .1s;box-sizing:border-box;margin:0 10px 10px 0;grid-row-end:span 1;">
         <div style="display:flex;align-items:center;gap:5px;margin-bottom:${isCollapsed?'0':'7px'};padding-bottom:${isCollapsed?'0':'6px'};border-bottom:${isCollapsed?'none':'1.5px solid '+gc+'33'};">
           <span style="cursor:grab;color:${gc}88;font-size:0.75rem;flex-shrink:0;" title="드래그해서 순서 변경">⠿</span>
           <span onclick="toggleLinkGroup('${gEsc}')" style="display:inline-block;transition:transform .2s;transform:rotate(${isCollapsed?'-90deg':'0deg'});color:${gc};font-size:0.68rem;cursor:pointer;">▼</span>
@@ -3503,7 +3505,31 @@ function renderLinks(){
       </div>`;
     }).join('')
     + `</div>`;
+  layoutLinksMasonry();
 }
+
+function layoutLinksMasonry(){
+  const wrap=document.getElementById('links-masonry-wrap');
+  if(!wrap) return;
+  const cards=Array.from(wrap.querySelectorAll('.link-group-card'));
+  if(!cards.length) return;
+  const rowH=1; // grid-auto-rows 값과 일치
+  requestAnimationFrame(()=>{
+    cards.forEach(c=>{
+      const h=c.getBoundingClientRect().height;
+      const span=Math.ceil(h/rowH);
+      c.style.gridRowEnd='span '+span;
+    });
+  });
+}
+
+let _linksResizeTimer=null;
+window.addEventListener('resize',()=>{
+  if(document.getElementById('links-masonry-wrap')){
+    clearTimeout(_linksResizeTimer);
+    _linksResizeTimer=setTimeout(layoutLinksMasonry,150);
+  }
+});
 
 function openAddLinkModal(){
   document.getElementById('link-title').value='';
