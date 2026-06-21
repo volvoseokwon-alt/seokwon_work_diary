@@ -534,8 +534,6 @@ ZB 교체 둘</textarea>
           </div>
           <div style="align-self:flex-end;display:flex;gap:6px;">
             <button class="btn-primary" onclick="generateReport()">📊 레포트 생성</button>
-            <button class="btn-sm" style="background:#f0fdf4;color:#16a34a;padding:8px 12px;" onclick="copyReport()">📋 복사</button>
-            <button class="btn-sm" style="background:#eff6ff;color:#4f46e5;padding:8px 12px;" onclick="downloadReportWord()">📄 Word 다운로드</button>
           </div>
         </div>
         <div id="report-output" style="margin-top:14px;"></div>
@@ -789,6 +787,17 @@ const firebaseConfig = {
 // Firebase SDK는 </head> 앞에서 로드됨
 let db;
 
+// Firestore 호출(예: .get())이 네트워크 문제로 응답 없이 멈춰있을 때를 대비한 타임아웃 래퍼.
+// PWA를 막 켰을 때 등 네트워크가 아직 불안정한 시점에 get({source:'server'})가
+// 응답 없이 오래 걸리면(또는 멈추면) 무한정 기다리지 않고 일정 시간 후 실패 처리해서,
+// "로딩이 멈춘 빈 화면"이나 "저장 시도가 영원히 안 끝나는" 상황을 막는다.
+function withTimeout(promise, ms, label){
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`${label||'요청'} 타임아웃(${ms}ms)`)), ms))
+  ]);
+}
+
 /* ══════════════════════════════════════
    FIREBASE HELPERS (compat SDK)
 ══════════════════════════════════════ */
@@ -812,9 +821,19 @@ async function saveToFirebase() {
   if (!window._fbLoaded) { console.warn('Firebase 로드 전 저장 시도 차단'); return; }
   setSaveStatus('saving');
   try {
-    // 저장 직전, 서버의 실제 최신 버전을 다시 확인 (캐시 무시)
-    const checkSnap = await db.collection('userData').doc('main').get({ source: 'server' });
-    const serverVersion = checkSnap.exists ? (checkSnap.data()._version || 0) : 0;
+    // 저장 직전, 서버의 실제 최신 버전을 다시 확인 (캐시 무시, 5초 타임아웃)
+    // 이 확인이 네트워크 문제로 실패하더라도 저장 자체를 막지는 않는다 — 충돌 체크는 보조 안전장치일 뿐,
+    // 그것 때문에 정상적인 저장까지 "실패"로 떨어지면 평소 사용에 더 큰 불편을 준다.
+    let serverVersion = window._myKnownVersion; // 조회 실패 시 폴백: 마지막으로 알던 버전 그대로 사용
+    try {
+      const checkSnap = await withTimeout(
+        db.collection('userData').doc('main').get({ source: 'server' }),
+        5000, '저장 전 버전 확인'
+      );
+      serverVersion = checkSnap.exists ? (checkSnap.data()._version || 0) : 0;
+    } catch(checkErr) {
+      console.warn('저장 전 버전 확인 실패(네트워크 지연 가능) — 충돌 체크 없이 저장을 계속 진행합니다:', checkErr.message||checkErr);
+    }
 
     if (serverVersion > window._myKnownVersion) {
       // 다른 기기가 이 사이에 더 최신 버전을 저장함 → 충돌!
@@ -848,7 +867,10 @@ async function saveToFirebase() {
     // (예: 업무에 subProject가 없을 때 subProject:undefined로 남아있는 경우 등)
     // JSON 직렬화를 한 번 거치면 undefined 키가 자동으로 모두 제거되어 안전하게 저장할 수 있다.
     const payload = JSON.parse(JSON.stringify(rawPayload));
-    await db.collection('userData').doc('main').set(payload);
+    await withTimeout(
+      db.collection('userData').doc('main').set(payload),
+      10000, '서버 저장'
+    );
     setSaveStatus('saved', now);
     // 서버 저장 성공 → 로컬 백업도 동시에 갱신 (이중 안전망)
     saveLocalBackup(payload);
@@ -928,15 +950,28 @@ async function loadFromFirebase() {
 
   let snap;
   try {
-    // 캐시 무시하고 무조건 서버에서 강제로 가져오기
-    snap = await db.collection('userData').doc('main').get({ source: 'server' });
+    // 캐시 무시하고 무조건 서버에서 강제로 가져오기 (단, 응답이 없으면 8초 후 타임아웃)
+    snap = await withTimeout(
+      db.collection('userData').doc('main').get({ source: 'server' }),
+      8000, '데이터 불러오기'
+    );
   } catch(e) {
-    console.warn('Firebase 서버 조회 실패 (네트워크 문제 가능):', e);
-    // 네트워크 실패 → 절대 덮어쓰지 않음. 화면에 있던 데이터(초기 복구 데이터) 그대로 유지
-    setLoadWarning('⚠️ 서버 연결 실패 — 마지막으로 본 화면을 유지합니다');
-    restoreFromLocalBackupIfNeeded();
-    window._fbLoaded = true;
-    return;
+    console.warn('Firebase 서버 조회 1차 실패, 재시도:', e.message||e);
+    // 네트워크가 막 연결되는 시점(앱을 막 켰을 때 등)일 수 있으므로 짧게 한 번 더 시도
+    try {
+      await new Promise(r=>setTimeout(r, 1500));
+      snap = await withTimeout(
+        db.collection('userData').doc('main').get({ source: 'server' }),
+        8000, '데이터 불러오기(재시도)'
+      );
+    } catch(e2) {
+      console.warn('Firebase 서버 조회 재시도도 실패 (네트워크 문제 가능):', e2.message||e2);
+      // 네트워크 실패 → 절대 덮어쓰지 않음. 화면에 있던 데이터(초기 복구 데이터) 그대로 유지
+      setLoadWarning('⚠️ 서버 연결 실패 — 마지막으로 본 화면을 유지합니다');
+      restoreFromLocalBackupIfNeeded();
+      window._fbLoaded = true;
+      return;
+    }
   }
 
   if (!snap.exists) {
@@ -1074,7 +1109,10 @@ async function forceSaveToServer(){
     };
     // undefined 필드가 섞여 있으면 Firestore가 저장을 거부하므로 JSON 직렬화로 안전하게 정리
     const payload = JSON.parse(JSON.stringify(rawPayload));
-    await db.collection('userData').doc('main').set(payload);
+    await withTimeout(
+      db.collection('userData').doc('main').set(payload),
+      10000, '서버 저장'
+    );
     window._lastSavedAt = nowIso;
     window._myKnownVersion = newVersion;
     window._fbLoaded = true; // 이제부터는 정상적인 저장도 허용
@@ -4807,214 +4845,6 @@ ${atRiskDetail||'(없음)'}
   } finally {
     if(btn){ btn.disabled=false; btn.textContent='✨ AI로 더 똑똑하게 분석하기'; btn.style.opacity='1'; }
   }
-}
-
-function generateReportText(d){
-  const {startKey,endKey,byProj,totalH,doneTasks,weeks,byWeek,activeTasks,byPrioCount,overdueTasks,loadLabel}=d;
-  const todayD2=new Date(TODAY.getFullYear(),TODAY.getMonth(),TODAY.getDate());
-  let t=`${'='.repeat(40)}\n`;
-  t+=`📔 업무 레포트\n`;
-  t+=`기간: ${fmt(startKey)} ~ ${fmt(endKey)}\n`;
-  t+=`${'='.repeat(40)}\n\n`;
-  t+=`■ 현재 업무 부하: ${loadLabel||''} (보유 업무 ${(activeTasks||[]).length}건)\n`;
-  t+=`  - 긴급(A): ${byPrioCount?.A||0}건 · 중요(B): ${byPrioCount?.B||0}건 · 일반(C): ${byPrioCount?.C||0}건\n`;
-  t+=`  - 지연 업무: ${(overdueTasks||[]).length}건\n\n`;
-  if(activeTasks && activeTasks.length){
-    t+=`■ 현재 진행중인 업무\n`;
-    [...activeTasks].sort((a,b)=>PRIORITY_ORDER.indexOf(a.priority||'C3')-PRIORITY_ORDER.indexOf(b.priority||'C3')).forEach(at=>{
-      const p=proj(at.project);
-      const isOver=isOverdue(at);
-      let tag='';
-      if(isOver){
-        const eD=new Date(at.end); const endD=new Date(eD.getFullYear(),eD.getMonth(),eD.getDate());
-        const days=Math.round((todayD2-endD)/86400000);
-        tag=` [지연 ${days}일]`;
-      } else {
-        tag=` [진행 ${getTaskProgress(at)}%]`;
-      }
-      t+=`  [${at.priority||'-'}] ${p.name} - ${at.text}${tag} (~${fmt(at.end)})\n`;
-    });
-    t+='\n';
-  }
-  t+=`■ 요약\n`;
-  t+=`  - 총 작업시간: ${totalH}h\n`;
-  t+=`  - 완료 업무(이 기간): ${doneTasks.length}건\n\n`;
-  t+=`■ 프로젝트별 투입시간\n`;
-  Object.entries(byProj).sort((a,b)=>b[1]-a[1]).forEach(([pid,h])=>{
-    const p=proj(pid);
-    const pct=Math.round(h/Math.max(totalH,1)*100);
-    t+=`  - ${p.name}: ${h}h (${pct}%)\n`;
-  });
-  t+='\n';
-  t+=`■ 주별 업무 부하\n`;
-  weeks.forEach(wk=>{
-    const wData=byWeek[wk];
-    const wTotal=wData.logs.reduce((s,l)=>s+(l.hours||0),0);
-    const [wy,wn]=wk.split('-W');
-    const wStart=isoWeekStart(parseInt(wy),parseInt(wn));
-    const wEnd=new Date(wStart); wEnd.setDate(wStart.getDate()+6);
-    const fmtShort=dt2=>`${dt2.getMonth()+1}/${dt2.getDate()}`;
-    t+=`  W${wn} (${fmtShort(wStart)}~${fmtShort(wEnd)}): ${wTotal}h
-`;
-    const wByProj={};
-    wData.logs.forEach(l=>{ wByProj[l.project]=(wByProj[l.project]||0)+(l.hours||0); });
-    Object.entries(wByProj).sort((a,b)=>b[1]-a[1]).forEach(([pid,h])=>{
-      t+=`    • ${proj(pid).name}: ${h}h\n`;
-    });
-  });
-  t+='\n';
-  if(doneTasks.length){
-    t+=`■ 완료 업무\n`;
-    doneTasks.forEach(dt=>{
-      const p=proj(dt.project);
-      t+=`  [${dt.priority||'-'}] ${p.name} - ${dt.text}\n`;
-    });
-  }
-  return t;
-}
-
-function copyReport(){
-  if(!window._reportData){ alert('먼저 레포트를 생성해주세요.'); return; }
-  const text=generateReportText(window._reportData);
-  navigator.clipboard?.writeText(text).then(()=>alert('레포트가 클립보드에 복사되었습니다!')).catch(()=>{ alert('복사 실패 — 브라우저 권한을 확인해주세요.'); });
-}
-
-function downloadReportWord(){
-  if(!window._reportData){ alert('먼저 레포트를 생성해주세요.'); return; }
-  const d=window._reportData;
-  const rangeLabel=`${fmt(d.startKey)} ~ ${fmt(d.endKey)}`;
-  const generatedAt=`${TODAY.getFullYear()}.${TODAY.getMonth()+1}.${TODAY.getDate()}`;
-
-  // 현재 진행중 업무 행
-  const activeRows=(d.activeTasks||[]).slice().sort((a,b)=>PRIORITY_ORDER.indexOf(a.priority||'C3')-PRIORITY_ORDER.indexOf(b.priority||'C3')).map(t=>{
-    const p=proj(t.project);
-    const pc=prioColor(t.priority||'');
-    const isOver=isOverdue(t);
-    const todayD3=new Date(TODAY.getFullYear(),TODAY.getMonth(),TODAY.getDate());
-    let statusStr, statusColor;
-    if(isOver){
-      const eD=new Date(t.end); const endD=new Date(eD.getFullYear(),eD.getMonth(),eD.getDate());
-      const days=Math.round((todayD3-endD)/86400000);
-      statusStr=`지연 ${days}일`; statusColor='#dc2626';
-    } else {
-      statusStr=`진행 ${getTaskProgress(t)}%`; statusColor='#374151';
-    }
-    return `<tr>
-      <td style="border:1px solid #ccc;padding:5px 8px;text-align:center;font-weight:700;color:${pc};">${t.priority||'-'}</td>
-      <td style="border:1px solid #ccc;padding:5px 8px;color:${p.color};font-weight:600;">${p.name}</td>
-      <td style="border:1px solid #ccc;padding:5px 8px;">${t.text}</td>
-      <td style="border:1px solid #ccc;padding:5px 8px;text-align:center;color:${statusColor};font-weight:600;">${statusStr}</td>
-      <td style="border:1px solid #ccc;padding:5px 8px;text-align:center;color:#666;">~${fmt(t.end)}</td>
-    </tr>`;
-  }).join('');
-
-  // 주별 테이블 행
-  const weekRows=d.weeks.map(wk=>{
-    const wData=d.byWeek[wk];
-    const wTotal=wData.logs.reduce((s,l)=>s+(l.hours||0),0);
-    const [wy,wn]=wk.split('-W');
-    const wStart=isoWeekStart(parseInt(wy),parseInt(wn));
-    const wEnd=new Date(wStart); wEnd.setDate(wStart.getDate()+6);
-    const fmtS=dt=>`${dt.getMonth()+1}/${dt.getDate()}`;
-    const wByProj={};
-    wData.logs.forEach(l=>{ wByProj[l.project]=(wByProj[l.project]||0)+(l.hours||0); });
-    const projStr=Object.entries(wByProj).sort((a,b)=>b[1]-a[1]).map(([pid,h])=>`${proj(pid).name}: ${h}h`).join(', ');
-    const dayStr=Object.entries(wData.days).sort().map(([date,h])=>`${fmt(date)} ${h}h`).join(' / ');
-    return `<tr>
-      <td style="border:1px solid #ccc;padding:6px 10px;font-weight:600;">W${wn}<br><span style="font-size:11px;color:#666;">${fmtS(wStart)}~${fmtS(wEnd)}</span></td>
-      <td style="border:1px solid #ccc;padding:6px 10px;text-align:center;font-weight:700;color:#4f46e5;">${wTotal}h</td>
-      <td style="border:1px solid #ccc;padding:6px 10px;font-size:12px;">${projStr}</td>
-      <td style="border:1px solid #ccc;padding:6px 10px;font-size:11px;color:#666;">${dayStr}</td>
-    </tr>`;
-  }).join('');
-
-  // 프로젝트별 행
-  const projRows=Object.entries(d.byProj).sort((a,b)=>b[1]-a[1]).map(([pid,h])=>{
-    const p=proj(pid);
-    const pct=Math.round(h/Math.max(d.totalH,1)*100);
-    return `<tr>
-      <td style="border:1px solid #ccc;padding:6px 10px;">${p.name}</td>
-      <td style="border:1px solid #ccc;padding:6px 10px;text-align:center;font-weight:700;">${h}h</td>
-      <td style="border:1px solid #ccc;padding:6px 10px;text-align:center;">${pct}%</td>
-    </tr>`;
-  }).join('');
-
-  // 완료 업무 행
-  const doneRows=d.doneTasks.map(t=>{
-    const p=proj(t.project);
-    const pc=prioColor(t.priority||'');
-    return `<tr>
-      <td style="border:1px solid #ccc;padding:5px 8px;text-align:center;font-weight:700;color:${pc};">${t.priority||'-'}</td>
-      <td style="border:1px solid #ccc;padding:5px 8px;color:${p.color};font-weight:600;">${p.name}</td>
-      <td style="border:1px solid #ccc;padding:5px 8px;">${t.text}</td>
-      <td style="border:1px solid #ccc;padding:5px 8px;text-align:center;color:#666;">${fmt(t.actualEnd||t._completedAt||'')}</td>
-    </tr>`;
-  }).join('');
-
-  const wordHtml=`
-<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
-<head><meta charset="UTF-8">
-<style>
-  body { font-family: '맑은 고딕', Arial, sans-serif; font-size: 12pt; color: #1e293b; }
-  h1 { color: #4f46e5; font-size: 18pt; border-bottom: 2px solid #4f46e5; padding-bottom: 6pt; margin-bottom: 12pt; }
-  h2 { color: #374151; font-size: 13pt; margin-top: 20pt; margin-bottom: 8pt; background: #f8fafc; padding: 4pt 8pt; }
-  table { border-collapse: collapse; width: 100%; margin-bottom: 16pt; }
-  th { background: #4f46e5; color: white; padding: 7px 10px; font-size: 11pt; border: 1px solid #4f46e5; }
-  .summary-box { background: #eff6ff; border: 1px solid #bfdbfe; padding: 10pt; border-radius: 4pt; margin-bottom: 16pt; }
-  .summary-num { font-size: 22pt; font-weight: bold; color: #4f46e5; }
-</style>
-</head>
-<body>
-<h1>📔 업무 레포트</h1>
-<p style="color:#64748b;margin-bottom:12pt;"><strong>대상 기간:</strong> ${rangeLabel} &nbsp;|&nbsp; <strong>생성일:</strong> ${generatedAt}</p>
-
-<div class="summary-box">
-  <table style="border:none;width:auto;margin-bottom:8pt;">
-    <tr>
-      <td style="border:none;padding:4px 24px;text-align:center;"><div class="summary-num">${(d.activeTasks||[]).length}</div><div style="font-size:9pt;color:#64748b;">보유 업무</div></td>
-      <td style="border:none;padding:4px 24px;text-align:center;"><div class="summary-num" style="color:#ef4444;">${d.byPrioCount?.A||0}</div><div style="font-size:9pt;color:#64748b;">긴급(A)</div></td>
-      <td style="border:none;padding:4px 24px;text-align:center;"><div class="summary-num" style="color:#dc2626;">${(d.overdueTasks||[]).length}</div><div style="font-size:9pt;color:#64748b;">지연 업무</div></td>
-      <td style="border:none;padding:4px 24px;text-align:center;"><div class="summary-num" style="color:#10b981;">${d.doneTasks.length}</div><div style="font-size:9pt;color:#64748b;">완료(이 기간)</div></td>
-    </tr>
-  </table>
-  <p style="margin:0;font-size:11pt;color:#374151;"><strong>현재 업무 부하: ${(d.loadLabel||'').replace(/[🔴🟠🟡🟢]/g,'')}</strong></p>
-</div>
-
-<h2>📋 현재 진행중인 업무</h2>
-<table>
-  <tr><th style="width:50px;">우선순위</th><th style="width:110px;">프로젝트</th><th>업무명</th><th style="width:80px;">상태</th><th style="width:80px;">마감일</th></tr>
-  ${activeRows||'<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:16px;">진행중인 업무 없음</td></tr>'}
-</table>
-
-<h2>📅 주별 작업시간 기록</h2>
-<table>
-  <tr><th>주차</th><th>총 시간</th><th>프로젝트별 시간</th><th>날짜별 기록</th></tr>
-  ${weekRows||'<tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:16px;">기록 없음</td></tr>'}
-</table>
-
-<h2>📊 프로젝트별 시간 분배</h2>
-<table>
-  <tr><th>프로젝트</th><th>투입 시간</th><th>비율</th></tr>
-  ${projRows||'<tr><td colspan="3" style="text-align:center;color:#94a3b8;padding:16px;">기록 없음</td></tr>'}
-</table>
-
-<h2>✅ 완료 업무 (${d.doneTasks.length}건)</h2>
-<table>
-  <tr><th style="width:50px;">우선순위</th><th style="width:120px;">프로젝트</th><th>업무명</th><th style="width:80px;">완료일</th></tr>
-  ${doneRows||'<tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:16px;">완료 업무 없음</td></tr>'}
-</table>
-
-</body></html>`;
-
-  const blob=new Blob(['\ufeff'+wordHtml],{type:'application/msword;charset=utf-8'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url;
-  a.download=`업무레포트_${d.startKey}_${d.endKey}.doc`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
 }
 
 function calcScore(){
