@@ -1955,29 +1955,7 @@ function renderTaskList(list){
           ${st==='overdue'?`<option value="overdue" selected>🔴 기한초과</option>`:''}
           ${Object.entries(TASK_STATUS).filter(([k])=>k!=='done'&&k!=='early_done'&&k!=='overdue').map(([k,v])=>`<option value="${k}" ${st===k?'selected':''}>${v.icon} ${v.label}</option>`).join('')}
         </select>`:`<span class="status-chip" style="background:${stInfo.color};flex-shrink:0;display:flex;align-items:center;gap:4px;">${stInfo.icon} ${stInfo.label}${t.actualEnd?`<span style="font-size:0.68rem;opacity:0.85;font-weight:400;">(${fmt(t.actualEnd)})</span>`:''}</span>`}
-        <!-- 예상 시간 입력 + 실제 투입시간(자동 집계, 시간기록 버튼으로 입력된 값의 합) -->
-        ${(()=>{
-          const eh=t.estHours;
-          const loggedH = weeklyLogs.filter(l=>l.project===t.project && l.task===t.text).reduce((s,l)=>s+(l.hours||0),0);
-          const todayH = weeklyLogs.filter(l=>l.project===t.project && l.task===t.text && l.date===TODAY_STR).reduce((s,l)=>s+(l.hours||0),0);
-          const ah = loggedH>0?loggedH:(t.actualHours||0);
-          const over=eh&&ah&&ah>eh;
-          return `<div style="display:flex;align-items:center;gap:3px;flex-shrink:0;">
-            <span style="font-size:0.68rem;color:var(--muted);">예상</span>
-            <input type="number" min="0.5" step="0.5" value="${eh||''}" placeholder="-"
-              title="예상 시간(h)"
-              onmousedown="event.stopPropagation()"
-              onchange="updateEstHours(${t.id},this.value)"
-              style="width:38px;font-size:0.75rem;border:1px solid var(--border);border-radius:4px;padding:1px 4px;text-align:center;background:white;color:#64748b;">
-            <span style="font-size:0.68rem;color:var(--muted);">h</span>
-            <span style="font-size:0.68rem;color:${over?'#ef4444':'var(--muted)'};border-left:1px solid var(--border);padding-left:5px;margin-left:2px;" title="시간 입력 버튼으로 기록된 누적 투입시간${todayH>0?` (오늘 ${todayH}h 포함)`:''}">
-              투입 <strong style="color:${over?'#ef4444':'#64748b'};">${ah>0?ah:'-'}</strong>h${todayH>0?` <span style="color:#a855f7;">(오늘 ${todayH}h)</span>`:''}
-            </span>
-          </div>`;
-        })()}
         <div style="display:flex;gap:5px;flex-shrink:0;">
-          <button class="btn-sm" style="background:#f3e8ff;color:#a855f7" onclick="openLogHoursForTask(${t.id})" onmousedown="event.stopPropagation()" draggable="false" title="오늘(또는 다른 날짜) 투입 시간 기록">⏱ 시간 입력</button>
-          <button class="btn-sm" style="background:#eef2ff;color:#6366f1" onclick="duplicateTask(${t.id})" onmousedown="event.stopPropagation()" draggable="false" title="이 업무를 복제">복제</button>
           <button class="btn-sm" style="background:var(--pri-light);color:var(--primary)" onclick="openEdit(${t.id})" onmousedown="event.stopPropagation()" draggable="false">수정</button>
           <button class="btn-sm" style="background:#fee2e2;color:var(--warn)" onclick="deleteTask(${t.id})" onmousedown="event.stopPropagation()" draggable="false">삭제</button>
         </div>
@@ -2975,6 +2953,32 @@ function setDailyPlan(taskId, value){
   renderHome();
 }
 
+// 홈 "할 일 & 미팅" 카드에서 특정 업무의 "오늘 실제 투입 시간"을 직접 입력 →
+// 그 값을 weeklyLogs(주간/월간 기록)에 정식으로 반영한다. 즉 여기 입력하는 게 곧 실제 근무기록이 된다.
+// 같은 업무·같은 날짜로 이미 기록된 항목이 있으면 그 항목의 시간을 덮어쓰고(여러 건이면 하나로 합침),
+// 0이나 빈 값이면 그 날짜의 기록을 모두 지운다.
+function setDailyActual(taskId, value){
+  const t=tasks.find(x=>x.id===taskId); if(!t) return;
+  const h=parseFloat(value);
+
+  // 같은 업무 + 같은 날짜로 이미 기록된 항목들(미팅 제외) 찾기
+  const existing=weeklyLogs.filter(l=>l.date===homeSelectedDate && l.type!=='meeting' && l.project===t.project && l.task===t.text);
+
+  if(isNaN(h) || h<=0){
+    // 0/빈값 → 그 날짜의 해당 업무 기록을 모두 삭제
+    weeklyLogs=weeklyLogs.filter(l=>!existing.includes(l));
+  } else if(existing.length>0){
+    // 기존 기록이 있으면 첫 항목만 남기고 시간을 갱신, 나머지 중복 항목은 정리
+    const keepId=existing[0].id;
+    weeklyLogs=weeklyLogs.map(l=>l.id===keepId?{...l,hours:h}:l).filter(l=>l.id===keepId || !existing.includes(l));
+  } else {
+    // 기록이 없었으면 새로 추가
+    weeklyLogs.push({id:Date.now(), type:'task', project:t.project, task:t.text, date:homeSelectedDate, hours:h, memo:''});
+  }
+  saveToFirebase();
+  renderHome();
+}
+
 // 홈 "할 일 & 미팅" 카드의 날짜를 하루씩 이동 (◀▶ 버튼)
 function homeMoveDate(delta){
   if(!homeSelectedDate) homeSelectedDate=TODAY_STR;
@@ -3080,23 +3084,28 @@ function renderHome(){
   const availableHours = Math.max(0, dayBudget - meetingHours);
   const holidayBadge = !selIsWorkday ? `<span style="font-weight:700;color:var(--muted);background:#f1f5f9;padding:1px 8px;border-radius:6px;font-size:0.72rem;">📅 휴무일</span>` : '';
 
+  // 오늘 총 근무 예상시간 = 업무별 계획(📝) 합 + 미팅 시간 / 오늘 총 실제 근무시간 = weeklyLogs에 기록된 모든 시간(업무+미팅)
+  const totalPlanned = planHoursSum + meetingHours;
+  const totalActual = actualHoursSum;
+  const diff = totalActual - totalPlanned;
+  const diffLabel = diff===0 ? '' : (diff>0 ? `<span style="color:var(--warn);font-weight:700;font-size:0.74rem;">(+${diff}h 더 함)</span>` : `<span style="color:var(--muted);font-weight:700;font-size:0.74rem;">(${diff}h 남음)</span>`);
+
   const capEl=document.getElementById('home-today-capacity');
-  const planVsActual = `<span style="font-weight:700;">📝 계획 <span style="color:var(--primary);">${planHoursSum}h</span></span>`
-    + `<span style="color:var(--muted);">·</span>`
-    + `<span style="font-weight:700;">⏱️ 실제 <span style="color:#10b981;">${actualHoursSum}h</span></span>`;
+  const totalSummary = `<span style="font-weight:700;">📊 오늘 총 근무 — 예상 <span style="color:var(--primary);">${totalPlanned}h</span> / 실제 <span style="color:#10b981;">${totalActual}h</span></span> ${diffLabel}`
+    + `<span style="color:var(--muted);font-size:0.72rem;">(업무${planHoursSum>0||totalPlanned===0?` ${planHoursSum}h`:''}${meetingHours>0?` + 미팅 ${meetingHours}h`:''})</span>`;
+
   if(selMeetings.length===0){
-    capEl.innerHTML=holidayBadge
-      + `<span style="font-weight:700;color:#10b981;">🗣️ 미팅 없음</span><span style="color:var(--muted);">·</span><span style="font-weight:700;">업무 가용 시간 약 <span style="color:var(--primary);">${availableHours}시간</span></span> <span style="color:var(--muted);font-size:0.74rem;">(하루 ${WORKDAY_HOURS}시간 기준)</span>`
-      + `<span style="color:var(--muted);">·</span>` + planVsActual;
+    capEl.innerHTML=holidayBadge + totalSummary
+      + `<span style="color:var(--muted);">·</span><span style="color:var(--muted);font-size:0.78rem;">🗣️ 미팅 없음</span>`
+      + `<span style="color:var(--muted);">·</span><span style="color:var(--muted);font-size:0.78rem;">업무 가용 약 ${availableHours}h</span>`;
   } else {
     const overBudget = meetingHours > dayBudget;
-    capEl.innerHTML=holidayBadge
-      + `<span style="font-weight:700;">🗣️ 미팅 <span style="color:#a855f7;">${meetingHours}시간</span> (${selMeetings.length}건)</span>`
+    capEl.innerHTML=holidayBadge + totalSummary
+      + `<span style="color:var(--muted);">·</span><span style="color:#a855f7;font-size:0.78rem;font-weight:600;">🗣️ 미팅 ${meetingHours}h (${selMeetings.length}건)</span>`
       + `<span style="color:var(--muted);">·</span>`
       + (overBudget
-          ? `<span style="font-weight:700;color:var(--warn);">⚠️ 미팅이 하루 근무시간을 초과했습니다</span>`
-          : `<span style="font-weight:700;">업무 가용 시간 약 <span style="color:var(--primary);">${availableHours}시간</span></span> <span style="color:var(--muted);font-size:0.74rem;">(하루 ${WORKDAY_HOURS}시간 기준)</span>`)
-      + `<span style="color:var(--muted);">·</span>` + planVsActual;
+          ? `<span style="font-size:0.78rem;color:var(--warn);font-weight:700;">⚠️ 미팅이 하루 근무시간 초과</span>`
+          : `<span style="color:var(--muted);font-size:0.78rem;">업무 가용 약 ${availableHours}h</span>`);
   }
 
   const ttEl=document.getElementById('home-today-tasks');
@@ -3127,7 +3136,11 @@ function renderHome(){
             style="width:38px;border:none;background:transparent;font-size:0.78rem;font-weight:700;color:var(--primary);text-align:right;"
             onchange="setDailyPlan(${t.id}, this.value)">h
         </span>
-        <span style="font-size:0.7rem;color:var(--muted);flex-shrink:0;white-space:nowrap;" title="오늘 실제 투입 시간(h)">⏱️${actualForTask}h</span>
+        <span style="display:flex;align-items:center;gap:3px;flex-shrink:0;background:#f0fdf4;border-radius:6px;padding:2px 6px;" title="오늘 실제 투입 시간(h) — 입력하면 주간/월간 기록에도 반영됩니다">
+          ⏱️<input type="number" min="0" step="0.5" value="${actualForTask||''}" placeholder="0"
+            style="width:38px;border:none;background:transparent;font-size:0.78rem;font-weight:700;color:#10b981;text-align:right;"
+            onchange="setDailyActual(${t.id}, this.value)">h
+        </span>
       </div>`;
     }).join('');
   }
