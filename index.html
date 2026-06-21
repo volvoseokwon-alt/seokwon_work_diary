@@ -405,6 +405,13 @@ ZB 교체 둘</textarea>
           <button class="btn-primary" style="margin-left:auto;font-size:0.74rem;padding:4px 10px;background:#a855f7;" onclick="openMeetingAdd(homeSelectedDate)">+ 미팅 추가</button>
         </div>
         <div id="home-today-meetings"></div>
+        <div id="home-today-done-wrap" style="display:none;">
+          <div style="display:flex;align-items:center;gap:8px;margin:10px 0 4px;">
+            <span style="font-size:0.76rem;font-weight:700;color:var(--muted);">✅ 완료된 업무</span>
+            <span id="home-today-done-count" style="font-size:0.68rem;color:var(--muted);background:var(--bg);padding:1px 7px;border-radius:8px;"></span>
+          </div>
+          <div id="home-today-done-tasks"></div>
+        </div>
       </div>
       <div class="card" style="margin-bottom:12px;">
         <div style="font-size:0.85rem;font-weight:700;color:var(--muted);margin-bottom:8px;">⚠️ 지연·초과 업무</div>
@@ -2103,6 +2110,12 @@ function renderTaskList(list){
           ${st==='overdue'?`<option value="overdue" selected>🔴 기한초과</option>`:''}
           ${Object.entries(TASK_STATUS).filter(([k])=>k!=='done'&&k!=='early_done'&&k!=='overdue').map(([k,v])=>`<option value="${k}" ${st===k?'selected':''}>${v.icon} ${v.label}</option>`).join('')}
         </select>`:`<span class="status-chip" style="background:${stInfo.color};flex-shrink:0;display:flex;align-items:center;gap:4px;">${stInfo.icon} ${stInfo.label}${t.actualEnd?`<span style="font-size:0.68rem;opacity:0.85;font-weight:400;">(${fmt(t.actualEnd)})</span>`:''}</span>`}
+        ${!t.done?`<span style="display:flex;align-items:center;gap:3px;flex-shrink:0;background:#f0fdf4;border-radius:6px;padding:2px 6px;" title="오늘 실제 투입 시간(h) — 입력하면 주간/월간 기록에도 반영됩니다" onmousedown="event.stopPropagation()">
+          ⏱️<input type="number" min="0" step="0.5" value="${(()=>{const h=weeklyLogs.filter(l=>l.date===TODAY_STR && l.type!=='meeting' && l.project===t.project && l.task===t.text).reduce((s,l)=>s+(l.hours||0),0); return h||'';})()}" placeholder="0"
+            draggable="false" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()"
+            style="width:38px;border:none;background:transparent;font-size:0.78rem;font-weight:700;color:#10b981;text-align:right;"
+            onchange="setDailyActual(${t.id}, this.value, TODAY_STR)">h
+        </span>`:''}
         <div style="display:flex;gap:5px;flex-shrink:0;">
           <button class="btn-sm" style="background:var(--pri-light);color:var(--primary)" onclick="openEdit(${t.id})" onmousedown="event.stopPropagation()" draggable="false">수정</button>
           <button class="btn-sm" style="background:#fee2e2;color:var(--warn)" onclick="deleteTask(${t.id})" onmousedown="event.stopPropagation()" draggable="false">삭제</button>
@@ -3163,12 +3176,16 @@ function setDailyPlan(taskId, value){
 // 그 값을 weeklyLogs(주간/월간 기록)에 정식으로 반영한다. 즉 여기 입력하는 게 곧 실제 근무기록이 된다.
 // 같은 업무·같은 날짜로 이미 기록된 항목이 있으면 그 항목의 시간을 덮어쓰고(여러 건이면 하나로 합침),
 // 0이나 빈 값이면 그 날짜의 기록을 모두 지운다.
-function setDailyActual(taskId, value){
+// 특정 날짜에 특정 업무의 "실제 투입 시간"을 직접 입력/수정한다.
+// 그 값을 weeklyLogs(주간/월간 기록)에 정식으로 반영하므로 레포트에도 그대로 잡힌다.
+// dateStr을 생략하면 homeSelectedDate(홈에서 보고 있는 날짜)를 기본값으로 사용한다.
+function setDailyActual(taskId, value, dateStr){
   const t=tasks.find(x=>x.id===taskId); if(!t) return;
+  const targetDate = dateStr || homeSelectedDate || TODAY_STR;
   const h=parseFloat(value);
 
   // 같은 업무 + 같은 날짜로 이미 기록된 항목들(미팅 제외) 찾기
-  const existing=weeklyLogs.filter(l=>l.date===homeSelectedDate && l.type!=='meeting' && l.project===t.project && l.task===t.text);
+  const existing=weeklyLogs.filter(l=>l.date===targetDate && l.type!=='meeting' && l.project===t.project && l.task===t.text);
 
   if(isNaN(h) || h<=0){
     // 0/빈값 → 그 날짜의 해당 업무 기록을 모두 삭제
@@ -3179,10 +3196,16 @@ function setDailyActual(taskId, value){
     weeklyLogs=weeklyLogs.map(l=>l.id===keepId?{...l,hours:h}:l).filter(l=>l.id===keepId || !existing.includes(l));
   } else {
     // 기록이 없었으면 새로 추가
-    weeklyLogs.push({id:Date.now(), type:'task', project:t.project, task:t.text, date:homeSelectedDate, hours:h, memo:''});
+    weeklyLogs.push({id:Date.now(), type:'task', project:t.project, task:t.text, date:targetDate, hours:h, memo:''});
   }
   saveToFirebase();
-  renderHome();
+  // 현재 보고 있는 화면에 맞게 다시 그림
+  if(currentTab==='today'){
+    const ft=filteredTasks();
+    renderTaskList(ft);
+  } else if(currentTab==='home'){
+    renderHome();
+  }
 }
 
 // 홈 "할 일 & 미팅" 카드의 날짜를 하루씩 이동 (◀▶ 버튼)
@@ -3265,11 +3288,14 @@ function renderHome(){
 
   const selTasks = sortTasksForDisplay(ft.filter(t=>{
     if(t.priority!=='A1') return false;
-    if(t.done) return false; // 완료(조기완료 포함)된 업무는 홈의 "할 일" 목록에서 제외
+    if(t.done) return false; // 완료(조기완료 포함)된 업무는 위쪽 "할 일" 목록에서 제외 (아래 별도 섹션에서 보여줌)
     const sD=new Date(t.start); const sd=new Date(sD.getFullYear(),sD.getMonth(),sD.getDate());
     const eD=new Date(t.end);   const ed=new Date(eD.getFullYear(),eD.getMonth(),eD.getDate());
     return selD>=sd && selD<=ed;
   }), false); // A1만 모인 목록이라 서브그룹 구분은 불필요 — subOrder로 정렬
+
+  // ── 선택한 날짜에 완료(조기완료 포함)된 업무. 우선순위와 무관하게 그 날 완료된 건 모두 포함
+  const selDoneTasks = sortTasksForDisplay(ft.filter(t=> t.done && t.actualEnd===homeSelectedDate), false);
 
   // ── 해당 날짜 미팅 (weeklyLogs 중 선택된 날짜 + type==='meeting')
   const selMeetings = weeklyLogs.filter(l=>l.type==='meeting' && l.date===homeSelectedDate)
@@ -3364,6 +3390,36 @@ function renderHome(){
           ${p?`<span style="color:${p.color};font-weight:600;font-size:0.72rem;flex-shrink:0;">${p.name}</span>`:''}
           <span style="flex:1;">${l.task||'(제목 없음)'}</span>
           <button class="btn-sm" style="background:var(--bg);color:var(--muted);flex-shrink:0;padding:2px 8px;" onclick="openEditWeekly(${l.id})">수정</button>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  // ── 선택한 날짜에 완료된 업무 (우선순위 무관, 맨 아래 별도 섹션)
+  const doneWrap=document.getElementById('home-today-done-wrap');
+  const doneCountEl=document.getElementById('home-today-done-count');
+  const dtEl=document.getElementById('home-today-done-tasks');
+  if(doneWrap){
+    if(!selDoneTasks.length){
+      doneWrap.style.display='none';
+    } else {
+      doneWrap.style.display='block';
+      if(doneCountEl) doneCountEl.textContent=`${selDoneTasks.length}건`;
+      dtEl.innerHTML=selDoneTasks.map(t=>{
+        const p=proj(t.project);
+        const st=getTaskStatus(t); const stInfo=TASK_STATUS[st]||TASK_STATUS['not_started'];
+        const actualForTask=weeklyLogs.filter(l=>l.date===homeSelectedDate && l.type!=='meeting' && l.project===t.project && l.task===t.text).reduce((s,l)=>s+(l.hours||0),0);
+        return `<div style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--border);font-size:0.84rem;opacity:0.65;">
+          <input type="checkbox" checked onchange="toggleTask(${t.id})" style="flex-shrink:0;" title="체크 해제하면 미완료로 되돌립니다">
+          ${t.priority?`<span style="background:#94a3b8;color:white;font-size:0.68rem;font-weight:800;padding:1px 6px;border-radius:4px;flex-shrink:0;">${t.priority}</span>`:''}
+          <span style="color:${p.color};font-weight:600;font-size:0.72rem;flex-shrink:0;">${p.name}</span>
+          <span style="flex:1;text-decoration:line-through;">${t.text}</span>
+          <span class="status-chip" style="background:${stInfo.color};font-size:0.68rem;flex-shrink:0;">${stInfo.icon} ${stInfo.label}</span>
+          <span style="display:flex;align-items:center;gap:3px;flex-shrink:0;background:#f0fdf4;border-radius:6px;padding:2px 6px;" title="오늘 실제 투입 시간(h)">
+            ⏱️<input type="number" min="0" step="0.5" value="${actualForTask||''}" placeholder="0"
+              style="width:38px;border:none;background:transparent;font-size:0.78rem;font-weight:700;color:#10b981;text-align:right;"
+              onchange="setDailyActual(${t.id}, this.value)">h
+          </span>
         </div>`;
       }).join('');
     }
