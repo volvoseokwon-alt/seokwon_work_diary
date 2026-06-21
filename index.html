@@ -24,7 +24,7 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;h
 header{background:var(--primary);color:white;padding:0 16px;height:56px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:10px;}
 header h1{font-size:1rem;font-weight:700;white-space:nowrap;flex-shrink:0;}
 .hdr-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
-.world-clocks{display:flex;gap:10px;align-items:center;flex:1;justify-content:center;flex-wrap:wrap;}
+.world-clocks{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;}
 .wclock{display:flex;flex-direction:column;align-items:center;background:rgba(255,255,255,.12);border-radius:8px;padding:3px 10px;min-width:90px;}
 .wclock .wc-flag{font-size:0.75rem;opacity:.85;}
 .wclock .wc-time{font-size:0.95rem;font-weight:800;letter-spacing:.03em;line-height:1.2;}
@@ -202,6 +202,9 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
   .prog-cards{grid-template-columns:repeat(2,1fr);}
   .week-selector{overflow-x:auto;}
 }
+@media(max-width:1400px){
+  #hdr-schedule{display:none!important;}
+}
 </style>
 <!-- Firebase compat SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -223,27 +226,29 @@ if ('serviceWorker' in navigator) {
       <span style="font-size:0.62rem;font-weight:400;color:rgba(255,255,255,0.65);">developed by seokwon</span>
     </span>
   </h1>
-  <div class="world-clocks" id="world-clocks">
-    <div class="wclock" id="wc-kr">
-      <span class="wc-flag">🇰🇷 한국</span>
-      <span class="wc-time" id="wc-kr-time">--:--</span>
-      <span class="wc-date" id="wc-kr-date">---</span>
+  <div style="display:flex;align-items:center;justify-content:center;gap:24px;flex:1;flex-wrap:wrap;min-width:0;">
+    <div class="world-clocks" id="world-clocks">
+      <div class="wclock" id="wc-kr">
+        <span class="wc-flag">🇰🇷 한국</span>
+        <span class="wc-time" id="wc-kr-time">--:--</span>
+        <span class="wc-date" id="wc-kr-date">---</span>
+      </div>
+      <div class="wclock" id="wc-de">
+        <span class="wc-flag">🇩🇪 독일</span>
+        <span class="wc-time" id="wc-de-time">--:--</span>
+        <span class="wc-date" id="wc-de-date">---</span>
+      </div>
+      <div class="wclock" id="wc-us">
+        <span class="wc-flag">🇺🇸 미국(동부)</span>
+        <span class="wc-time" id="wc-us-time">--:--</span>
+        <span class="wc-date" id="wc-us-date">---</span>
+      </div>
     </div>
-    <div class="wclock" id="wc-de">
-      <span class="wc-flag">🇩🇪 독일</span>
-      <span class="wc-time" id="wc-de-time">--:--</span>
-      <span class="wc-date" id="wc-de-date">---</span>
-    </div>
-    <div class="wclock" id="wc-us">
-      <span class="wc-flag">🇺🇸 미국(동부)</span>
-      <span class="wc-time" id="wc-us-time">--:--</span>
-      <span class="wc-date" id="wc-us-date">---</span>
-    </div>
-    <div id="hdr-schedule" onclick="switchTab('calendar',document.querySelector('.tab-btn'))" style="display:none;cursor:pointer;align-items:center;gap:6px;background:rgba(255,255,255,.12);border-radius:8px;padding:5px 12px;max-width:260px;" title="캘린더로 이동">
-      <span style="font-size:0.85rem;flex-shrink:0;">📌</span>
-      <span style="display:flex;flex-direction:column;line-height:1.25;overflow:hidden;">
-        <span id="hdr-schedule-label" style="font-size:0.62rem;opacity:.8;white-space:nowrap;">일정</span>
-        <span id="hdr-schedule-text" style="font-size:0.78rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></span>
+    <div id="hdr-schedule" onclick="switchTab('calendar',document.querySelector('.tab-btn'))" style="display:none;cursor:pointer;align-items:center;gap:5px;background:rgba(255,255,255,.12);border-radius:8px;padding:5px 10px;max-width:200px;flex-shrink:1;min-width:0;" title="캘린더로 이동">
+      <span style="font-size:0.8rem;flex-shrink:0;">📌</span>
+      <span style="display:flex;flex-direction:column;line-height:1.25;overflow:hidden;min-width:0;">
+        <span id="hdr-schedule-label" style="font-size:0.6rem;opacity:.8;white-space:nowrap;">일정</span>
+        <span id="hdr-schedule-text" style="font-size:0.74rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></span>
       </span>
     </div>
   </div>
