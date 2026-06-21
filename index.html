@@ -770,17 +770,6 @@ ZB 교체 둘</textarea>
       <div class="date-grp" style="flex:1;"><label>시작</label><input type="date" id="edit-start" style="flex:1;padding:7px;border:1.5px solid var(--border);border-radius:6px;font-size:0.8rem;"></div>
       <div class="date-grp" style="flex:1;"><label>종료</label><input type="date" id="edit-end" style="flex:1;padding:7px;border:1.5px solid var(--border);border-radius:6px;font-size:0.8rem;"></div>
     </div>
-    <!-- 예상 시간 / 투입 시간 -->
-    <div style="display:flex;gap:8px;">
-      <div style="flex:1;">
-        <label style="font-size:0.74rem;color:var(--muted);display:block;margin-bottom:3px;">📋 예상 시간 (h)</label>
-        <input type="number" id="edit-est-hours" min="0.5" step="0.5" placeholder="예: 8" style="width:100%;padding:7px;border:1.5px solid var(--border);border-radius:6px;font-size:0.85rem;">
-      </div>
-      <div style="flex:1;">
-        <label style="font-size:0.74rem;color:var(--muted);display:block;margin-bottom:3px;">⏱️ 총 투입 시간 (h) <span style="color:#94a3b8;font-size:0.68rem;">주간기록 합산</span></label>
-        <input type="number" id="edit-actual-hours" min="0" step="0.5" placeholder="자동계산" readonly style="width:100%;padding:7px;border:1.5px solid var(--border);border-radius:6px;font-size:0.85rem;background:#f8fafc;color:var(--muted);">
-      </div>
-    </div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal('modal-edit')">취소</button>
       <button class="btn-primary" onclick="saveEdit()">저장</button>
@@ -5217,7 +5206,12 @@ function saveEdit(){
   const end=document.getElementById('edit-end').value;
   const priority=document.getElementById('edit-priority').value;
   if(!text||!start||!end) return;
-  tasks=tasks.map(t=>t.id===editingId?{...t,text,project:projId,subProject:subProject||undefined,start,end,priority}:t);
+  tasks=tasks.map(t=>{
+    if(t.id!==editingId) return t;
+    const updated={...t,text,project:projId,start,end,priority};
+    if(subProject) updated.subProject=subProject; else delete updated.subProject;
+    return updated;
+  });
   closeModal('modal-edit'); saveAndRender();
 }
 
