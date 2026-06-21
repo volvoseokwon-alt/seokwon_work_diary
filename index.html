@@ -279,7 +279,6 @@ if ('serviceWorker' in navigator) {
     <button onclick="document.getElementById('restore-file-input').click()" title="백업 파일에서 복원" style="background:rgba(255,255,255,0.15);border:none;color:white;font-size:0.7rem;padding:4px 8px;border-radius:5px;cursor:pointer;">📤 복원</button>
     <input type="file" id="restore-file-input" accept=".json" style="display:none;" onchange="restoreFromFile(this.files[0])">
     <span class="week-badge" id="hdr-week">W?</span>
-    <span class="score-badge">효율 <span id="efficiency-score">0</span>%</span>
   </div>
 </header>
 
@@ -1107,10 +1106,44 @@ async function forceSaveToServer(){
    - 한 번 폴더를 선택해두면, 매 저장마다 그 폴더에 자동으로 백업 파일 기록
    - 권한은 브라우저 탭을 새로 열 때마다 다시 확인 필요 (브라우저 보안 정책)
 ══════════════════════════════════════ */
-let backupDirHandle = null; // 선택된 폴더 핸들 (메모리에만 보관, 새로고침하면 사라짐)
+let backupDirHandle = null; // 선택된 폴더 핸들 (메모리에 보관, IndexedDB에도 영구 저장해서 다음 실행 시 재사용)
 
 function isFileSystemAccessSupported(){
   return 'showDirectoryPicker' in window;
+}
+
+/* ── IndexedDB에 디렉토리 핸들 저장/조회 ──────────────────
+   File System Access API의 핸들 객체는 구조화 복제(structured clone)가 가능해서
+   IndexedDB에 그대로 저장할 수 있다. 이렇게 해두면 다음에 앱을 열었을 때
+   "폴더 선택" 창을 다시 띄우지 않고, 권한(permission)만 다시 확인하면 된다. */
+function openHandleDB(){
+  return new Promise((resolve, reject)=>{
+    const req = indexedDB.open('wonderDiaryHandles', 1);
+    req.onupgradeneeded = () => { req.result.createObjectStore('handles'); };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function saveDirHandleToDB(handle){
+  try{
+    const db = await openHandleDB();
+    await new Promise((resolve, reject)=>{
+      const tx = db.transaction('handles', 'readwrite');
+      tx.objectStore('handles').put(handle, 'backupDir');
+      tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
+    });
+  }catch(e){ console.warn('핸들 저장 실패:', e); }
+}
+async function loadDirHandleFromDB(){
+  try{
+    const db = await openHandleDB();
+    return await new Promise((resolve, reject)=>{
+      const tx = db.transaction('handles', 'readonly');
+      const req = tx.objectStore('handles').get('backupDir');
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+  }catch(e){ console.warn('핸들 조회 실패:', e); return null; }
 }
 
 async function connectBackupFolder(){
@@ -1125,12 +1158,64 @@ async function connectBackupFolder(){
       startIn: 'documents'
     });
     localStorage.setItem('backupFolderConnected', 'true');
+    await saveDirHandleToDB(backupDirHandle); // 다음 실행에도 재사용할 수 있도록 영구 저장
     updateBackupFolderUI(true);
-    alert(`✅ 백업 폴더가 연결되었습니다: ${backupDirHandle.name}\n\n이제부터 저장할 때마다 이 폴더에 자동으로 백업됩니다.`);
+    alert(`✅ 백업 폴더가 연결되었습니다: ${backupDirHandle.name}\n\n이제부터 저장할 때마다 이 폴더에 자동으로 백업됩니다.\n다음에 앱을 열 때도 자동으로 재연결을 시도합니다.`);
     // 연결 직후 한 번 즉시 백업
     autoBackupToFolder({ projects, tasks, weeklyLogs, trash, completedProjects, repeatTasks, calMemos, taskTags, quickLinks });
   } catch(e) {
     if (e.name !== 'AbortError') console.warn('폴더 선택 취소 또는 실패:', e);
+  }
+}
+
+// 앱 시작 시 호출: 이전에 저장해둔 폴더 핸들이 있으면 권한 상태를 확인해서
+// - 권한이 이미 허용된 상태면 폴더 선택 없이 조용히 자동 재연결
+// - 권한이 끊겼으면(브라우저 재시작 등) 버튼을 눌렀을 때 "권한 허용"만 다시 받도록 안내
+async function tryReconnectBackupFolder(){
+  if (!isFileSystemAccessSupported()) return;
+  if (localStorage.getItem('backupFolderConnected') !== 'true') return;
+  const handle = await loadDirHandleFromDB();
+  if (!handle) {
+    // 저장된 핸들 자체가 없으면(이번 업데이트 이전에 연결했던 경우) 폴더를 새로 선택해야 함
+    const btn=document.getElementById('backup-folder-btn');
+    if(btn){ btn.textContent='📁 PC 폴더 다시 연결'; btn.title='이전 연결 정보가 없어 폴더를 다시 선택해야 합니다 (한 번만)'; btn.style.background='#f59e0b'; }
+    return;
+  }
+  try{
+    const perm = await handle.queryPermission({ mode: 'readwrite' });
+    if (perm === 'granted') {
+      // 이미 허용된 상태 → 폴더 선택/권한 팝업 없이 바로 재연결
+      backupDirHandle = handle;
+      updateBackupFolderUI(true);
+    } else {
+      // 권한은 끊겼지만 폴더 자체는 기억하고 있는 상태 → 버튼 클릭 한 번으로 권한만 다시 허용하면 됨 (폴더 재선택 불필요)
+      backupDirHandle = handle;
+      const btn=document.getElementById('backup-folder-btn');
+      if(btn){
+        btn.textContent='📁 클릭해서 백업 재개';
+        btn.title=`이전에 연결한 "${handle.name||'폴더'}"에 대한 권한만 다시 허용하면 됩니다 (폴더를 다시 고르지 않아도 됩니다)`;
+        btn.style.background='#f59e0b';
+        btn.onclick = requestBackupFolderPermission;
+      }
+    }
+  }catch(e){
+    console.warn('백업 폴더 권한 확인 실패:', e);
+  }
+}
+
+// "권한 허용 필요" 상태에서 버튼 클릭 시 호출 — 폴더를 다시 선택하지 않고 권한 팝업만 띄움
+async function requestBackupFolderPermission(){
+  if (!backupDirHandle) return;
+  try{
+    const perm = await backupDirHandle.requestPermission({ mode: 'readwrite' });
+    if (perm === 'granted') {
+      updateBackupFolderUI(true);
+      const btn=document.getElementById('backup-folder-btn');
+      if(btn) btn.onclick = connectBackupFolder; // 정상 상태로 되돌림(다음에 또 끊기면 같은 흐름 재사용)
+      autoBackupToFolder({ projects, tasks, weeklyLogs, trash, completedProjects, repeatTasks, calMemos, taskTags, quickLinks });
+    }
+  }catch(e){
+    console.warn('권한 요청 실패:', e);
   }
 }
 
@@ -1151,8 +1236,13 @@ async function autoBackupToFolder(payload){
     await dateWritable.close();
   } catch(e) {
     console.warn('폴더 자동 백업 실패 (권한이 풀렸을 수 있음):', e);
-    backupDirHandle = null;
-    updateBackupFolderUI(false);
+    // 핸들 자체는 버리지 않고 유지 — 다음에 버튼 한 번만 눌러 권한만 재허용하면 폴더 재선택 없이 복구 가능
+    const btn=document.getElementById('backup-folder-btn');
+    if(btn){
+      btn.textContent='📁 PC 폴더 권한 허용 필요';
+      btn.style.background='#f59e0b';
+      btn.onclick = requestBackupFolderPermission;
+    }
   }
 }
 
@@ -1161,6 +1251,7 @@ function updateBackupFolderUI(connected){
   if (!btn) return;
   btn.textContent = connected ? '📁 PC 자동백업 ON' : '📁 PC 폴더 연결';
   btn.style.background = connected ? '#10b981' : 'rgba(255,255,255,0.15)';
+  btn.onclick = connectBackupFolder; // 권한허용 모드였다면 정상 흐름으로 복귀
 }
 
 function downloadFullBackup(){
@@ -4940,7 +5031,8 @@ function downloadReportWord(){
 function calcScore(){
   const ft=filteredTasks();
   const total=ft.length, done=ft.filter(t=>t.done).length;
-  document.getElementById('efficiency-score').textContent=total?Math.round(done/total*100):0;
+  const el=document.getElementById('efficiency-score');
+  if(el) el.textContent=total?Math.round(done/total*100):0;
 }
 
 /* ══════════════════════════════════════
@@ -5516,13 +5608,8 @@ document.getElementById('sidebar-note')?.addEventListener('input', ()=>{
   // 시계는 DOM 완전 로드 후 시작
   updateWorldClocks();
   setInterval(updateWorldClocks, 30000);
-  // 이전에 PC 폴더 자동백업을 연결했던 적이 있으면 재연결 안내 (보안정책상 자동 재연결 불가)
-  if (localStorage.getItem('backupFolderConnected')==='true' && isFileSystemAccessSupported()) {
-    setTimeout(()=>{
-      const btn=document.getElementById('backup-folder-btn');
-      if(btn){ btn.textContent='📁 PC 폴더 재연결 필요'; btn.style.background='#f59e0b'; }
-    }, 1000);
-  }
+  // 이전에 PC 폴더 자동백업을 연결했던 적이 있으면 권한 상태를 확인해서 자동/원클릭 재연결 시도
+  setTimeout(tryReconnectBackupFolder, 1000);
 })();
 </script>
 </body>
