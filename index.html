@@ -1635,7 +1635,7 @@ window._ganttHideDone = localStorage.getItem('ganttHideDone') === 'true';
 function toggleGanttHideDone(){
   window._ganttHideDone = !window._ganttHideDone;
   localStorage.setItem('ganttHideDone', window._ganttHideDone);
-  renderGantt(filteredTasks());
+  renderGantt(sortTasksForDisplay(filteredTasks(), currentFilter!=='all' || showSubProjGroupsInAll));
 }
 
 function renderGantt(list){
@@ -1850,18 +1850,12 @@ function eD2Diff(a,b){ return Math.max(0,(b.getTime()-a.getTime()))/86400000 || 
 /* ══════════════════════════════════════
    TASK LIST
 ══════════════════════════════════════ */
-function renderTaskList(list){
-  const el=document.getElementById('task-list');
-  el.innerHTML='';
-  if(!list.length){ el.innerHTML='<div style="color:var(--muted);font-size:0.83rem;text-align:center;padding:18px">업무 없음. 위에서 추가하세요.</div>'; return; }
-
-  // 서브프로젝트 그룹을 보여줄지 여부:
-  // - 특정 프로젝트를 필터링 중이면 항상 표시
-  // - 'all' 필터일 때는 토글(showSubProjGroupsInAll) 설정을 따름
-  const showSubGroups = currentFilter!=='all' || showSubProjGroupsInAll;
-
-  // 정렬: 완료여부 → (서브그룹 사용시) 서브프로젝트명 → 우선순위 → subOrder
-  const sorted=[...list].sort((a,b)=>{
+// 업무 목록을 화면에 표시할 때 쓰는 공용 정렬 기준.
+// "할 일" 리스트, 홈의 오늘 할 일, 타임라인(간트차트) 세 곳 모두 이 함수로 정렬해서
+// 어느 화면에서 드래그로 순서를 바꿔도(=subOrder 갱신) 나머지 화면도 같은 순서로 보이게 한다.
+// 완료여부 → (showSubGroups일 때) 서브프로젝트명 → 우선순위 → subOrder
+function sortTasksForDisplay(list, showSubGroups){
+  return [...list].sort((a,b)=>{
     if(a.done !== b.done) return a.done?1:-1; // 완료=뒤
     if(showSubGroups){
       const asp=a.subProject||''; const bsp=b.subProject||'';
@@ -1876,6 +1870,20 @@ function renderTaskList(list){
     if(ai!==bi) return (ai<0?99:ai)-(bi<0?99:bi);
     return (a.subOrder||0)-(b.subOrder||0);
   });
+}
+
+function renderTaskList(list){
+  const el=document.getElementById('task-list');
+  el.innerHTML='';
+  if(!list.length){ el.innerHTML='<div style="color:var(--muted);font-size:0.83rem;text-align:center;padding:18px">업무 없음. 위에서 추가하세요.</div>'; return; }
+
+  // 서브프로젝트 그룹을 보여줄지 여부:
+  // - 특정 프로젝트를 필터링 중이면 항상 표시
+  // - 'all' 필터일 때는 토글(showSubProjGroupsInAll) 설정을 따름
+  const showSubGroups = currentFilter!=='all' || showSubProjGroupsInAll;
+
+  // 정렬: 완료여부 → (서브그룹 사용시) 서브프로젝트명 → 우선순위 → subOrder
+  const sorted=sortTasksForDisplay(list, showSubGroups);
 
   let lastPrio=null; let lastSubProj=undefined; let shownDoneSep=false;
   sorted.forEach(t=>{
@@ -2492,10 +2500,17 @@ function taskDrop(e, targetTid, targetPrio){
   if(fromIdx<0||toIdx<0) return;
   const [moved]=samePrio.splice(fromIdx,1);
   samePrio.splice(toIdx,0,moved);
-  // subOrder 재부여
+  // subOrder 재부여 — 이 값을 할 일/홈/타임라인이 공통으로 참조하므로 한 곳에서 바꾸면 셋 다 같은 순서로 보임
   samePrio.forEach((t,i)=>{ const idx=tasks.findIndex(x=>x.id===t.id); if(idx>=0) tasks[idx].subOrder=i; });
   saveToFirebase();
-  renderTaskList(filteredTasks());
+  // 현재 보고 있는 화면에 맞게 다시 그림 (할 일 탭이면 리스트+타임라인 모두, 홈이면 홈만)
+  if(currentTab==='today'){
+    const ft=filteredTasks();
+    renderTaskList(ft);
+    renderGantt(sortTasksForDisplay(ft, currentFilter!=='all' || showSubProjGroupsInAll));
+  } else if(currentTab==='home'){
+    renderHome();
+  }
 }
 
 /* ══════════════════════════════════════
@@ -2779,7 +2794,7 @@ function setTaskStatus(id, status){
   saveToFirebase();
   const ft=filteredTasks();
   renderTaskList(ft);
-  renderGantt(ft);
+  renderGantt(sortTasksForDisplay(ft, currentFilter!=='all' || showSubProjGroupsInAll));
   calcScore();
 }
 
@@ -3038,15 +3053,12 @@ function renderHome(){
   const dateLabel = `${selD.getMonth()+1}/${selD.getDate()} (${['일','월','화','수','목','금','토'][selD.getDay()]})${selIsToday?' · 오늘':''}`;
   document.getElementById('home-today-date').textContent = dateLabel;
 
-  const selTasks = ft.filter(t=>{
+  const selTasks = sortTasksForDisplay(ft.filter(t=>{
     if(t.priority!=='A1') return false;
     const sD=new Date(t.start); const sd=new Date(sD.getFullYear(),sD.getMonth(),sD.getDate());
     const eD=new Date(t.end);   const ed=new Date(eD.getFullYear(),eD.getMonth(),eD.getDate());
     return selD>=sd && selD<=ed;
-  }).sort((a,b)=>{
-    if(a.done!==b.done) return a.done?1:-1;
-    return PRIORITY_ORDER.indexOf(a.priority||'C3')-PRIORITY_ORDER.indexOf(b.priority||'C3');
-  });
+  }), false); // A1만 모인 목록이라 서브그룹 구분은 불필요 — 완료여부→subOrder로 정렬
 
   // ── 해당 날짜 미팅 (weeklyLogs 중 선택된 날짜 + type==='meeting')
   const selMeetings = weeklyLogs.filter(l=>l.type==='meeting' && l.date===homeSelectedDate)
@@ -3097,7 +3109,14 @@ function renderHome(){
       const pc=t.done?'#94a3b8':prioColor(t.priority||'');
       const planVal=plansForDate[t.id]!=null?plansForDate[t.id]:'';
       const actualForTask=weeklyLogs.filter(l=>l.date===homeSelectedDate && l.type!=='meeting' && l.project===t.project && l.task===t.text).reduce((s,l)=>s+(l.hours||0),0);
-      return `<div style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--border);font-size:0.84rem;${t.done?'opacity:0.55;':''}">
+      return `<div draggable="true"
+        ondragstart="taskDragStart(event, ${t.id}, 'A1')"
+        ondragover="taskDragOver(event, 'A1')"
+        ondragleave="this.classList.remove('drag-over')"
+        ondrop="taskDrop(event, ${t.id}, 'A1')"
+        ondragend="this.classList.remove('dragging')"
+        style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--border);font-size:0.84rem;${t.done?'opacity:0.55;':''}">
+        <span style="cursor:grab;color:var(--muted);flex-shrink:0;font-size:0.8rem;user-select:none;" title="드래그해서 순서 변경">⠿</span>
         <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask(${t.id})" style="flex-shrink:0;">
         ${t.priority?`<span style="background:${pc};color:white;font-size:0.68rem;font-weight:800;padding:1px 6px;border-radius:4px;flex-shrink:0;">${t.priority}</span>`:''}
         <span style="color:${p.color};font-weight:600;font-size:0.72rem;flex-shrink:0;">${p.name}</span>
@@ -4888,7 +4907,10 @@ function render(){
   calcScore();
   updateHeaderWeek();
   const ft=filteredTasks();
-  if(currentTab==='today'){ renderGantt(ft); renderTaskList(ft); }
+  if(currentTab==='today'){
+    renderGantt(sortTasksForDisplay(ft, currentFilter!=='all' || showSubProjGroupsInAll));
+    renderTaskList(ft);
+  }
   else if(currentTab==='home'){ renderHome(); }
   else if(currentTab==='calendar'){ renderCalendar(); }
   else if(currentTab==='weekly'){
