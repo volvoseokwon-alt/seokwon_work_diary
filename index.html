@@ -239,6 +239,13 @@ if ('serviceWorker' in navigator) {
       <span class="wc-time" id="wc-us-time">--:--</span>
       <span class="wc-date" id="wc-us-date">---</span>
     </div>
+    <div id="hdr-schedule" onclick="switchTab('calendar',document.querySelector('.tab-btn'))" style="display:none;cursor:pointer;align-items:center;gap:6px;background:rgba(255,255,255,.12);border-radius:8px;padding:5px 12px;max-width:260px;" title="캘린더로 이동">
+      <span style="font-size:0.85rem;flex-shrink:0;">📌</span>
+      <span style="display:flex;flex-direction:column;line-height:1.25;overflow:hidden;">
+        <span id="hdr-schedule-label" style="font-size:0.62rem;opacity:.8;white-space:nowrap;">일정</span>
+        <span id="hdr-schedule-text" style="font-size:0.78rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></span>
+      </span>
+    </div>
   </div>
   <div class="hdr-right">
     <button id="hard-refresh-btn" onclick="hardRefresh()" title="캐시를 무시하고 서버에서 최신 데이터를 다시 불러옵니다" style="background:rgba(255,255,255,0.15);border:none;color:white;font-size:0.85rem;padding:5px 9px;border-radius:5px;cursor:pointer;display:flex;align-items:center;gap:4px;">🔄</button>
@@ -308,7 +315,6 @@ ZB 교체 둘</textarea>
       <button class="tab-btn" onclick="switchTab('calendar',this)">📅 캘린더</button>
       <button class="tab-btn" onclick="switchTab('weekly',this)">⏱️ 주간/월간 기록</button>
       <button class="tab-btn" onclick="switchTab('search',this)">🔍 검색</button>
-      <button class="tab-btn" onclick="switchTab('repeat',this)">🔄 반복업무</button>
       <button class="tab-btn" onclick="switchTab('history',this)">📂 완료 히스토리</button>
       <button class="tab-btn" onclick="switchTab('report',this)">📄 레포트</button>
       <button class="tab-btn" onclick="switchTab('trash',this)">🗑️ 휴지통 <span id="trash-badge" style="display:none;background:var(--warn);color:white;font-size:0.65rem;border-radius:10px;padding:1px 5px;margin-left:2px;"></span></button>
@@ -395,18 +401,6 @@ ZB 교체 둘</textarea>
           </select>
         </div>
         <div id="search-results"><div style="color:var(--muted);font-size:0.85rem;padding:16px 0;text-align:center;">키워드를 입력하세요.</div></div>
-      </div>
-    </div>
-
-    <!-- 반복업무 -->
-    <div id="tab-repeat" style="display:none;">
-      <div class="card">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-          <strong>🔄 반복 업무 설정</strong>
-          <button class="btn-primary" onclick="openModal('modal-repeat')" style="margin-left:auto;font-size:0.8rem;padding:5px 12px;">+ 추가</button>
-        </div>
-        <div style="font-size:0.78rem;color:var(--muted);margin-bottom:10px;">설정한 반복 업무는 매주/매월 자동으로 할 일에 추가됩니다.</div>
-        <div id="repeat-list"></div>
       </div>
     </div>
 
@@ -606,11 +600,15 @@ ZB 교체 둘</textarea>
     <div style="font-size:0.78rem;color:var(--muted);margin-bottom:8px;">
       대한민국 법정 공휴일은 자동으로 인식됩니다. 회사 자체 휴무일이나 연차·여름휴가는 아래에서 직접 추가하면, 레포트의 업무 부하 판정 기준(영업일×8시간)에서 자동으로 제외됩니다.
     </div>
-    <div style="display:flex;gap:8px;margin-bottom:10px;">
-      <input type="date" id="holiday-date" style="flex:1;padding:7px;border:1.5px solid var(--border);border-radius:6px;">
-      <input type="text" id="holiday-label" placeholder="이름 (예: 여름휴가)" style="flex:1;padding:7px;border:1.5px solid var(--border);border-radius:6px;">
-      <button class="btn-primary" style="padding:7px 12px;font-size:0.82rem;" onclick="addCustomHoliday()">추가</button>
+    <div style="display:flex;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+      <div class="date-grp" style="flex:1;min-width:130px;"><label>시작</label><input type="date" id="holiday-date" style="width:100%;padding:7px;border:1.5px solid var(--border);border-radius:6px;"></div>
+      <div class="date-grp" style="flex:1;min-width:130px;"><label>종료(선택)</label><input type="date" id="holiday-date-end" style="width:100%;padding:7px;border:1.5px solid var(--border);border-radius:6px;"></div>
     </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <input type="text" id="holiday-label" placeholder="이름 (예: 여름휴가)" style="flex:1;padding:7px;border:1.5px solid var(--border);border-radius:6px;">
+      <button class="btn-primary" style="padding:7px 12px;font-size:0.82rem;white-space:nowrap;" onclick="addCustomHoliday()">추가</button>
+    </div>
+    <div style="font-size:0.72rem;color:var(--muted);margin:-6px 0 10px;">💡 종료일을 입력하면 시작~종료 사이 모든 날짜가 한 번에 휴무일로 등록됩니다. (예: 여름휴가 7/21~8/3)</div>
     <div style="font-size:0.8rem;font-weight:700;color:#374151;margin:10px 0 6px;">📌 직접 추가한 휴무일</div>
     <div id="custom-holiday-list" style="max-height:140px;overflow-y:auto;margin-bottom:12px;"></div>
     <div style="font-size:0.8rem;font-weight:700;color:#374151;margin:10px 0 6px;">🇰🇷 올해 자동 인식된 법정 공휴일</div>
@@ -638,31 +636,6 @@ ZB 교체 둘</textarea>
   </div>
 </div>
 
-<!-- 반복업무 추가 -->
-<div class="modal" id="modal-repeat">
-  <div class="modal-box">
-    <h3>🔄 반복 업무 추가</h3>
-    <input type="text" id="rep-text" placeholder="업무명">
-    <select id="rep-project" style="padding:8px;border:1.5px solid var(--border);border-radius:6px;width:100%;"></select>
-    <div style="display:flex;gap:8px;">
-      <select id="rep-priority" style="flex:1;padding:8px;border:1.5px solid var(--border);border-radius:6px;">
-        <option value="A1">A1</option><option value="A2">A2</option><option value="A3">A3</option>
-        <option value="B1">B1</option><option value="B2" selected>B2</option><option value="B3">B3</option>
-        <option value="C1">C1</option><option value="C2">C2</option><option value="C3">C3</option>
-      </select>
-      <select id="rep-cycle" style="flex:1;padding:8px;border:1.5px solid var(--border);border-radius:6px;">
-        <option value="weekly">매주</option>
-        <option value="biweekly">2주마다</option>
-        <option value="monthly">매월</option>
-      </select>
-    </div>
-    <input type="number" id="rep-duration" placeholder="기간(일) 예: 3" min="1" max="30" value="3" style="padding:8px;border:1.5px solid var(--border);border-radius:6px;width:100%;">
-    <div class="modal-actions">
-      <button class="btn-cancel" onclick="closeModal('modal-repeat')">취소</button>
-      <button class="btn-primary" onclick="addRepeatTask()">추가</button>
-    </div>
-  </div>
-</div>
 
 <!-- 링크 추가 -->
 <div class="modal" id="modal-add-link">
@@ -900,6 +873,7 @@ async function hardRefresh(){
   try {
     await loadFromFirebase();
     render();
+    updateHeaderSchedule();
     if (typeof renderHome === 'function' && currentTab === 'home') renderHome();
   } catch(e) {
     console.warn('완전 새로고침 실패:', e);
@@ -1617,7 +1591,7 @@ function checkAlerts(){
 /* ══════════════════════════════════════
    TABS
 ══════════════════════════════════════ */
-const TAB_IDS=['today','home','calendar','weekly','search','repeat','history','report','links','trash'];
+const TAB_IDS=['today','home','calendar','weekly','search','history','report','links','trash'];
 function switchTab(name,el){
   currentTab=name;
   document.querySelectorAll('.tab-btn:not(.sub-tab-btn)').forEach(b=>b.classList.remove('active'));
@@ -2099,6 +2073,7 @@ function saveCalMemo(){
   closeModal('modal-cal-memo');
   saveToFirebase();
   renderCalendar();
+  updateHeaderSchedule();
   if(currentProjNoteId) renderProjSched(currentProjNoteId);
 }
 function deleteCalMemo(){
@@ -2106,6 +2081,7 @@ function deleteCalMemo(){
   closeModal('modal-cal-memo');
   saveToFirebase();
   renderCalendar();
+  updateHeaderSchedule();
   if(currentProjNoteId) renderProjSched(currentProjNoteId);
 }
 
@@ -3233,51 +3209,8 @@ function renderSearch(){
 }
 
 /* ══════════════════════════════════════
-   반복 업무
+   반복 업무 (탭 UI는 제거됨 — 기존에 등록된 반복업무는 아래 자동 생성 로직으로만 계속 동작)
 ══════════════════════════════════════ */
-function renderRepeat(){
-  const sel=document.getElementById('rep-project');
-  if(sel) sel.innerHTML=projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
-  const el=document.getElementById('repeat-list');
-  if(!el) return;
-  if(!repeatTasks.length){ el.innerHTML='<div style="color:var(--muted);font-size:0.85rem;padding:12px 0;text-align:center;">반복 업무가 없습니다.</div>'; return; }
-  const cycleLabel={weekly:'매주',biweekly:'2주마다',monthly:'매월'};
-  el.innerHTML=repeatTasks.map(r=>{
-    const p=proj(r.project);
-    const pc=prioColor(r.priority);
-    return `<div class="repeat-item">
-      <span style="background:${pc};color:white;font-size:0.68rem;font-weight:800;padding:2px 6px;border-radius:4px;">${r.priority}</span>
-      <span style="color:${p.color};font-size:0.75rem;font-weight:700;">${p.name}</span>
-      <span style="flex:1;font-weight:600;">${r.text}</span>
-      <span style="background:#f1f5f9;border-radius:5px;padding:2px 8px;font-size:0.72rem;color:var(--muted);">${cycleLabel[r.cycle]} · ${r.duration}일</span>
-      <button class="btn-sm" style="background:#f0fdf4;color:#10b981" onclick="genRepeatNow(${r.id})">지금 생성</button>
-      <button class="btn-sm" style="background:#fee2e2;color:var(--warn)" onclick="deleteRepeat(${r.id})">삭제</button>
-    </div>`;
-  }).join('');
-}
-function addRepeatTask(){
-  const text=document.getElementById('rep-text').value.trim();
-  const project=document.getElementById('rep-project').value;
-  const priority=document.getElementById('rep-priority').value;
-  const cycle=document.getElementById('rep-cycle').value;
-  const duration=parseInt(document.getElementById('rep-duration').value)||3;
-  if(!text) return;
-  repeatTasks.push({id:Date.now(),text,project,priority,cycle,duration,lastGenDate:''});
-  document.getElementById('rep-text').value='';
-  closeModal('modal-repeat');
-  saveAndRender();
-}
-function deleteRepeat(id){ repeatTasks=repeatTasks.filter(r=>r.id!==id); saveAndRender(); }
-function genRepeatNow(id){
-  const r=repeatTasks.find(x=>x.id===id); if(!r) return;
-  const end=new Date(TODAY); end.setDate(TODAY.getDate()+r.duration-1);
-  const endStr=`${end.getFullYear()}-${String(end.getMonth()+1).padStart(2,'0')}-${String(end.getDate()).padStart(2,'0')}`;
-  tasks.push({id:Date.now(),text:r.text,project:r.project,priority:r.priority,done:false,start:TODAY_STR,end:endStr,actualEnd:null,status:'not_started'});
-  repeatTasks=repeatTasks.map(x=>x.id===id?{...x,lastGenDate:TODAY_STR}:x);
-  saveAndRender();
-  switchTab('today',document.querySelector('.tab-btn'));
-  alert(`"${r.text}" 업무가 오늘부터 ${r.duration}일로 생성됐습니다!`);
-}
 // 반복업무 자동 생성 체크 (앱 로드 시)
 function checkRepeatTasks(){
   let generated=false;
@@ -3923,16 +3856,32 @@ function openHolidayManager(){
 }
 
 function renderHolidayManager(){
-  // 직접 추가한 휴무일 목록
+  // 직접 추가한 휴무일을 날짜순 정렬 후, 같은 이름(label)으로 연속된 날짜들을 구간으로 묶음
   const sortedCustom=[...customHolidays].sort((a,b)=>a.date.localeCompare(b.date));
+  const groups=[];
+  sortedCustom.forEach(h=>{
+    const last=groups[groups.length-1];
+    if(last && last.label===h.label){
+      const nextExpected=new Date(last.endDate+'T00:00:00');
+      nextExpected.setDate(nextExpected.getDate()+1);
+      const nextExpectedStr=`${nextExpected.getFullYear()}-${String(nextExpected.getMonth()+1).padStart(2,'0')}-${String(nextExpected.getDate()).padStart(2,'0')}`;
+      if(nextExpectedStr===h.date){ last.endDate=h.date; last.dates.push(h.date); return; }
+    }
+    groups.push({startDate:h.date, endDate:h.date, label:h.label, dates:[h.date]});
+  });
+
   const listEl=document.getElementById('custom-holiday-list');
-  listEl.innerHTML = sortedCustom.length
-    ? sortedCustom.map(h=>`
+  listEl.innerHTML = groups.length
+    ? groups.map(g=>{
+        const rangeLabel = g.startDate===g.endDate
+          ? fmt(g.startDate)
+          : `${fmt(g.startDate)} ~ ${fmt(g.endDate)} (${g.dates.length}일)`;
+        return `
       <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:0.82rem;">
-        <span style="color:var(--muted);white-space:nowrap;">${fmt(h.date)}</span>
-        <span style="flex:1;font-weight:600;">${h.label||'휴무일'}</span>
-        <button class="btn-sm" style="background:#fee2e2;color:var(--warn);" onclick="deleteCustomHoliday('${h.date}')">삭제</button>
-      </div>`).join('')
+        <span style="color:var(--muted);white-space:nowrap;">${rangeLabel}</span>
+        <span style="flex:1;font-weight:600;">${g.label||'휴무일'}</span>
+        <button class="btn-sm" style="background:#fee2e2;color:var(--warn);" onclick='deleteCustomHolidayRange(${JSON.stringify(g.dates)})'>삭제</button>
+      </div>`;}).join('')
     : '<div style="color:var(--muted);font-size:0.8rem;padding:8px 0;">직접 추가한 휴무일이 없습니다.</div>';
 
   // 올해 + 내년 자동 인식 공휴일 목록 (참고용으로 표시)
@@ -3947,20 +3896,48 @@ function renderHolidayManager(){
 }
 
 function addCustomHoliday(){
-  const date=document.getElementById('holiday-date').value;
+  const startDate=document.getElementById('holiday-date').value;
+  const endDateInp=document.getElementById('holiday-date-end').value;
   const label=document.getElementById('holiday-label').value.trim()||'휴무일';
-  if(!date) return;
-  if(isHoliday(date)){ alert('이미 휴무일로 등록되어 있습니다.'); return; }
-  customHolidays.push({date,label});
+  if(!startDate) return;
+  const endDate = endDateInp || startDate;
+  if(endDate < startDate){ alert('종료일이 시작일보다 빠릅니다.'); return; }
+
+  // 시작~종료 사이 날짜를 모두 풀어서 customHolidays에 추가 (이미 휴무일인 날짜는 건너뜀)
+  const fmtYMD=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  let cur=new Date(startDate+'T00:00:00');
+  const end=new Date(endDate+'T00:00:00');
+  let addedCount=0, skippedCount=0;
+  while(cur<=end){
+    const ds=fmtYMD(cur);
+    if(isHoliday(ds)){ skippedCount++; }
+    else { customHolidays.push({date:ds,label}); addedCount++; }
+    cur.setDate(cur.getDate()+1);
+  }
+  if(addedCount===0){ alert('선택한 기간이 모두 이미 휴무일로 등록되어 있습니다.'); return; }
+
   document.getElementById('holiday-date').value='';
+  document.getElementById('holiday-date-end').value='';
   document.getElementById('holiday-label').value='';
+  saveToFirebase();
+  renderHolidayManager();
+  if(typeof renderCalendar==='function' && document.getElementById('cal-body')) renderCalendar();
+  if(skippedCount>0){
+    setTimeout(()=>alert(`${addedCount}일 등록 완료 (이미 휴무일인 ${skippedCount}일은 건너뜀)`),50);
+  }
+}
+
+function deleteCustomHoliday(date){
+  customHolidays=customHolidays.filter(h=>h.date!==date);
   saveToFirebase();
   renderHolidayManager();
   if(typeof renderCalendar==='function' && document.getElementById('cal-body')) renderCalendar();
 }
 
-function deleteCustomHoliday(date){
-  customHolidays=customHolidays.filter(h=>h.date!==date);
+// 구간(여러 날짜)으로 묶인 휴무일을 한 번에 삭제
+function deleteCustomHolidayRange(dates){
+  const dateSet=new Set(dates);
+  customHolidays=customHolidays.filter(h=>!dateSet.has(h.date));
   saveToFirebase();
   renderHolidayManager();
   if(typeof renderCalendar==='function' && document.getElementById('cal-body')) renderCalendar();
@@ -4718,7 +4695,6 @@ function render(){
     if(monthlyActive){ renderHeatmap(); renderProjHours(); } else { renderWeekly(); }
   }
   else if(currentTab==='search'){ renderSearch(); }
-  else if(currentTab==='repeat'){ renderRepeat(); }
   else if(currentTab==='history'){ renderHistory(); }
   else if(currentTab==='report'){ renderReport(); }
   else if(currentTab==='links'){ renderLinks(); }
@@ -5235,6 +5211,42 @@ function updateWorldClocks(){
     }catch(e){ console.warn('clock error:',e); }
   });
 }
+
+/* ══════════════════════════════════════
+   헤더 — 오늘/다가오는 캘린더 일정 간단 표시
+══════════════════════════════════════ */
+function updateHeaderSchedule(){
+  const wrap=document.getElementById('hdr-schedule');
+  const labelEl=document.getElementById('hdr-schedule-label');
+  const textEl=document.getElementById('hdr-schedule-text');
+  if(!wrap||!labelEl||!textEl) return;
+
+  // 오늘 날짜에 걸쳐있는 일정이 있으면 우선 표시
+  const todayMemo=findCalMemoForDate(TODAY_STR);
+  if(todayMemo){
+    wrap.style.display='flex';
+    labelEl.textContent='📅 오늘 일정';
+    textEl.textContent=todayMemo.memo.text;
+    return;
+  }
+
+  // 없으면 오늘 이후 가장 가까운 일정(메모)을 탐색
+  const upcoming=Object.entries(calMemos)
+    .filter(([startKey])=>startKey>=TODAY_STR)
+    .sort((a,b)=>a[0].localeCompare(b[0]))[0];
+
+  if(upcoming){
+    const [startKey, memo]=upcoming;
+    const dDay=Math.round((new Date(startKey)-new Date(TODAY_STR))/86400000);
+    wrap.style.display='flex';
+    labelEl.textContent=`D-${dDay} · ${fmt(startKey)}`;
+    textEl.textContent=memo.text;
+    return;
+  }
+
+  // 표시할 일정이 없으면 위젯 숨김
+  wrap.style.display='none';
+}
 // 날짜 기본값 (로컬 기준 — UTC 오프셋 문제 방지)
 document.getElementById('start-date').value=TODAY_STR;
 const _endDef=new Date(TODAY); _endDef.setDate(TODAY.getDate()+7);
@@ -5264,6 +5276,7 @@ document.getElementById('sidebar-note')?.addEventListener('input', ()=>{
   // 시계는 DOM 완전 로드 후 시작
   updateWorldClocks();
   setInterval(updateWorldClocks, 30000);
+  updateHeaderSchedule();
   // 이전에 PC 폴더 자동백업을 연결했던 적이 있으면 재연결 안내 (보안정책상 자동 재연결 불가)
   if (localStorage.getItem('backupFolderConnected')==='true' && isFileSystemAccessSupported()) {
     setTimeout(()=>{
