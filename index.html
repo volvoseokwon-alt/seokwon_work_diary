@@ -827,7 +827,7 @@ async function saveToFirebase() {
     window._myKnownVersion = newVersion;
     const payload = {
       projects, tasks, weeklyLogs, trash, completedProjects,
-      repeatTasks, calMemos, taskTags, quickLinks, customHolidays,
+      repeatTasks, calMemos, taskTags, quickLinks, customHolidays, dailyPlans,
       sidebarNote: document.getElementById('sidebar-note')?.value || '',
       updatedAt: nowIso,
       _version: newVersion
@@ -959,6 +959,7 @@ async function loadFromFirebase() {
       calMemos = localBackup.calMemos || calMemos;
       taskTags = localBackup.taskTags || taskTags;
       customHolidays = localBackup.customHolidays || customHolidays;
+      dailyPlans = localBackup.dailyPlans || dailyPlans;
       setLoadWarning('✅ 로컬 백업으로 복원했습니다 — 곧 서버에 다시 저장됩니다');
       window._fbLoaded = true;
       // 복원한 데이터를 서버에 즉시 재저장해서 다음에도 안전하게
@@ -979,6 +980,7 @@ async function loadFromFirebase() {
   if (data.taskTags)                  taskTags          = data.taskTags;
   if (data.quickLinks?.length)        quickLinks        = data.quickLinks;
   if (data.customHolidays?.length)    customHolidays    = data.customHolidays;
+  if (data.dailyPlans)                 dailyPlans        = data.dailyPlans;
   if (data.sidebarNote) {
     const noteEl = document.getElementById('sidebar-note');
     if (noteEl) noteEl.value = data.sidebarNote;
@@ -990,7 +992,7 @@ async function loadFromFirebase() {
   window._myKnownVersion = data._version || 0;
 
   // 정상적으로 서버 데이터를 받았으니 로컬 백업도 갱신 (다음번 안전망)
-  saveLocalBackup({ projects, tasks, weeklyLogs, trash, completedProjects, repeatTasks, calMemos, taskTags, quickLinks, customHolidays, _version: window._myKnownVersion });
+  saveLocalBackup({ projects, tasks, weeklyLogs, trash, completedProjects, repeatTasks, calMemos, taskTags, quickLinks, customHolidays, dailyPlans, _version: window._myKnownVersion });
 
   window._fbLoaded = true;
 }
@@ -1008,6 +1010,7 @@ function restoreFromLocalBackupIfNeeded(){
     repeatTasks = backup.repeatTasks || repeatTasks;
     calMemos = backup.calMemos || calMemos;
     taskTags = backup.taskTags || taskTags;
+    dailyPlans = backup.dailyPlans || dailyPlans;
     setLoadWarning('📦 오프라인 — 이 기기의 로컬 백업을 표시 중입니다');
   }
 }
@@ -1048,7 +1051,7 @@ async function forceSaveToServer(){
     const newVersion = (window._myKnownVersion||0) + 1;
     const payload = {
       projects, tasks, weeklyLogs, trash, completedProjects,
-      repeatTasks, calMemos, taskTags, quickLinks, customHolidays,
+      repeatTasks, calMemos, taskTags, quickLinks, customHolidays, dailyPlans,
       sidebarNote: document.getElementById('sidebar-note')?.value || '',
       updatedAt: nowIso,
       _version: newVersion
@@ -1133,7 +1136,7 @@ function updateBackupFolderUI(connected){
 function downloadFullBackup(){
   const payload = {
     projects, tasks, weeklyLogs, trash, completedProjects,
-    repeatTasks, calMemos, taskTags, quickLinks, customHolidays,
+    repeatTasks, calMemos, taskTags, quickLinks, customHolidays, dailyPlans,
     sidebarNote: document.getElementById('sidebar-note')?.value || '',
     _backupAt: new Date().toISOString(),
     _exportedFrom: 'manual_download'
@@ -1174,6 +1177,7 @@ function restoreFromFile(file){
       calMemos = data.calMemos || {};
       taskTags = data.taskTags || {};
       customHolidays = data.customHolidays || [];
+      dailyPlans = data.dailyPlans || {};
       const noteEl = document.getElementById('sidebar-note');
       if (noteEl && data.sidebarNote) noteEl.value = data.sidebarNote;
 
@@ -1406,6 +1410,7 @@ let trash = [];
 let completedProjects = [];
 let repeatTasks = [];     // {id, text, project, priority, cycle:'weekly'|'biweekly'|'monthly', duration:3, lastGenDate:''}
 let calMemos = {};        // {'2026-06-17': {text:'...', color:'#4f46e5'}}
+let dailyPlans = {};       // {'2026-06-23': {taskId: 계획시간(h), ...}} - 홈에서 "오늘 계획"으로 입력한 업무별 예상 투입시간
 let taskTags = {};        // {taskId: ['#회의','#문서']}
 let quickLinks = [];      // {id, title, url, group, icon}
 let currentFilter = 'all';
@@ -2940,6 +2945,21 @@ function hexToRgb(hex){
 /* ══════════════════════════════════════
    홈 대시보드
 ══════════════════════════════════════ */
+// 홈 "할 일 & 미팅" 카드에서 특정 업무의 "오늘 계획 시간" 입력값을 저장
+function setDailyPlan(taskId, value){
+  const h=parseFloat(value);
+  if(!dailyPlans[homeSelectedDate]) dailyPlans[homeSelectedDate]={};
+  if(isNaN(h) || h<=0){
+    delete dailyPlans[homeSelectedDate][taskId];
+  } else {
+    dailyPlans[homeSelectedDate][taskId]=h;
+  }
+  // 빈 날짜 객체는 정리
+  if(Object.keys(dailyPlans[homeSelectedDate]).length===0) delete dailyPlans[homeSelectedDate];
+  saveToFirebase();
+  renderHome();
+}
+
 // 홈 "할 일 & 미팅" 카드의 날짜를 하루씩 이동 (◀▶ 버튼)
 function homeMoveDate(delta){
   if(!homeSelectedDate) homeSelectedDate=TODAY_STR;
@@ -3033,6 +3053,13 @@ function renderHome(){
     .sort((a,b)=>(a.id||0)-(b.id||0));
   const meetingHours = selMeetings.reduce((s,l)=>s+(l.hours||0),0);
 
+  // ── 해당 날짜 "계획" 시간 (dailyPlans에 직접 입력해둔 업무별 오늘 예상 투입시간의 합)
+  const plansForDate = dailyPlans[homeSelectedDate] || {};
+  const planHoursSum = selTasks.reduce((s,t)=>s+(parseFloat(plansForDate[t.id])||0),0);
+
+  // ── 해당 날짜 "실제" 투입시간 (weeklyLogs에 기록된 모든 시간 — 업무+미팅 합계)
+  const actualHoursSum = weeklyLogs.filter(l=>l.date===homeSelectedDate).reduce((s,l)=>s+(l.hours||0),0);
+
   // ── 가용 시간 = 하루 근무시간(8h) − 해당 날짜 미팅 시간
   // 휴무일이어도 일을 할 수 있으므로 계산 기준은 평일과 동일하게 적용하고, 휴무일이라는 사실만 참고용으로 표시
   const WORKDAY_HOURS=8;
@@ -3042,9 +3069,13 @@ function renderHome(){
   const holidayBadge = !selIsWorkday ? `<span style="font-weight:700;color:var(--muted);background:#f1f5f9;padding:1px 8px;border-radius:6px;font-size:0.72rem;">📅 휴무일</span>` : '';
 
   const capEl=document.getElementById('home-today-capacity');
+  const planVsActual = `<span style="font-weight:700;">📝 계획 <span style="color:var(--primary);">${planHoursSum}h</span></span>`
+    + `<span style="color:var(--muted);">·</span>`
+    + `<span style="font-weight:700;">⏱️ 실제 <span style="color:#10b981;">${actualHoursSum}h</span></span>`;
   if(selMeetings.length===0){
     capEl.innerHTML=holidayBadge
-      + `<span style="font-weight:700;color:#10b981;">🗣️ 미팅 없음</span><span style="color:var(--muted);">·</span><span style="font-weight:700;">업무 가용 시간 약 <span style="color:var(--primary);">${availableHours}시간</span></span> <span style="color:var(--muted);font-size:0.74rem;">(하루 ${WORKDAY_HOURS}시간 기준)</span>`;
+      + `<span style="font-weight:700;color:#10b981;">🗣️ 미팅 없음</span><span style="color:var(--muted);">·</span><span style="font-weight:700;">업무 가용 시간 약 <span style="color:var(--primary);">${availableHours}시간</span></span> <span style="color:var(--muted);font-size:0.74rem;">(하루 ${WORKDAY_HOURS}시간 기준)</span>`
+      + `<span style="color:var(--muted);">·</span>` + planVsActual;
   } else {
     const overBudget = meetingHours > dayBudget;
     capEl.innerHTML=holidayBadge
@@ -3052,7 +3083,8 @@ function renderHome(){
       + `<span style="color:var(--muted);">·</span>`
       + (overBudget
           ? `<span style="font-weight:700;color:var(--warn);">⚠️ 미팅이 하루 근무시간을 초과했습니다</span>`
-          : `<span style="font-weight:700;">업무 가용 시간 약 <span style="color:var(--primary);">${availableHours}시간</span></span> <span style="color:var(--muted);font-size:0.74rem;">(하루 ${WORKDAY_HOURS}시간 기준)</span>`);
+          : `<span style="font-weight:700;">업무 가용 시간 약 <span style="color:var(--primary);">${availableHours}시간</span></span> <span style="color:var(--muted);font-size:0.74rem;">(하루 ${WORKDAY_HOURS}시간 기준)</span>`)
+      + `<span style="color:var(--muted);">·</span>` + planVsActual;
   }
 
   const ttEl=document.getElementById('home-today-tasks');
@@ -3063,12 +3095,20 @@ function renderHome(){
       const p=proj(t.project);
       const st=getTaskStatus(t); const stInfo=TASK_STATUS[st]||TASK_STATUS['not_started'];
       const pc=t.done?'#94a3b8':prioColor(t.priority||'');
+      const planVal=plansForDate[t.id]!=null?plansForDate[t.id]:'';
+      const actualForTask=weeklyLogs.filter(l=>l.date===homeSelectedDate && l.type!=='meeting' && l.project===t.project && l.task===t.text).reduce((s,l)=>s+(l.hours||0),0);
       return `<div style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--border);font-size:0.84rem;${t.done?'opacity:0.55;':''}">
         <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask(${t.id})" style="flex-shrink:0;">
         ${t.priority?`<span style="background:${pc};color:white;font-size:0.68rem;font-weight:800;padding:1px 6px;border-radius:4px;flex-shrink:0;">${t.priority}</span>`:''}
         <span style="color:${p.color};font-weight:600;font-size:0.72rem;flex-shrink:0;">${p.name}</span>
         <span style="flex:1;${t.done?'text-decoration:line-through;':''}">${t.text}</span>
         <span class="status-chip" style="background:${stInfo.color};font-size:0.68rem;flex-shrink:0;">${stInfo.icon} ${stInfo.label}</span>
+        <span style="display:flex;align-items:center;gap:3px;flex-shrink:0;background:var(--bg);border-radius:6px;padding:2px 6px;" title="오늘 계획 시간(h)">
+          📝<input type="number" min="0" step="0.5" value="${planVal}" placeholder="0"
+            style="width:38px;border:none;background:transparent;font-size:0.78rem;font-weight:700;color:var(--primary);text-align:right;"
+            onchange="setDailyPlan(${t.id}, this.value)">h
+        </span>
+        <span style="font-size:0.7rem;color:var(--muted);flex-shrink:0;white-space:nowrap;" title="오늘 실제 투입 시간(h)">⏱️${actualForTask}h</span>
       </div>`;
     }).join('');
   }
