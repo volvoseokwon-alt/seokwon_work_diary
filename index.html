@@ -3021,20 +3021,22 @@ function renderHome(){
     .sort((a,b)=>(a.id||0)-(b.id||0));
   const meetingHours = todayMeetings.reduce((s,l)=>s+(l.hours||0),0);
 
-  // ── 오늘 가용 시간 = 하루 근무시간(8h, 휴무일이면 0h) − 오늘 미팅 시간
+  // ── 오늘 가용 시간 = 하루 근무시간(8h) − 오늘 미팅 시간
+  // 휴무일이어도 일을 할 수 있으므로 계산 기준은 평일과 동일하게 적용하고, 휴무일이라는 사실만 참고용으로 표시
   const WORKDAY_HOURS=8;
   const todayIsWorkday = (typeof isWorkday==='function') ? isWorkday(TODAY_STR) : true;
-  const dayBudget = todayIsWorkday ? WORKDAY_HOURS : 0;
+  const dayBudget = WORKDAY_HOURS;
   const availableHours = Math.max(0, dayBudget - meetingHours);
+  const holidayBadge = !todayIsWorkday ? `<span style="font-weight:700;color:var(--muted);background:#f1f5f9;padding:1px 8px;border-radius:6px;font-size:0.72rem;">📅 휴무일</span>` : '';
 
   const capEl=document.getElementById('home-today-capacity');
-  if(!todayIsWorkday){
-    capEl.innerHTML=`<span style="font-weight:700;color:var(--muted);">📅 오늘은 휴무일입니다.</span>`;
-  } else if(todayMeetings.length===0){
-    capEl.innerHTML=`<span style="font-weight:700;color:#10b981;">🗣️ 오늘 미팅 없음</span><span style="color:var(--muted);">·</span><span style="font-weight:700;">업무 가용 시간 약 <span style="color:var(--primary);">${availableHours}시간</span></span> <span style="color:var(--muted);font-size:0.74rem;">(하루 ${WORKDAY_HOURS}시간 기준)</span>`;
+  if(todayMeetings.length===0){
+    capEl.innerHTML=holidayBadge
+      + `<span style="font-weight:700;color:#10b981;">🗣️ 오늘 미팅 없음</span><span style="color:var(--muted);">·</span><span style="font-weight:700;">업무 가용 시간 약 <span style="color:var(--primary);">${availableHours}시간</span></span> <span style="color:var(--muted);font-size:0.74rem;">(하루 ${WORKDAY_HOURS}시간 기준)</span>`;
   } else {
     const overBudget = meetingHours > dayBudget;
-    capEl.innerHTML=`<span style="font-weight:700;">🗣️ 오늘 미팅 <span style="color:#a855f7;">${meetingHours}시간</span> (${todayMeetings.length}건)</span>`
+    capEl.innerHTML=holidayBadge
+      + `<span style="font-weight:700;">🗣️ 오늘 미팅 <span style="color:#a855f7;">${meetingHours}시간</span> (${todayMeetings.length}건)</span>`
       + `<span style="color:var(--muted);">·</span>`
       + (overBudget
           ? `<span style="font-weight:700;color:var(--warn);">⚠️ 미팅이 하루 근무시간을 초과했습니다</span>`
