@@ -373,8 +373,13 @@ ZB 교체 둘</textarea>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px;" id="home-stats"></div>
       <div class="card" style="margin-bottom:12px;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-          <span style="font-size:0.85rem;font-weight:700;color:var(--muted);">📌 오늘 할 일 &amp; 미팅</span>
-          <span id="home-today-date" style="font-size:0.72rem;color:var(--muted);"></span>
+          <span style="font-size:0.85rem;font-weight:700;color:var(--muted);">📌 할 일 &amp; 미팅</span>
+          <div style="display:flex;align-items:center;gap:4px;margin-left:auto;">
+            <button class="cal-nav-btn" style="width:24px;height:24px;font-size:0.7rem;" onclick="homeMoveDate(-1)">◀</button>
+            <span id="home-today-date" style="font-size:0.78rem;font-weight:700;color:var(--text);min-width:88px;text-align:center;"></span>
+            <button class="cal-nav-btn" style="width:24px;height:24px;font-size:0.7rem;" onclick="homeMoveDate(1)">▶</button>
+            <button class="btn-sm" style="background:var(--bg);color:var(--muted);font-size:0.7rem;padding:3px 9px;" onclick="homeGoToday()">오늘</button>
+          </div>
         </div>
         <div id="home-today-capacity" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--bg);border-radius:8px;padding:9px 12px;margin-bottom:10px;font-size:0.8rem;"></div>
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
@@ -383,7 +388,8 @@ ZB 교체 둘</textarea>
         </div>
         <div id="home-today-tasks"></div>
         <div style="display:flex;align-items:center;gap:8px;margin:10px 0 4px;">
-          <span style="font-size:0.76rem;font-weight:700;color:var(--muted);">🗣️ 오늘 미팅</span>
+          <span style="font-size:0.76rem;font-weight:700;color:var(--muted);">🗣️ 미팅</span>
+          <button class="btn-primary" style="margin-left:auto;font-size:0.74rem;padding:4px 10px;background:#a855f7;" onclick="openMeetingAdd(homeSelectedDate)">+ 미팅 추가</button>
         </div>
         <div id="home-today-meetings"></div>
       </div>
@@ -456,8 +462,7 @@ ZB 교체 둘</textarea>
         <div class="card">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
             <strong>⏱️ 주간 업무 기록</strong>
-            <button class="btn-primary" onclick="openMeetingAdd()" style="margin-left:auto;font-size:0.8rem;padding:5px 12px;background:#a855f7;">📅 미팅 추가</button>
-            <button class="btn-primary" onclick="openWeeklyAdd()" style="font-size:0.8rem;padding:5px 12px;">+ 기록 추가</button>
+            <button class="btn-primary" onclick="openWeeklyAdd()" style="margin-left:auto;font-size:0.8rem;padding:5px 12px;">+ 기록 추가</button>
           </div>
           <!-- 주차 선택 -->
           <div class="week-selector" id="week-selector"></div>
@@ -1417,6 +1422,8 @@ let quickLinks = [];      // {id, title, url, group, icon}
 let currentFilter = 'all';
 // 'all'(전체 프로젝트) 필터로 볼 때도 서브프로젝트별 그룹 헤더를 보여줄지 여부 (토글)
 let showSubProjGroupsInAll = false;
+// 홈 탭의 "오늘 할 일 & 미팅" 카드에서 현재 보고 있는 날짜 (기본값: 오늘). ◀▶로 다른 날짜로 이동 가능
+let homeSelectedDate = null; // render 시점에 TODAY_STR로 초기화
 let currentTab    = 'today';
 let calYear  = TODAY.getFullYear();
 let calMonth = TODAY.getMonth();
@@ -2946,6 +2953,19 @@ function hexToRgb(hex){
 /* ══════════════════════════════════════
    홈 대시보드
 ══════════════════════════════════════ */
+// 홈 "할 일 & 미팅" 카드의 날짜를 하루씩 이동 (◀▶ 버튼)
+function homeMoveDate(delta){
+  if(!homeSelectedDate) homeSelectedDate=TODAY_STR;
+  const d=new Date(homeSelectedDate+'T00:00:00');
+  d.setDate(d.getDate()+delta);
+  homeSelectedDate=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  renderHome();
+}
+function homeGoToday(){
+  homeSelectedDate=TODAY_STR;
+  renderHome();
+}
+
 function renderHome(){
   const ft=filteredTasks();
   const total=ft.length, done=ft.filter(t=>t.done).length;
@@ -3004,39 +3024,44 @@ function renderHome(){
     </div>`;
   }).join('');
 
-  // ── 오늘 할 일 (A1 우선순위만, 시작~종료 범위에 오늘이 포함되는 업무)
-  document.getElementById('home-today-date').textContent = `${TODAY.getMonth()+1}/${TODAY.getDate()} (${['일','월','화','수','목','금','토'][TODAY.getDay()]})`;
-  const todayTasks = ft.filter(t=>{
+  // ── 오늘 할 일 & 미팅 카드: homeSelectedDate 기준 (기본값 오늘, ◀▶로 다른 날짜 조회 가능)
+  if(!homeSelectedDate) homeSelectedDate=TODAY_STR;
+  const selD=new Date(homeSelectedDate+'T00:00:00');
+  const selIsToday = homeSelectedDate===TODAY_STR;
+  const dateLabel = `${selD.getMonth()+1}/${selD.getDate()} (${['일','월','화','수','목','금','토'][selD.getDay()]})${selIsToday?' · 오늘':''}`;
+  document.getElementById('home-today-date').textContent = dateLabel;
+
+  const selTasks = ft.filter(t=>{
     if(t.priority!=='A1') return false;
     const sD=new Date(t.start); const sd=new Date(sD.getFullYear(),sD.getMonth(),sD.getDate());
     const eD=new Date(t.end);   const ed=new Date(eD.getFullYear(),eD.getMonth(),eD.getDate());
-    return todayD>=sd && todayD<=ed;
+    return selD>=sd && selD<=ed;
   }).sort((a,b)=>{
     if(a.done!==b.done) return a.done?1:-1;
     return PRIORITY_ORDER.indexOf(a.priority||'C3')-PRIORITY_ORDER.indexOf(b.priority||'C3');
   });
 
-  // ── 오늘 미팅 (weeklyLogs 중 오늘 날짜 + type==='meeting')
-  const todayMeetings = weeklyLogs.filter(l=>l.type==='meeting' && l.date===TODAY_STR)
+  // ── 해당 날짜 미팅 (weeklyLogs 중 선택된 날짜 + type==='meeting')
+  const selMeetings = weeklyLogs.filter(l=>l.type==='meeting' && l.date===homeSelectedDate)
     .sort((a,b)=>(a.id||0)-(b.id||0));
-  const meetingHours = todayMeetings.reduce((s,l)=>s+(l.hours||0),0);
+  const meetingHours = selMeetings.reduce((s,l)=>s+(l.hours||0),0);
 
-  // ── 오늘 가용 시간 = 하루 근무시간(8h) − 오늘 미팅 시간
+  // ── 가용 시간 = 하루 근무시간(8h) − 해당 날짜 미팅 시간
   // 휴무일이어도 일을 할 수 있으므로 계산 기준은 평일과 동일하게 적용하고, 휴무일이라는 사실만 참고용으로 표시
   const WORKDAY_HOURS=8;
-  const todayIsWorkday = (typeof isWorkday==='function') ? isWorkday(TODAY_STR) : true;
+  const selIsWorkday = (typeof isWorkday==='function') ? isWorkday(homeSelectedDate) : true;
   const dayBudget = WORKDAY_HOURS;
   const availableHours = Math.max(0, dayBudget - meetingHours);
-  const holidayBadge = !todayIsWorkday ? `<span style="font-weight:700;color:var(--muted);background:#f1f5f9;padding:1px 8px;border-radius:6px;font-size:0.72rem;">📅 휴무일</span>` : '';
+  const holidayBadge = !selIsWorkday ? `<span style="font-weight:700;color:var(--muted);background:#f1f5f9;padding:1px 8px;border-radius:6px;font-size:0.72rem;">📅 휴무일</span>` : '';
 
   const capEl=document.getElementById('home-today-capacity');
-  if(todayMeetings.length===0){
+  if(selMeetings.length===0){
     capEl.innerHTML=holidayBadge
-      + `<span style="font-weight:700;color:#10b981;">🗣️ 오늘 미팅 없음</span><span style="color:var(--muted);">·</span><span style="font-weight:700;">업무 가용 시간 약 <span style="color:var(--primary);">${availableHours}시간</span></span> <span style="color:var(--muted);font-size:0.74rem;">(하루 ${WORKDAY_HOURS}시간 기준)</span>`;
+      + `<span style="font-weight:700;color:#10b981;">🗣️ 미팅 없음</span><span style="color:var(--muted);">·</span><span style="font-weight:700;">업무 가용 시간 약 <span style="color:var(--primary);">${availableHours}시간</span></span> <span style="color:var(--muted);font-size:0.74rem;">(하루 ${WORKDAY_HOURS}시간 기준)</span>`;
   } else {
     const overBudget = meetingHours > dayBudget;
     capEl.innerHTML=holidayBadge
-      + `<span style="font-weight:700;">🗣️ 오늘 미팅 <span style="color:#a855f7;">${meetingHours}시간</span> (${todayMeetings.length}건)</span>`
+      + `<span style="font-weight:700;">🗣️ 미팅 <span style="color:#a855f7;">${meetingHours}시간</span> (${selMeetings.length}건)</span>`
       + `<span style="color:var(--muted);">·</span>`
       + (overBudget
           ? `<span style="font-weight:700;color:var(--warn);">⚠️ 미팅이 하루 근무시간을 초과했습니다</span>`
@@ -3044,10 +3069,10 @@ function renderHome(){
   }
 
   const ttEl=document.getElementById('home-today-tasks');
-  if(!todayTasks.length){
-    ttEl.innerHTML='<div style="color:var(--muted);font-size:0.85rem;padding:10px 0;text-align:center;">오늘 진행 중인 A1 업무가 없습니다.</div>';
+  if(!selTasks.length){
+    ttEl.innerHTML=`<div style="color:var(--muted);font-size:0.85rem;padding:10px 0;text-align:center;">${selIsToday?'오늘':fmt(homeSelectedDate)} 진행 중인 A1 업무가 없습니다.</div>`;
   } else {
-    ttEl.innerHTML=todayTasks.map(t=>{
+    ttEl.innerHTML=selTasks.map(t=>{
       const p=proj(t.project);
       const st=getTaskStatus(t); const stInfo=TASK_STATUS[st]||TASK_STATUS['not_started'];
       const pc=t.done?'#94a3b8':prioColor(t.priority||'');
@@ -3063,16 +3088,16 @@ function renderHome(){
 
   const tmEl=document.getElementById('home-today-meetings');
   if(tmEl){
-    if(!todayMeetings.length){
-      tmEl.innerHTML='<div style="color:var(--muted);font-size:0.85rem;padding:10px 0;text-align:center;">오늘 등록된 미팅이 없습니다.</div>';
+    if(!selMeetings.length){
+      tmEl.innerHTML=`<div style="color:var(--muted);font-size:0.85rem;padding:10px 0;text-align:center;">${selIsToday?'오늘':fmt(homeSelectedDate)} 등록된 미팅이 없습니다.</div>`;
     } else {
-      tmEl.innerHTML=todayMeetings.map(l=>{
+      tmEl.innerHTML=selMeetings.map(l=>{
         const p=proj(l.project);
         return `<div style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--border);font-size:0.84rem;">
           <span style="background:#a855f7;color:white;font-size:0.68rem;font-weight:800;padding:1px 6px;border-radius:4px;flex-shrink:0;">🗣️ ${l.hours}h</span>
           ${p?`<span style="color:${p.color};font-weight:600;font-size:0.72rem;flex-shrink:0;">${p.name}</span>`:''}
           <span style="flex:1;">${l.task||'(제목 없음)'}</span>
-          <button class="btn-sm" style="background:var(--bg);color:var(--muted);flex-shrink:0;padding:2px 8px;" onclick="switchTab('weekly',document.querySelector('.tab-btn'))">기록 보기</button>
+          <button class="btn-sm" style="background:var(--bg);color:var(--muted);flex-shrink:0;padding:2px 8px;" onclick="openEditWeekly(${l.id})">수정</button>
         </div>`;
       }).join('');
     }
@@ -5170,7 +5195,7 @@ function openWeeklyAdd(){
   openModal('modal-weekly');
 }
 
-function openMeetingAdd(){
+function openMeetingAdd(dateStr){
   editingWeeklyId=null;
   document.getElementById('w-modal-btn').textContent='저장';
   const sel=document.getElementById('w-project');
@@ -5179,7 +5204,7 @@ function openMeetingAdd(){
   if(currentFilter!=='all') sel.value=currentFilter;
   document.getElementById('w-proj-custom').style.display='none';
   document.getElementById('w-proj-custom').value='';
-  document.getElementById('w-date').value=TODAY_STR;
+  document.getElementById('w-date').value=dateStr||TODAY_STR;
   document.getElementById('w-hours').value='';
   document.getElementById('w-memo').value='';
   document.getElementById('w-meeting-title').value='';
