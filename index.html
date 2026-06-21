@@ -345,7 +345,6 @@ ZB 교체 둘</textarea>
           </select>
           <div class="date-grp"><label>시작</label><input type="date" id="start-date"></div>
           <div class="date-grp"><label>종료</label><input type="date" id="end-date"></div>
-          <div class="date-grp" style="min-width:72px;"><label>예상(h)</label><input type="number" id="task-est-hours" min="0.5" step="0.5" placeholder="8" style="padding:7px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:0.82rem;width:100%;"></div>
           <button class="btn-primary" onclick="addTask()">추가</button>
         </div>
       </div>
@@ -825,13 +824,17 @@ async function saveToFirebase() {
     const newVersion = serverVersion + 1;
     window._lastSavedAt = nowIso;
     window._myKnownVersion = newVersion;
-    const payload = {
+    const rawPayload = {
       projects, tasks, weeklyLogs, trash, completedProjects,
       repeatTasks, calMemos, taskTags, quickLinks, customHolidays, dailyPlans,
       sidebarNote: document.getElementById('sidebar-note')?.value || '',
       updatedAt: nowIso,
       _version: newVersion
     };
+    // Firestore는 객체 트리 안에 undefined 값이 있으면 저장 자체를 거부하고 예외를 던진다.
+    // (예: 업무에 subProject가 없을 때 subProject:undefined로 남아있는 경우 등)
+    // JSON 직렬화를 한 번 거치면 undefined 키가 자동으로 모두 제거되어 안전하게 저장할 수 있다.
+    const payload = JSON.parse(JSON.stringify(rawPayload));
     await db.collection('userData').doc('main').set(payload);
     setSaveStatus('saved', now);
     // 서버 저장 성공 → 로컬 백업도 동시에 갱신 (이중 안전망)
@@ -839,7 +842,7 @@ async function saveToFirebase() {
     // PC 자동 백업 폴더에도 기록 (File System Access API 연결된 경우)
     autoBackupToFolder(payload);
   } catch(e) {
-    console.warn('Firebase save error:', e);
+    console.error('Firebase save error:', e.message||e, e);
     setSaveStatus('error');
   }
 }
@@ -1049,13 +1052,15 @@ async function forceSaveToServer(){
     const now = new Date();
     const nowIso = now.toISOString();
     const newVersion = (window._myKnownVersion||0) + 1;
-    const payload = {
+    const rawPayload = {
       projects, tasks, weeklyLogs, trash, completedProjects,
       repeatTasks, calMemos, taskTags, quickLinks, customHolidays, dailyPlans,
       sidebarNote: document.getElementById('sidebar-note')?.value || '',
       updatedAt: nowIso,
       _version: newVersion
     };
+    // undefined 필드가 섞여 있으면 Firestore가 저장을 거부하므로 JSON 직렬화로 안전하게 정리
+    const payload = JSON.parse(JSON.stringify(rawPayload));
     await db.collection('userData').doc('main').set(payload);
     window._lastSavedAt = nowIso;
     window._myKnownVersion = newVersion;
@@ -2703,13 +2708,6 @@ function updateActualHours(id, val){
   const h=parseFloat(val);
   tasks=tasks.map(t=>t.id===id?{...t,actualHours:isNaN(h)||h<=0?undefined:h}:t);
   saveToFirebase();
-}
-
-function updateEstHours(id, val){
-  const h=parseFloat(val);
-  tasks=tasks.map(t=>t.id===id?{...t,estHours:isNaN(h)||h<=0?undefined:h}:t);
-  saveToFirebase();
-  // 인라인 색상만 업데이트 (리렌더 없이)
 }
 
 function saveTaskMemo(id, memo){
@@ -5018,12 +5016,14 @@ function addTask(){
   const start=document.getElementById('start-date').value;
   const end=document.getElementById('end-date').value;
   const priority=document.getElementById('task-priority').value;
-  const estH=parseFloat(document.getElementById('task-est-hours').value);
   if(!text||!start||!end) return;
-  tasks.push({id:Date.now(),text,project:projId,subProject:subProject||undefined,done:false,start,end,actualEnd:null,priority,status:'not_started',estHours:isNaN(estH)?undefined:estH});
+  // Firestore는 undefined 값이 섞인 객체를 저장하면 에러를 던지므로(저장 실패의 주 원인),
+  // subProject가 없을 때는 그 키를 아예 넣지 않는다 (undefined로 채우지 않음).
+  const newTask={id:Date.now(),text,project:projId,done:false,start,end,actualEnd:null,priority,status:'not_started'};
+  if(subProject) newTask.subProject=subProject;
+  tasks.push(newTask);
   touchProject(projId);
   document.getElementById('task-input').value='';
-  document.getElementById('task-est-hours').value='';
   saveAndRender();
 }
 function deleteTask(id){
