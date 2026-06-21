@@ -209,7 +209,32 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+    navigator.serviceWorker.register('service-worker.js').then(reg => {
+      // 1) 이미 떠 있는 새 버전(waiting)이 있으면 즉시 활성화 요청
+      if (reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
+
+      // 2) 새 서비스워커가 설치 완료(installed)되면 자동으로 활성화 요청
+      reg.addEventListener('updatefound', () => {
+        const newSW = reg.installing;
+        if (!newSW) return;
+        newSW.addEventListener('statechange', () => {
+          if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+            newSW.postMessage({type:'SKIP_WAITING'});
+          }
+        });
+      });
+
+      // 3) 페이지를 새로 열 때마다 서버에 새 버전이 있는지 확인 (캐시 갱신 트리거)
+      reg.update().catch(()=>{});
+    }).catch(()=>{});
+
+    // 4) 활성 서비스워커가 바뀌면(=새 버전 적용됨) 딱 한 번만 자동 새로고침해서 최신 화면을 보여줌
+    let refreshed = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (refreshed) return;
+      refreshed = true;
+      location.reload();
+    });
   });
 }
 </script>
