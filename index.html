@@ -334,7 +334,9 @@ ZB 교체 둘</textarea>
       <div class="card" style="margin-bottom:11px;">
         <div class="input-row">
           <input type="text" id="task-input" placeholder="새 업무 입력...">
-          <select id="project-select"></select>
+          <select id="project-select" onchange="syncSubProjSelect('project-select','sub-project-select')"></select>
+          <select id="sub-project-select" style="padding:6px 7px;border:1.5px solid var(--border);border-radius:6px;font-size:0.8rem;background:white;min-width:110px;" onchange="onSubProjSelectChange('sub-project-select','sub-project-custom')"></select>
+          <input type="text" id="sub-project-custom" placeholder="하위 분류명 입력" style="display:none;padding:6px 8px;border:1.5px solid var(--primary);border-radius:6px;font-size:0.8rem;min-width:110px;">
           <select id="task-priority" style="padding:6px 7px;border:1.5px solid var(--border);border-radius:6px;font-size:0.8rem;background:white;font-weight:700;">
             <option value="A1" style="color:#ef4444">A1</option><option value="A2" style="color:#ef4444">A2</option><option value="A3" style="color:#ef4444">A3</option>
             <option value="B1" style="color:#f59e0b">B1</option><option value="B2" style="color:#f59e0b" selected>B2</option><option value="B3" style="color:#f59e0b">B3</option>
@@ -345,6 +347,12 @@ ZB 교체 둘</textarea>
           <div class="date-grp" style="min-width:72px;"><label>예상(h)</label><input type="number" id="task-est-hours" min="0.5" step="0.5" placeholder="8" style="padding:7px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:0.82rem;width:100%;"></div>
           <button class="btn-primary" onclick="addTask()">추가</button>
         </div>
+      </div>
+      <div id="subproj-group-toggle-wrap" style="display:none;align-items:center;gap:7px;margin-bottom:7px;">
+        <label style="display:flex;align-items:center;gap:5px;font-size:0.78rem;color:var(--muted);cursor:pointer;">
+          <input type="checkbox" id="subproj-group-toggle" onchange="toggleSubProjGroupsInAll(this.checked)">
+          전체 보기에서도 하위분류별로 묶어서 보기
+        </label>
       </div>
       <div class="task-list" id="task-list"></div>
     </div>
@@ -730,12 +738,16 @@ ZB 교체 둘</textarea>
     <h3>✏️ 업무 수정</h3>
     <input type="text" id="edit-text" placeholder="업무명">
     <div style="display:flex;gap:8px;">
-      <select id="edit-project" style="flex:1;padding:8px;border:1.5px solid var(--border);border-radius:6px;"></select>
+      <select id="edit-project" style="flex:1;padding:8px;border:1.5px solid var(--border);border-radius:6px;" onchange="syncSubProjSelect('edit-project','edit-sub-project')"></select>
       <select id="edit-priority" style="width:80px;padding:8px;border:1.5px solid var(--border);border-radius:6px;font-weight:700;">
         <option value="A1">A1</option><option value="A2">A2</option><option value="A3">A3</option>
         <option value="B1">B1</option><option value="B2">B2</option><option value="B3">B3</option>
         <option value="C1">C1</option><option value="C2">C2</option><option value="C3">C3</option>
       </select>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <select id="edit-sub-project" style="flex:1;padding:8px;border:1.5px solid var(--border);border-radius:6px;font-size:0.85rem;" onchange="onSubProjSelectChange('edit-sub-project','edit-sub-project-custom')"></select>
+      <input type="text" id="edit-sub-project-custom" placeholder="하위 분류명 입력" style="display:none;flex:1;padding:7px 10px;border:1.5px solid var(--primary);border-radius:6px;font-size:0.85rem;">
     </div>
     <div style="display:flex;gap:8px;">
       <div class="date-grp" style="flex:1;"><label>시작</label><input type="date" id="edit-start" style="flex:1;padding:7px;border:1.5px solid var(--border);border-radius:6px;font-size:0.8rem;"></div>
@@ -1403,6 +1415,8 @@ let calMemos = {};        // {'2026-06-17': {text:'...', color:'#4f46e5'}}
 let taskTags = {};        // {taskId: ['#회의','#문서']}
 let quickLinks = [];      // {id, title, url, group, icon}
 let currentFilter = 'all';
+// 'all'(전체 프로젝트) 필터로 볼 때도 서브프로젝트별 그룹 헤더를 보여줄지 여부 (토글)
+let showSubProjGroupsInAll = false;
 let currentTab    = 'today';
 let calYear  = TODAY.getFullYear();
 let calMonth = TODAY.getMonth();
@@ -1530,9 +1544,31 @@ function renderSidebar(){
     const s=document.getElementById('project-select');
     if(s) s.value=currentFilter;
   }
+  // sub-project-select도 project-select 현재값 기준으로 옵션 갱신 (선택값은 유지)
+  if(document.getElementById('sub-project-select')){
+    const subSel=document.getElementById('sub-project-select');
+    const curSub=subSel.value;
+    syncSubProjSelect('project-select','sub-project-select');
+    const opts=[...subSel.options].map(o=>o.value);
+    if(opts.includes(curSub)) subSel.value=curSub;
+  }
 }
 
-function setFilter(id){ currentFilter=id; render(); }
+function setFilter(id){ currentFilter=id; render(); updateSubProjToggleVisibility(); }
+
+// 'all' 필터일 때만 "전체 보기에서도 묶어서 보기" 토글을 노출
+function updateSubProjToggleVisibility(){
+  const wrap=document.getElementById('subproj-group-toggle-wrap');
+  if(!wrap) return;
+  wrap.style.display = (currentFilter==='all') ? 'flex' : 'none';
+  const cb=document.getElementById('subproj-group-toggle');
+  if(cb) cb.checked = showSubProjGroupsInAll;
+}
+
+function toggleSubProjGroupsInAll(checked){
+  showSubProjGroupsInAll = checked;
+  render();
+}
 
 function toggleProjMenu(pid){
   const menu = document.getElementById(`proj-menu-${pid}`);
@@ -1818,19 +1854,32 @@ function renderTaskList(list){
   el.innerHTML='';
   if(!list.length){ el.innerHTML='<div style="color:var(--muted);font-size:0.83rem;text-align:center;padding:18px">업무 없음. 위에서 추가하세요.</div>'; return; }
 
-  // 우선순위 그룹별로 묶기 (같은 priority끼리 subOrder로 순서 유지)
-  // 완료된 것은 맨 뒤로, 미완료는 우선순위 정렬
+  // 서브프로젝트 그룹을 보여줄지 여부:
+  // - 특정 프로젝트를 필터링 중이면 항상 표시
+  // - 'all' 필터일 때는 토글(showSubProjGroupsInAll) 설정을 따름
+  const showSubGroups = currentFilter!=='all' || showSubProjGroupsInAll;
+
+  // 정렬: 완료여부 → (서브그룹 사용시) 서브프로젝트명 → 우선순위 → subOrder
   const sorted=[...list].sort((a,b)=>{
     if(a.done !== b.done) return a.done?1:-1; // 완료=뒤
+    if(showSubGroups){
+      const asp=a.subProject||''; const bsp=b.subProject||'';
+      if(asp!==bsp){
+        if(!asp) return 1; // 미분류는 맨 뒤
+        if(!bsp) return -1;
+        return asp.localeCompare(bsp,'ko');
+      }
+    }
     const ai=PRIORITY_ORDER.indexOf(a.priority||'C3');
     const bi=PRIORITY_ORDER.indexOf(b.priority||'C3');
     if(ai!==bi) return (ai<0?99:ai)-(bi<0?99:bi);
     return (a.subOrder||0)-(b.subOrder||0);
   });
 
-  let lastPrio=null; let shownDoneSep=false;
+  let lastPrio=null; let lastSubProj=undefined; let shownDoneSep=false;
   sorted.forEach(t=>{
     const prio=t.priority||'';
+    const subProj=t.subProject||'';
     // 완료 구분선
     if(t.done && !shownDoneSep){
       shownDoneSep=true;
@@ -1838,7 +1887,18 @@ function renderTaskList(list){
       sep.style.cssText='border-top:2px dashed #e2e8f0;margin:8px 0;display:flex;align-items:center;gap:8px;';
       sep.innerHTML='<span style="font-size:0.72rem;color:#94a3b8;font-weight:700;white-space:nowrap;">✅ 완료된 업무</span>';
       el.appendChild(sep);
-      lastPrio=null;
+      lastPrio=null; lastSubProj=undefined;
+    }
+    // 서브프로젝트 그룹 헤더 (미완료만, 그룹 표시 켜진 경우만)
+    if(!t.done && showSubGroups && subProj!==lastSubProj){
+      const sepHdr=document.createElement('div');
+      sepHdr.style.cssText='display:flex;align-items:center;gap:7px;margin-top:10px;padding:6px 10px;background:var(--pri-light);border-radius:7px;border-left:3px solid var(--primary);';
+      sepHdr.innerHTML = subProj
+        ? `<span style="font-size:0.78rem;font-weight:800;color:var(--primary);">📂 ${subProj}</span>`
+        : `<span style="font-size:0.78rem;font-weight:700;color:var(--muted);">📂 미분류</span>`;
+      el.appendChild(sepHdr);
+      lastSubProj=subProj;
+      lastPrio=null; // 그룹이 바뀌면 우선순위 라벨도 다시 표시
     }
     // 그룹 라벨 (미완료만)
     if(!t.done && prio && prio!==lastPrio){
@@ -4666,17 +4726,80 @@ function render(){
 }
 
 /* ══════════════════════════════════════
+   SUB-PROJECT (2단계 분류) HELPERS
+   - task.subProject: 같은 프로젝트(1레벨) 안의 하위 분류명 (자유 텍스트)
+   - 별도 마스터 목록을 두지 않고, 기존 tasks에 쓰인 값들을 모아 셀렉트 옵션으로 사용
+══════════════════════════════════════ */
+const SUB_PROJ_NONE = '__none__';
+const SUB_PROJ_CUSTOM = '__custom_subproj__';
+
+// 특정 프로젝트(projId)에서 이미 쓰인 subProject 이름들 (중복 제거, 알파/가나다 정렬)
+function getSubProjectsForProject(projId){
+  const set = new Set();
+  tasks.forEach(t=>{ if(t.project===projId && t.subProject) set.add(t.subProject); });
+  return [...set].sort((a,b)=>a.localeCompare(b,'ko'));
+}
+
+// projectSelectId(프로젝트 select)의 현재 선택값을 기준으로 subSelectId 옵션을 채움.
+// presetValue가 주어지면(수정 모달) 해당 값으로 선택 상태를 맞춤.
+function syncSubProjSelect(projectSelectId, subSelectId, presetValue){
+  const projId = document.getElementById(projectSelectId).value;
+  const subSel = document.getElementById(subSelectId);
+  if(!subSel) return;
+  const names = getSubProjectsForProject(projId);
+  const customInpId = subSel.id==='sub-project-select' ? 'sub-project-custom' : subSelectId+'-custom';
+  subSel.innerHTML = `<option value="${SUB_PROJ_NONE}">(하위분류 없음)</option>`
+    + names.map(n=>`<option value="${n}">${n}</option>`).join('')
+    + `<option value="${SUB_PROJ_CUSTOM}">✏️ 새 하위분류 추가...</option>`;
+  if(presetValue && names.includes(presetValue)){
+    subSel.value = presetValue;
+  } else if(presetValue){
+    // 기존 값이 목록에 없는 경우(이론상 거의 없음) custom으로 표시
+    subSel.value = SUB_PROJ_CUSTOM;
+  } else {
+    subSel.value = SUB_PROJ_NONE;
+  }
+  const customInp=document.getElementById(customInpId);
+  if(customInp){
+    if(subSel.value===SUB_PROJ_CUSTOM){ customInp.style.display=''; customInp.value=presetValue||''; }
+    else { customInp.style.display='none'; customInp.value=''; }
+  }
+}
+
+// subSelectId의 값이 "새 하위분류 추가"일 때 customInputId를 보여주고, 아니면 숨김
+function onSubProjSelectChange(subSelectId, customInputId){
+  const val=document.getElementById(subSelectId).value;
+  const inp=document.getElementById(customInputId);
+  if(!inp) return;
+  if(val===SUB_PROJ_CUSTOM){ inp.style.display=''; inp.focus(); }
+  else { inp.style.display='none'; inp.value=''; }
+}
+
+// 저장 시점에 select+custom input 조합에서 최종 subProject 문자열 값을 읽어옴 ('' = 없음)
+function readSubProjValue(subSelectId, customInputId){
+  const sel=document.getElementById(subSelectId);
+  if(!sel) return '';
+  const val=sel.value;
+  if(val===SUB_PROJ_CUSTOM){
+    return (document.getElementById(customInputId)?.value||'').trim();
+  }
+  if(val===SUB_PROJ_NONE || !val) return '';
+  return val;
+}
+
+/* ══════════════════════════════════════
    TASK CRUD
 ══════════════════════════════════════ */
 function addTask(){
   const text=document.getElementById('task-input').value.trim();
   const projId=document.getElementById('project-select').value;
+  const subProject=readSubProjValue('sub-project-select','sub-project-custom');
   const start=document.getElementById('start-date').value;
   const end=document.getElementById('end-date').value;
   const priority=document.getElementById('task-priority').value;
   const estH=parseFloat(document.getElementById('task-est-hours').value);
   if(!text||!start||!end) return;
-  tasks.push({id:Date.now(),text,project:projId,done:false,start,end,actualEnd:null,priority,status:'not_started',estHours:isNaN(estH)?undefined:estH});
+  tasks.push({id:Date.now(),text,project:projId,subProject:subProject||undefined,done:false,start,end,actualEnd:null,priority,status:'not_started',estHours:isNaN(estH)?undefined:estH});
   touchProject(projId);
   document.getElementById('task-input').value='';
   document.getElementById('task-est-hours').value='';
@@ -4745,16 +4868,18 @@ function openEdit(id){
   document.getElementById('edit-start').value=t.start;
   document.getElementById('edit-end').value=t.end;
   document.getElementById('edit-priority').value=t.priority||'B2';
+  syncSubProjSelect('edit-project','edit-sub-project',t.subProject||'');
   openModal('modal-edit');
 }
 function saveEdit(){
   const text=document.getElementById('edit-text').value.trim();
   const projId=document.getElementById('edit-project').value;
+  const subProject=readSubProjValue('edit-sub-project','edit-sub-project-custom');
   const start=document.getElementById('edit-start').value;
   const end=document.getElementById('edit-end').value;
   const priority=document.getElementById('edit-priority').value;
   if(!text||!start||!end) return;
-  tasks=tasks.map(t=>t.id===editingId?{...t,text,project:projId,start,end,priority}:t);
+  tasks=tasks.map(t=>t.id===editingId?{...t,text,project:projId,subProject:subProject||undefined,start,end,priority}:t);
   closeModal('modal-edit'); saveAndRender();
 }
 
@@ -5132,6 +5257,7 @@ document.getElementById('sidebar-note')?.addEventListener('input', ()=>{
   updateTrashBadge();
   checkRepeatTasks();
   render();
+  updateSubProjToggleVisibility();
   // 주간 자동 보관은 render 후 안전하게 실행
   setTimeout(()=>{ if(tasks.length>0) autoArchiveCompletedTasks(); }, 500);
   setTimeout(checkDeadlineAlert, 1500);
