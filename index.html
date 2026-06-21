@@ -2993,6 +2993,7 @@ function setTaskStatus(id, status){
   renderTaskList(ft);
   renderGantt(sortTasksForDisplay(ft, currentFilter!=='all' || showSubProjGroupsInAll));
   calcScore();
+  if(typeof renderHome === 'function' && currentTab === 'home') renderHome();
 }
 
 /* ══════════════════════════════════════
@@ -3363,7 +3364,11 @@ function renderHome(){
         ${t.priority?`<span style="background:${pc};color:white;font-size:0.68rem;font-weight:800;padding:1px 6px;border-radius:4px;flex-shrink:0;">${t.priority}</span>`:''}
         <span style="color:${p.color};font-weight:600;font-size:0.72rem;flex-shrink:0;">${p.name}</span>
         <span style="flex:1;${t.done?'text-decoration:line-through;':''}">${t.text}</span>
-        <span class="status-chip" style="background:${stInfo.color};font-size:0.68rem;flex-shrink:0;">${stInfo.icon} ${stInfo.label}</span>
+        <select class="status-select" draggable="false" onmousedown="event.stopPropagation()" style="color:${stInfo.color};border-color:${stInfo.color}22;background:${stInfo.color}11;flex-shrink:0;font-size:0.68rem;"
+            onchange="setTaskStatus(${t.id},this.value)">
+          ${st==='overdue'?`<option value="overdue" selected>🔴 기한초과</option>`:''}
+          ${Object.entries(TASK_STATUS).filter(([k])=>k!=='done'&&k!=='early_done'&&k!=='overdue').map(([k,v])=>`<option value="${k}" ${st===k?'selected':''}>${v.icon} ${v.label}</option>`).join('')}
+        </select>
         <span style="display:flex;align-items:center;gap:3px;flex-shrink:0;background:var(--bg);border-radius:6px;padding:2px 6px;" title="오늘 계획 시간(h)">
           📝<input type="number" min="0" step="0.5" value="${planVal}" placeholder="0"
             style="width:38px;border:none;background:transparent;font-size:0.78rem;font-weight:700;color:var(--primary);text-align:right;"
@@ -3449,7 +3454,11 @@ function renderHome(){
           <span style="background:${pc};color:white;font-size:0.68rem;font-weight:800;padding:1px 6px;border-radius:4px;flex-shrink:0;">${t.priority}</span>
           <span style="color:${p.color};font-weight:600;font-size:0.72rem;flex-shrink:0;">${p.name}</span>
           <span style="flex:1;">${t.text}</span>
-          <span class="status-chip" style="background:${stInfo.color};font-size:0.68rem;flex-shrink:0;">${stInfo.icon} ${stInfo.label}</span>
+          <select class="status-select" draggable="false" onmousedown="event.stopPropagation()" style="color:${stInfo.color};border-color:${stInfo.color}22;background:${stInfo.color}11;flex-shrink:0;font-size:0.68rem;"
+              onchange="setTaskStatus(${t.id},this.value)">
+            ${st==='overdue'?`<option value="overdue" selected>🔴 기한초과</option>`:''}
+            ${Object.entries(TASK_STATUS).filter(([k])=>k!=='done'&&k!=='early_done'&&k!=='overdue').map(([k,v])=>`<option value="${k}" ${st===k?'selected':''}>${v.icon} ${v.label}</option>`).join('')}
+          </select>
         </div>`;
       }).join('');
     }
