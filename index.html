@@ -3059,10 +3059,11 @@ function renderHome(){
 
   const selTasks = sortTasksForDisplay(ft.filter(t=>{
     if(t.priority!=='A1') return false;
+    if(t.done) return false; // 완료(조기완료 포함)된 업무는 홈의 "할 일" 목록에서 제외
     const sD=new Date(t.start); const sd=new Date(sD.getFullYear(),sD.getMonth(),sD.getDate());
     const eD=new Date(t.end);   const ed=new Date(eD.getFullYear(),eD.getMonth(),eD.getDate());
     return selD>=sd && selD<=ed;
-  }), false); // A1만 모인 목록이라 서브그룹 구분은 불필요 — 완료여부→subOrder로 정렬
+  }), false); // A1만 모인 목록이라 서브그룹 구분은 불필요 — subOrder로 정렬
 
   // ── 해당 날짜 미팅 (weeklyLogs 중 선택된 날짜 + type==='meeting')
   const selMeetings = weeklyLogs.filter(l=>l.type==='meeting' && l.date===homeSelectedDate)
