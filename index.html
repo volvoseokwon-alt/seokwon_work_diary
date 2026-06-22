@@ -1826,7 +1826,7 @@ function renderGantt(list){
 
   document.getElementById('gantt-title').textContent=`📅 타임라인 (${fmtDW(mStart)} ~ ${fmtDW(mEnd)})`;
 
-  // 날짜 헤더 — 오늘 기준 -3주 ~ +3주 고정 눈금 (총 7개 마커)
+  // 날짜 헤더 — 오늘 기준 -3주 ~ +3주 고정 눈금 (화면이 좁으면 격주/격3주로 자동 축소해 겹침 방지)
   const hdr=document.getElementById('gantt-date-header');
   if(hdr){
     hdr.innerHTML='';
@@ -1848,8 +1848,15 @@ function renderGantt(list){
       }
       hdr.appendChild(s);
     };
-    // -3주 ~ +3주, 1주 간격으로 7개 마커
+    // 컨테이너 실제 폭(px)을 기준으로, 라벨 하나가 차지하는 폭(~58px)보다 한 칸 간격이 좁으면
+    // 1주 → 2주 → 3주 간격으로 자동 확대해서 라벨이 서로 겹치지 않게 함 ("오늘"은 항상 표시)
+    const hdrWidth = hdr.offsetWidth || 600;
+    const LABEL_W = 58;
+    let stepWeeks = 1;
+    while ((hdrWidth / (6 / stepWeeks)) < LABEL_W && stepWeeks < 3) stepWeeks++;
+
     for(let w=-3; w<=3; w++){
+      if(w!==0 && (w % stepWeeks)!==0) continue; // 간격 보정: 오늘(0)은 항상, 나머지는 stepWeeks 배수만
       const dt=new Date(todayD); dt.setDate(todayD.getDate()+w*7);
       const pct=((dt.getTime()-mStart.getTime())/mDur)*100;
       if(pct<-2||pct>102) continue; // 범위 밖이면 스킵
@@ -5576,6 +5583,13 @@ document.getElementById('sidebar-note')?.addEventListener('input', ()=>{
   setInterval(updateWorldClocks, 30000);
   // 이전에 PC 폴더 자동백업을 연결했던 적이 있으면 권한 상태를 확인해서 자동/원클릭 재연결 시도
   setTimeout(tryReconnectBackupFolder, 1000);
+
+  // 🖥️ 창 크기 변경 시 타임라인 날짜 헤더를 다시 측정해서 그림 (좁아지면 마커 겹침 방지 재계산)
+  let _resizeTimer=null;
+  window.addEventListener('resize', ()=>{
+    clearTimeout(_resizeTimer);
+    _resizeTimer=setTimeout(()=>{ if(currentTab==='today') render(); }, 200);
+  });
 })();
 </script>
 </body>
