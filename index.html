@@ -345,7 +345,7 @@ ZB 교체 둘</textarea>
         <strong id="gantt-title">📅 월간 타임라인</strong>
         <div style="display:flex;font-size:0.78rem;font-weight:700;color:var(--muted);padding-bottom:5px;border-bottom:2px solid var(--border);gap:8px;align-items:flex-end;">
           <div style="width:28%;flex-shrink:0;">업무명</div>
-          <div id="gantt-date-header" style="flex:1;position:relative;height:28px;overflow:visible;"></div>
+          <div id="gantt-date-header" style="flex:1;position:relative;height:32px;overflow:visible;"></div>
         </div>
         <div id="chart-rows"></div>
         <div class="legend">
@@ -1801,14 +1801,20 @@ function renderGantt(list){
   const fmtD = dt => `\${dt.getMonth()+1}/\${dt.getDate()}`;
 
   // 범위 계산은 항상 전체 업무 기준 (숨김 여부와 무관하게 타임라인 폭 유지)
+  // ⚠️ 단, 종료일을 너무 먼 미래로 잘못 입력한 업무(예: 오타로 연도가 잘못 들어간 경우) 때문에
+  //    타임라인 전체가 늘어나 막대/날짜가 한쪽에 다 쏠려 보이는 문제를 막기 위해, 오늘 기준 ±6개월을 넘는
+  //    날짜는 "타임라인 폭 계산"에서는 제외한다(해당 업무의 막대 자체는 막대 렌더링 단계에서 화면 끝까지로 잘려서 그려짐).
+  const RANGE_CAP_DAYS = 183; // 약 6개월
   let rangeMin = new Date(todayD); rangeMin.setDate(todayD.getDate()-15);
   let rangeMax = new Date(todayD); rangeMax.setDate(todayD.getDate()+15);
+  const capMin = new Date(todayD); capMin.setDate(todayD.getDate()-RANGE_CAP_DAYS);
+  const capMax = new Date(todayD); capMax.setDate(todayD.getDate()+RANGE_CAP_DAYS);
   list.forEach(t=>{
     const s=new Date(t.start); const e=new Date(t.actualEnd||t.end);
     const sD=new Date(s.getFullYear(),s.getMonth(),s.getDate());
     const eD=new Date(e.getFullYear(),e.getMonth(),e.getDate());
-    if(sD<rangeMin) rangeMin=new Date(sD);
-    if(eD>rangeMax) rangeMax=new Date(eD);
+    if(sD<rangeMin && sD>=capMin) rangeMin=new Date(sD);
+    if(eD>rangeMax && eD<=capMax) rangeMax=new Date(eD);
   });
   // 양쪽 여백 3일
   rangeMin.setDate(rangeMin.getDate()-3);
@@ -1826,30 +1832,41 @@ function renderGantt(list){
 
   document.getElementById('gantt-title').textContent=`📅 타임라인 (${fmtDW(mStart)} ~ ${fmtDW(mEnd)})`;
 
-  // 날짜 헤더 — 오늘 기준 -3주 ~ +3주 고정 눈금 (총 7개 마커)
+  // 날짜 헤더 — 오늘 기준 -3주 ~ +3주 고정 눈금 (화면이 좁으면 격주/격3주로 자동 축소해 겹침 방지)
   const hdr=document.getElementById('gantt-date-header');
   if(hdr){
     hdr.innerHTML='';
     const addLbl=(txt,pct,isToday)=>{
       const s=document.createElement('span');
-      s.textContent=txt;
-      const atLeft=pct<=3, atRight=pct>=97;
-      s.style.cssText=`position:absolute;font-size:0.67rem;white-space:nowrap;top:0;`
+      s.style.cssText=`position:absolute;font-size:0.67rem;white-space:nowrap;top:0;line-height:1.3;text-align:center;`
         +`color:${isToday?'#f59e0b':'var(--muted)'};`
         +`font-weight:${isToday?'700':'500'};`
         +`border-top:${isToday?'2px solid #f59e0b':'1px solid #e2e8f0'};`
         +`padding-top:1px;`;
+      const atLeft=pct<=3, atRight=pct>=97;
       if(atRight){ s.style.right='0'; }
       else { s.style.left=pct+'%'; if(!atLeft) s.style.transform='translateX(-50%)'; }
+      if(isToday){
+        // "오늘" 표시는 두 줄로 — innerHTML로 줄바꿈을 명시적으로 넣어야 white-space:nowrap에서도 줄이 나뉨
+        s.innerHTML = `<div>▼오늘</div><div>${txt}</div>`;
+      } else {
+        s.textContent = txt;
+      }
       hdr.appendChild(s);
     };
-    // -3주 ~ +3주, 1주 간격으로 7개 마커
+    // 컨테이너 실제 폭(px)을 기준으로, 라벨 하나가 차지하는 폭(~58px)보다 한 칸 간격이 좁으면
+    // 1주 → 2주 → 3주 간격으로 자동 확대해서 라벨이 서로 겹치지 않게 함 ("오늘"은 항상 표시)
+    const hdrWidth = hdr.offsetWidth || 600;
+    const LABEL_W = 58;
+    let stepWeeks = 1;
+    while ((hdrWidth / (6 / stepWeeks)) < LABEL_W && stepWeeks < 3) stepWeeks++;
+
     for(let w=-3; w<=3; w++){
+      if(w!==0 && (w % stepWeeks)!==0) continue; // 간격 보정: 오늘(0)은 항상, 나머지는 stepWeeks 배수만
       const dt=new Date(todayD); dt.setDate(todayD.getDate()+w*7);
       const pct=((dt.getTime()-mStart.getTime())/mDur)*100;
       if(pct<-2||pct>102) continue; // 범위 밖이면 스킵
-      const label=w===0?('▼오늘\n'+fmtDW(dt)):fmtDW(dt);
-      addLbl(label, Math.max(0,Math.min(100,pct)), w===0);
+      addLbl(fmtDW(dt), Math.max(0,Math.min(100,pct)), w===0);
     }
   }
 
@@ -1982,19 +1999,24 @@ function renderGantt(list){
         ${weekLines.map(w=>`<div style="position:absolute;left:${w.pct}%;top:0;bottom:0;width:1px;background:rgba(0,0,0,0.1);border-left:1px dashed #cbd5e1;z-index:1;"></div>`).join('')}
         <div class="chart-today-line" style="left:${todayPct}%"></div>
         <!-- 바 전체 배경 (기간) -->
-        <div class="${isAtRisk?'gantt-risk':''}" style="position:absolute;left:${left}%;width:${width}%;height:100%;background:#e2e8f0;border-radius:4px;overflow:hidden;max-width:${100-left}%;">
-          ${t.done ? `
-            <!-- 완료: 계획구간(초록) + 지연구간(남색, 늦게 끝났을 때만) -->
-            <div style="position:absolute;left:0;top:0;height:100%;width:${planRatio}%;background:#10b981;"></div>
-            ${isLate?`<div style="position:absolute;left:${planRatio}%;top:0;height:100%;width:${diffRatio}%;background:#0c4a6e;"></div>`:''}
-          ` : `
-            <!-- 진행중: 진행% 채움 -->
-            <div style="height:100%;width:${progPct}%;background:${hCol};transition:width .4s;display:flex;align-items:center;justify-content:center;min-width:${barLabel?'auto':'0'};"></div>
-          `}
-          <!-- 라벨 (중앙 고정) -->
-          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:${t.done||progPct>40?'white':'#334155'};font-size:0.67rem;font-weight:700;pointer-events:none;white-space:nowrap;">
-            ${barLabel}
+        <div class="${isAtRisk?'gantt-risk':''}" style="position:absolute;left:${left}%;width:${width}%;height:100%;background:#e2e8f0;border-radius:4px;max-width:${100-left}%;overflow:visible;">
+          <div style="position:relative;width:100%;height:100%;border-radius:4px;overflow:hidden;">
+            ${t.done ? `
+              <!-- 완료: 계획구간(초록) + 지연구간(남색, 늦게 끝났을 때만) -->
+              <div style="position:absolute;left:0;top:0;height:100%;width:${planRatio}%;background:#10b981;"></div>
+              ${isLate?`<div style="position:absolute;left:${planRatio}%;top:0;height:100%;width:${diffRatio}%;background:#0c4a6e;"></div>`:''}
+            ` : `
+              <!-- 진행중: 진행% 채움 -->
+              <div style="height:100%;width:${progPct}%;background:${hCol};transition:width .4s;"></div>
+            `}
           </div>
+          <!-- 라벨: 막대가 충분히 넓으면 막대 안 중앙, 좁으면 막대 옆(오른쪽 끝에 가까우면 왼쪽)에 표시 -->
+          ${width>=14
+            ? `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:${t.done||progPct>40?'white':'#334155'};font-size:0.67rem;font-weight:700;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 4px;">${barLabel}</div>`
+            : (left+width>=88
+                ? `<div style="position:absolute;right:100%;top:0;height:100%;display:flex;align-items:center;margin-right:4px;color:#334155;font-size:0.67rem;font-weight:700;pointer-events:none;white-space:nowrap;">${barLabel}</div>`
+                : `<div style="position:absolute;left:100%;top:0;height:100%;display:flex;align-items:center;margin-left:4px;color:#334155;font-size:0.67rem;font-weight:700;pointer-events:none;white-space:nowrap;">${barLabel}</div>`)
+          }
         </div>
       </div>`;
     return row;
@@ -2993,6 +3015,7 @@ function setTaskStatus(id, status){
   renderTaskList(ft);
   renderGantt(sortTasksForDisplay(ft, currentFilter!=='all' || showSubProjGroupsInAll));
   calcScore();
+  if(typeof renderHome === 'function' && currentTab === 'home') renderHome();
 }
 
 /* ══════════════════════════════════════
@@ -3320,12 +3343,15 @@ function renderHome(){
   // 오늘 총 근무 예상시간 = 업무별 계획(📝) 합 + 미팅 시간 / 오늘 총 실제 근무시간 = weeklyLogs에 기록된 모든 시간(업무+미팅)
   const totalPlanned = planHoursSum + meetingHours;
   const totalActual = actualHoursSum;
+  const actualTaskHours = Math.max(0, Math.round((actualHoursSum - meetingHours) * 2) / 2); // 실제 합계에서 미팅을 뺀 순수 업무 실적 (0.5h 단위 반올림으로 부동소수점 오차 방지)
   const diff = totalActual - totalPlanned;
   const diffLabel = diff===0 ? '' : (diff>0 ? `<span style="color:var(--warn);font-weight:700;font-size:0.74rem;">(+${diff}h 더 함)</span>` : `<span style="color:var(--muted);font-weight:700;font-size:0.74rem;">(${diff}h 남음)</span>`);
 
   const capEl=document.getElementById('home-today-capacity');
-  const totalSummary = `<span style="font-weight:700;">📊 오늘 총 근무 — 예상 <span style="color:var(--primary);">${totalPlanned}h</span> / 실제 <span style="color:#10b981;">${totalActual}h</span></span> ${diffLabel}`
-    + `<span style="color:var(--muted);font-size:0.72rem;">(업무${planHoursSum>0||totalPlanned===0?` ${planHoursSum}h`:''}${meetingHours>0?` + 미팅 ${meetingHours}h`:''})</span>`;
+  // 예상/실제 각각 "업무 Xh + 미팅 Yh" 형태로 괄호 안에 나눠서 보여줌 (실제 쪽 미팅에는 건수도 함께 표기)
+  const plannedBreakdown = `업무 ${planHoursSum}h+미팅 ${meetingHours}h`;
+  const actualBreakdown = `업무 ${actualTaskHours}h+미팅 ${meetingHours}h${selMeetings.length>0?`·${selMeetings.length}건`:''}`;
+  const totalSummary = `<span style="font-weight:700;">📊 오늘 총 근무 — 예상 <span style="color:var(--primary);">${totalPlanned}h</span><span style="color:var(--muted);font-size:0.72rem;font-weight:600;">(${plannedBreakdown})</span> / 실제 <span style="color:#10b981;">${totalActual}h</span><span style="color:var(--muted);font-size:0.72rem;font-weight:600;">(${actualBreakdown})</span></span> ${diffLabel}`;
 
   if(selMeetings.length===0){
     capEl.innerHTML=holidayBadge + totalSummary
@@ -3363,7 +3389,11 @@ function renderHome(){
         ${t.priority?`<span style="background:${pc};color:white;font-size:0.68rem;font-weight:800;padding:1px 6px;border-radius:4px;flex-shrink:0;">${t.priority}</span>`:''}
         <span style="color:${p.color};font-weight:600;font-size:0.72rem;flex-shrink:0;">${p.name}</span>
         <span style="flex:1;${t.done?'text-decoration:line-through;':''}">${t.text}</span>
-        <span class="status-chip" style="background:${stInfo.color};font-size:0.68rem;flex-shrink:0;">${stInfo.icon} ${stInfo.label}</span>
+        <select class="status-select" draggable="false" onmousedown="event.stopPropagation()" style="color:${stInfo.color};border-color:${stInfo.color}22;background:${stInfo.color}11;flex-shrink:0;font-size:0.68rem;"
+            onchange="setTaskStatus(${t.id},this.value)">
+          ${st==='overdue'?`<option value="overdue" selected>🔴 기한초과</option>`:''}
+          ${Object.entries(TASK_STATUS).filter(([k])=>k!=='done'&&k!=='early_done'&&k!=='overdue').map(([k,v])=>`<option value="${k}" ${st===k?'selected':''}>${v.icon} ${v.label}</option>`).join('')}
+        </select>
         <span style="display:flex;align-items:center;gap:3px;flex-shrink:0;background:var(--bg);border-radius:6px;padding:2px 6px;" title="오늘 계획 시간(h)">
           📝<input type="number" min="0" step="0.5" value="${planVal}" placeholder="0"
             style="width:38px;border:none;background:transparent;font-size:0.78rem;font-weight:700;color:var(--primary);text-align:right;"
@@ -3449,7 +3479,11 @@ function renderHome(){
           <span style="background:${pc};color:white;font-size:0.68rem;font-weight:800;padding:1px 6px;border-radius:4px;flex-shrink:0;">${t.priority}</span>
           <span style="color:${p.color};font-weight:600;font-size:0.72rem;flex-shrink:0;">${p.name}</span>
           <span style="flex:1;">${t.text}</span>
-          <span class="status-chip" style="background:${stInfo.color};font-size:0.68rem;flex-shrink:0;">${stInfo.icon} ${stInfo.label}</span>
+          <select class="status-select" draggable="false" onmousedown="event.stopPropagation()" style="color:${stInfo.color};border-color:${stInfo.color}22;background:${stInfo.color}11;flex-shrink:0;font-size:0.68rem;"
+              onchange="setTaskStatus(${t.id},this.value)">
+            ${st==='overdue'?`<option value="overdue" selected>🔴 기한초과</option>`:''}
+            ${Object.entries(TASK_STATUS).filter(([k])=>k!=='done'&&k!=='early_done'&&k!=='overdue').map(([k,v])=>`<option value="${k}" ${st===k?'selected':''}>${v.icon} ${v.label}</option>`).join('')}
+          </select>
         </div>`;
       }).join('');
     }
@@ -5555,6 +5589,13 @@ document.getElementById('sidebar-note')?.addEventListener('input', ()=>{
   setInterval(updateWorldClocks, 30000);
   // 이전에 PC 폴더 자동백업을 연결했던 적이 있으면 권한 상태를 확인해서 자동/원클릭 재연결 시도
   setTimeout(tryReconnectBackupFolder, 1000);
+
+  // 🖥️ 창 크기 변경 시 타임라인 날짜 헤더를 다시 측정해서 그림 (좁아지면 마커 겹침 방지 재계산)
+  let _resizeTimer=null;
+  window.addEventListener('resize', ()=>{
+    clearTimeout(_resizeTimer);
+    _resizeTimer=setTimeout(()=>{ if(currentTab==='today') render(); }, 200);
+  });
 })();
 </script>
 </body>
