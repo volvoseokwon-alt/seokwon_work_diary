@@ -3321,12 +3321,15 @@ function renderHome(){
   // 오늘 총 근무 예상시간 = 업무별 계획(📝) 합 + 미팅 시간 / 오늘 총 실제 근무시간 = weeklyLogs에 기록된 모든 시간(업무+미팅)
   const totalPlanned = planHoursSum + meetingHours;
   const totalActual = actualHoursSum;
+  const actualTaskHours = Math.max(0, Math.round((actualHoursSum - meetingHours) * 2) / 2); // 실제 합계에서 미팅을 뺀 순수 업무 실적 (0.5h 단위 반올림으로 부동소수점 오차 방지)
   const diff = totalActual - totalPlanned;
   const diffLabel = diff===0 ? '' : (diff>0 ? `<span style="color:var(--warn);font-weight:700;font-size:0.74rem;">(+${diff}h 더 함)</span>` : `<span style="color:var(--muted);font-weight:700;font-size:0.74rem;">(${diff}h 남음)</span>`);
 
   const capEl=document.getElementById('home-today-capacity');
-  const totalSummary = `<span style="font-weight:700;">📊 오늘 총 근무 — 예상 <span style="color:var(--primary);">${totalPlanned}h</span> / 실제 <span style="color:#10b981;">${totalActual}h</span></span> ${diffLabel}`
-    + `<span style="color:var(--muted);font-size:0.72rem;">(업무${planHoursSum>0||totalPlanned===0?` ${planHoursSum}h`:''}${meetingHours>0?` + 미팅 ${meetingHours}h`:''})</span>`;
+  // 예상/실제 각각 "업무 Xh + 미팅 Yh" 형태로 괄호 안에 나눠서 보여줌 (실제 쪽 미팅에는 건수도 함께 표기)
+  const plannedBreakdown = `업무 ${planHoursSum}h+미팅 ${meetingHours}h`;
+  const actualBreakdown = `업무 ${actualTaskHours}h+미팅 ${meetingHours}h${selMeetings.length>0?`·${selMeetings.length}건`:''}`;
+  const totalSummary = `<span style="font-weight:700;">📊 오늘 총 근무 — 예상 <span style="color:var(--primary);">${totalPlanned}h</span><span style="color:var(--muted);font-size:0.72rem;font-weight:600;">(${plannedBreakdown})</span> / 실제 <span style="color:#10b981;">${totalActual}h</span><span style="color:var(--muted);font-size:0.72rem;font-weight:600;">(${actualBreakdown})</span></span> ${diffLabel}`;
 
   if(selMeetings.length===0){
     capEl.innerHTML=holidayBadge + totalSummary
