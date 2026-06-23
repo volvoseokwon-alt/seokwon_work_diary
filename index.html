@@ -3524,6 +3524,44 @@ function monthlyHeatmapMove(dir){
   renderProjHours();
 }
 
+// 🍩 프로젝트별 시간 비중을 보여주는 도넛 차트(SVG) 생성 헬퍼.
+// entries: [{label, color, hours}] 형태. 가장 보편적이고 알아보기 쉬운 도넛+범례 조합으로 만든다.
+function buildDonutChartHtml(entries, opts){
+  opts=opts||{};
+  const size=opts.size||100;
+  const stroke=opts.stroke||16;
+  const r=(size-stroke)/2;
+  const cx=size/2, cy=size/2;
+  const circumference=2*Math.PI*r;
+  const total=entries.reduce((s,e)=>s+e.hours,0);
+  if(total<=0) return '';
+
+  let offset=0;
+  const segments=entries.map(e=>{
+    const pct=e.hours/total;
+    const dash=circumference*pct;
+    const gap=circumference-dash;
+    const seg=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${e.color}" stroke-width="${stroke}"
+      stroke-dasharray="${dash} ${gap}" stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})"></circle>`;
+    offset+=dash;
+    return seg;
+  }).join('');
+
+  const legendHtml=entries.map(e=>{
+    const pct=Math.round(e.hours/total*100);
+    return `<div style="display:flex;align-items:center;gap:5px;font-size:0.72rem;color:#475569;">
+      <span style="width:9px;height:9px;border-radius:50%;background:${e.color};flex-shrink:0;"></span>
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px;">${e.label}</span>
+      <span style="color:#94a3b8;flex-shrink:0;">${pct}% · ${e.hours}h</span>
+    </div>`;
+  }).join('');
+
+  return `<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+    <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="flex-shrink:0;">${segments}</svg>
+    <div style="display:flex;flex-direction:column;gap:4px;">${legendHtml}</div>
+  </div>`;
+}
+
 // 달력형(요일 그리드) 히트맵 HTML을 생성하는 공통 헬퍼.
 // year/month(0-indexed) 기준 한 달 전체를 그려주며, 레포트 탭의 "이번 달/지난 달"과
 // 캘린더 탭의 "월간 업무 강도"에서 공통으로 사용한다.
@@ -4762,9 +4800,19 @@ function generateReport(){
         </div>`;
       }).join('') || '<div style="color:#94a3b8;font-size:0.82rem;padding:8px 0;">이 주에 업무 시간 기록이 없습니다.</div>';
 
+      // 프로젝트별 비중 도넛 차트 (가장 알아보기 쉬운 형태로 — 도넛 + 색상 범례)
+      const donutEntries=projEntries.map(({project,pTotal})=>{
+        const p=proj(project);
+        return {label:p.name, color:p.color, hours:pTotal};
+      });
+      const donutHtml=buildDonutChartHtml(donutEntries);
+
       return `<div style="margin-bottom:12px;padding:12px 14px;border:1px solid #e2e8f0;border-radius:10px;background:white;">
-        <div style="font-weight:700;font-size:0.86rem;color:#4f46e5;">
-          W${wn} (${fmtShort(wStart)} ~ ${fmtShort(wEnd)}) — 총 <strong>${wTotal}h</strong>
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+          <div style="font-weight:700;font-size:0.86rem;color:#4f46e5;">
+            W${wn} (${fmtShort(wStart)} ~ ${fmtShort(wEnd)}) — 총 <strong>${wTotal}h</strong>
+          </div>
+          ${donutHtml}
         </div>
         ${projBlocksHtml}
       </div>`;
