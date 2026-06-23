@@ -407,8 +407,9 @@ ZB 교체 둘</textarea>
         <div id="home-today-meetings"></div>
         <div id="home-today-done-wrap" style="display:none;">
           <div style="display:flex;align-items:center;gap:8px;margin:10px 0 4px;">
-            <span style="font-size:0.76rem;font-weight:700;color:var(--muted);">✅ 완료된 업무</span>
+            <span style="font-size:0.76rem;font-weight:700;color:var(--muted);">⏱️ 오늘 시간 투입한 업무</span>
             <span id="home-today-done-count" style="font-size:0.68rem;color:var(--muted);background:var(--bg);padding:1px 7px;border-radius:8px;"></span>
+            <span style="font-size:0.66rem;color:var(--muted);">(A1 외 우선순위 업무 중 시간 기록분)</span>
           </div>
           <div id="home-today-done-tasks"></div>
         </div>
@@ -3317,8 +3318,18 @@ function renderHome(){
     return selD>=sd && selD<=ed;
   }), false); // A1만 모인 목록이라 서브그룹 구분은 불필요 — subOrder로 정렬
 
-  // ── 선택한 날짜에 완료(조기완료 포함)된 업무. 우선순위와 무관하게 그 날 완료된 건 모두 포함
-  const selDoneTasks = sortTasksForDisplay(ft.filter(t=> t.done && t.actualEnd===homeSelectedDate), false);
+  // ── 선택한 날짜에 "시간이 투입된" 미완료 업무를 모음 (완료된 업무는 표시하지 않음, A1 미완료 섹션과 중복 제외)
+  //    → A2/A3 업무에 시간을 기록했는데 어디에도 안 보여서 혼동되는 문제를 해결.
+  //    weeklyLogs는 taskId가 아니라 project+task(텍스트) 조합으로 업무를 식별하는 구조라 동일하게 매칭한다.
+  const selTaskIds = new Set(selTasks.map(t=>t.id));
+  const loggedTaskKeys = new Set(
+    weeklyLogs.filter(l=>l.date===homeSelectedDate && l.type!=='meeting' && l.hours>0).map(l=>`${l.project}__${l.task}`)
+  );
+  const selDoneTasks = sortTasksForDisplay(ft.filter(t=>{
+    if(t.done) return false; // 완료된 업무는 표시하지 않음
+    if(selTaskIds.has(t.id)) return false; // 이미 위쪽 A1 섹션에 표시됨
+    return loggedTaskKeys.has(`${t.project}__${t.text}`);
+  }), false);
 
   // ── 해당 날짜 미팅 (weeklyLogs 중 선택된 날짜 + type==='meeting')
   const selMeetings = weeklyLogs.filter(l=>l.type==='meeting' && l.date===homeSelectedDate)
@@ -3425,7 +3436,7 @@ function renderHome(){
     }
   }
 
-  // ── 선택한 날짜에 완료된 업무 (우선순위 무관, 맨 아래 별도 섹션)
+  // ── 선택한 날짜에 "시간 투입한" 미완료 업무 (A1 미완료 섹션과 중복 제외, 완료된 업무는 표시 안 함)
   const doneWrap=document.getElementById('home-today-done-wrap');
   const doneCountEl=document.getElementById('home-today-done-count');
   const dtEl=document.getElementById('home-today-done-tasks');
@@ -3438,12 +3449,13 @@ function renderHome(){
       dtEl.innerHTML=selDoneTasks.map(t=>{
         const p=proj(t.project);
         const st=getTaskStatus(t); const stInfo=TASK_STATUS[st]||TASK_STATUS['not_started'];
+        const pc=prioColor(t.priority||'');
         const actualForTask=weeklyLogs.filter(l=>l.date===homeSelectedDate && l.type!=='meeting' && l.project===t.project && l.task===t.text).reduce((s,l)=>s+(l.hours||0),0);
-        return `<div style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--border);font-size:0.84rem;opacity:0.65;">
-          <input type="checkbox" checked onchange="toggleTask(${t.id})" style="flex-shrink:0;" title="체크 해제하면 미완료로 되돌립니다">
-          ${t.priority?`<span style="background:#94a3b8;color:white;font-size:0.68rem;font-weight:800;padding:1px 6px;border-radius:4px;flex-shrink:0;">${t.priority}</span>`:''}
+        return `<div style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--border);font-size:0.84rem;">
+          <input type="checkbox" onchange="toggleTask(${t.id})" style="flex-shrink:0;" title="완료 처리">
+          ${t.priority?`<span style="background:${pc};color:white;font-size:0.68rem;font-weight:800;padding:1px 6px;border-radius:4px;flex-shrink:0;">${t.priority}</span>`:''}
           <span style="color:${p.color};font-weight:600;font-size:0.72rem;flex-shrink:0;">${p.name}</span>
-          <span style="flex:1;text-decoration:line-through;">${t.text}</span>
+          <span style="flex:1;">${t.text}</span>
           <span class="status-chip" style="background:${stInfo.color};font-size:0.68rem;flex-shrink:0;">${stInfo.icon} ${stInfo.label}</span>
           <span style="display:flex;align-items:center;gap:3px;flex-shrink:0;background:#f0fdf4;border-radius:6px;padding:2px 6px;" title="오늘 실제 투입 시간(h)">
             ⏱️<input type="number" min="0" step="0.5" value="${actualForTask||''}" placeholder="0"
