@@ -1983,10 +1983,10 @@ function renderGantt(list){
     row.className='chart-row';
     const tp=proj(t.project);
     const showProjLabel=currentFilter==='all';
-    row.innerHTML=`<div class="chart-label" title="[${tp.name}] ${t.text}${isAtRisk?' — ⚠️ 남은 기간 대비 진행 부족 (경과 '+elapsedPctForRow+'% / 진행 '+progPct+'%)':''}">
+    row.innerHTML=`<div class="chart-label" title="[${tp.name}${t.subProject?` · ${t.subProject}`:''}] ${t.text}${isAtRisk?' — ⚠️ 남은 기간 대비 진행 부족 (경과 '+elapsedPctForRow+'% / 진행 '+progPct+'%)':''}">
         ${isAtRisk?`<span class="risk-warn-icon" title="남은 기간 대비 진행 부족! 경과 ${elapsedPctForRow}% / 진행 ${progPct}%" style="margin-right:3px;">🚨</span>`:''}
         ${prio?`<span style="background:${pc};color:white;font-size:0.65rem;font-weight:800;padding:1px 5px;border-radius:3px;margin-right:4px;">${prio}</span>`:''}
-        ${showProjLabel?`<span style="color:${tp.color};font-size:0.65rem;font-weight:700;margin-right:3px;">[${tp.name}]</span>`:''}
+        ${showProjLabel?`<span style="color:${tp.color};font-size:0.65rem;font-weight:700;margin-right:3px;">[${tp.name}${t.subProject?` · ${t.subProject}`:''}]</span>`:''}
         <span style="${isAtRisk?'color:#dc2626;font-weight:700;':''}">${t.text}</span>
         ${(()=>{
           const ah=weeklyLogs.filter(l=>l.task===t.text&&l.project===t.project).reduce((s,l)=>s+(l.hours||0),0);
@@ -2120,7 +2120,7 @@ function renderTaskList(list){
         <input type="checkbox" draggable="false" onmousedown="event.stopPropagation()" ${t.done?'checked':''} onchange="toggleTask(${t.id})">
         ${taskAtRisk?`<span class="risk-warn-icon" title="남은 기간 대비 진행 부족! 경과 ${taskElapsed}% / 진행 ${getTaskProgress(t)}%" style="flex-shrink:0;">🚨</span>`:''}
         ${prio?`<span onclick="event.stopPropagation();showPriorityPicker(event, ${t.id})" title="클릭하여 우선순위 변경" style="background:${pc};color:white;font-size:0.7rem;font-weight:800;padding:2px 6px;border-radius:4px;min-width:26px;text-align:center;flex-shrink:0;cursor:pointer;">${prio}</span>`:''}
-        <span class="p-badge" style="background:${p.color}22;color:${p.color};flex-shrink:0">${p.name}</span>
+        <span class="p-badge" style="background:${p.color}22;color:${p.color};flex-shrink:0">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
         <span class="task-text" ondblclick="event.stopPropagation();startInlineEditTaskText(${t.id}, this)" title="더블클릭하여 수정" style="font-size:0.85rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;${taskAtRisk?'color:#dc2626;font-weight:700;':''}">${t.text}</span>
         <span onclick="event.stopPropagation();toggleTaskMemo(${t.id})"
           title="${t.memo?t.memo.slice(0,40)+(t.memo.length>40?'...':''):'메모 추가'}"
@@ -2597,8 +2597,10 @@ function renderWeekly(){
   document.getElementById('weekly-log').innerHTML=sorted.map(l=>{
     const p=proj(l.project);
     const isMeeting=l.type==='meeting';
+    const matchedTask=!isMeeting?tasks.find(x=>x.project===l.project && x.text===l.task):null;
+    const subProjLabel=matchedTask?.subProject?` · ${matchedTask.subProject}`:'';
     return `<div class="wlog-item" style="${isMeeting?'background:#a855f70a;border-left:3px solid #a855f7;padding-left:6px;':''}">
-      <span class="p-badge" style="background:${p.color}22;color:${p.color};flex-shrink:0">${p.name}</span>
+      <span class="p-badge" style="background:${p.color}22;color:${p.color};flex-shrink:0">${p.name}${subProjLabel}</span>
       <div style="flex:1">
         <div style="font-weight:600">${isMeeting?'📅 ':''}${l.task}${isMeeting?' <span style="font-size:0.65rem;color:#a855f7;font-weight:700;background:#a855f718;padding:1px 6px;border-radius:8px;">미팅</span>':''}</div>
         ${l.memo?`<div style="font-size:0.73rem;color:var(--muted);margin-top:1px">${l.memo}</div>`:''}
