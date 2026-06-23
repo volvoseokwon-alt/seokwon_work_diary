@@ -3391,10 +3391,14 @@ function renderHome(){
   const diffLabel = diff===0 ? '' : (diff>0 ? `<span style="color:var(--warn);font-weight:700;font-size:0.74rem;">(+${diff}h 더 함)</span>` : `<span style="color:var(--muted);font-weight:700;font-size:0.74rem;">(${diff}h 남음)</span>`);
 
   const capEl=document.getElementById('home-today-capacity');
-  // 예상/실제 각각 "업무 Xh + 미팅 Yh" 형태로 괄호 안에 나눠서 보여줌 (실제 쪽 미팅에는 건수도 함께 표기)
+  // 실제 업무시간이 가장 중요한 정보이므로: 1) 먼저 보여주고 2) 더 크게 3) 하이라이트 배경으로 강조.
+  // 예상치는 참고용으로 작게 뒤에 붙인다.
   const plannedBreakdown = `업무 ${planHoursSum}h+미팅 ${meetingHours}h`;
   const actualBreakdown = `업무 ${actualTaskHours}h+미팅 ${meetingHours}h${selMeetings.length>0?`·${selMeetings.length}건`:''}`;
-  const totalSummary = `<span style="font-weight:700;">📊 오늘 총 근무 — 예상 <span style="color:var(--primary);">${totalPlanned}h</span><span style="color:var(--muted);font-size:0.72rem;font-weight:600;">(${plannedBreakdown})</span> / 실제 <span style="color:#10b981;">${totalActual}h</span><span style="color:var(--muted);font-size:0.72rem;font-weight:600;">(${actualBreakdown})</span></span> ${diffLabel}`;
+  const totalSummary = `<span style="font-weight:700;">📊 오늘 총 근무 —</span> `
+    + `<span style="background:#d1fae5;color:#047857;font-weight:800;font-size:1.05rem;padding:2px 9px;border-radius:7px;">실제 ${totalActual}h</span>`
+    + `<span style="color:var(--muted);font-size:0.72rem;font-weight:600;margin-left:3px;">(${actualBreakdown})</span> ${diffLabel}`
+    + `<span style="color:var(--muted);font-size:0.78rem;margin-left:6px;">· 예상 ${totalPlanned}h<span style="font-size:0.72rem;">(${plannedBreakdown})</span></span>`;
 
   if(selMeetings.length===0){
     capEl.innerHTML=holidayBadge + totalSummary
