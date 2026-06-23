@@ -4692,60 +4692,51 @@ function generateReport(){
     </div>`;
   }).join('') || '<div style="color:#94a3b8;padding:10px;text-align:center;">진행중인 업무가 없습니다.</div>';
 
-  const weekHtml=weeks.map(wk=>{
-    const wData=byWeek[wk];
-    const wTotal=wData.logs.reduce((s,l)=>s+(l.hours||0),0);
-    const wByProj={};
-    wData.logs.forEach(l=>{ wByProj[l.project]=(wByProj[l.project]||0)+(l.hours||0); });
-    const [wy,wn]=wk.split('-W');
-    const wStart=isoWeekStart(parseInt(wy),parseInt(wn));
-    const wEnd=new Date(wStart); wEnd.setDate(wStart.getDate()+6);
-    const fmtShort=dt2=>`${dt2.getMonth()+1}/${dt2.getDate()}`;
-    return `<div style="margin-bottom:10px;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;background:white;">
-      <div style="font-weight:700;font-size:0.84rem;color:#4f46e5;margin-bottom:6px;">
-        W${wn} (${fmtShort(wStart)} ~ ${fmtShort(wEnd)}) — 총 <strong>${wTotal}h</strong>
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;">
-        ${Object.entries(wByProj).sort((a,b)=>b[1]-a[1]).map(([pid,h])=>{
-          const p=proj(pid);
-          return `<span style="font-size:0.72rem;background:${p.color}18;color:${p.color};padding:2px 8px;border-radius:10px;font-weight:600;">${p.name} ${h}h</span>`;
-        }).join('')}
-      </div>
-    </div>`;
-  }).join('');
-
-  // 주간(이번 주/지난 주) 선택 시: 날짜별로 "무슨 프로젝트의 어떤 업무를 했는지"를 한 일 형태로 보여줌
-  // (월간 레포트는 히트맵으로 전체 흐름만 보면 되지만, 주간은 구체적으로 뭘 했는지가 더 궁금하므로 별도 섹션으로 제공)
-  let dailyTaskLogHtml='';
+  // 주간(이번 주/지난 주) 선택 시: 한 주 안에서 "어떤 프로젝트의 어떤 업무에 얼마나 썼는지"를 프로젝트별로 묶어서 보여줌
+  // (날짜·요일 단위 흐름은 안 궁금하고, 한 주 전체로 봤을 때 프로젝트/업무별 투입시간이 궁금한 경우를 위한 섹션)
+  let weeklyTaskByProjHtml='';
   if(!isMonthRange){
-    const byDate={};
-    taskLogs.forEach(l=>{ (byDate[l.date]=byDate[l.date]||[]).push(l); });
-    const dateKeys=Object.keys(byDate).sort();
-    dailyTaskLogHtml = dateKeys.map(dk=>{
-      const dayLogs=byDate[dk];
-      const dayTotal=dayLogs.reduce((s,l)=>s+(l.hours||0),0);
-      const dt=new Date(dk+'T00:00:00');
-      const dLabel=`${dt.getMonth()+1}/${dt.getDate()} (${['일','월','화','수','목','금','토'][dt.getDay()]})`;
-      // 같은 날 같은 업무(project+task)에 기록이 여러 번 있으면 합산해서 한 줄로
-      const merged={};
-      dayLogs.forEach(l=>{
-        const key=`${l.project}__${l.task}`;
-        if(!merged[key]) merged[key]={project:l.project, task:l.task, hours:0};
-        merged[key].hours+=(l.hours||0);
+    weeklyTaskByProjHtml = weeks.map(wk=>{
+      const wLogs = byWeek[wk].logs.filter(l=>!(l.type==='meeting'||l.project==='__meeting__')); // 미팅 제외, 순수 업무만
+      const wTotal = wLogs.reduce((s,l)=>s+(l.hours||0),0);
+      const [wy,wn]=wk.split('-W');
+      const wStart=isoWeekStart(parseInt(wy),parseInt(wn));
+      const wEnd=new Date(wStart); wEnd.setDate(wStart.getDate()+6);
+      const fmtShort=dt2=>`${dt2.getMonth()+1}/${dt2.getDate()}`;
+
+      // 프로젝트별로 묶고, 각 프로젝트 안에서 업무(task)별로 시간 합산
+      const byProjTask={};
+      wLogs.forEach(l=>{
+        if(!byProjTask[l.project]) byProjTask[l.project]={};
+        const tk=l.task||'(제목 없음)';
+        byProjTask[l.project][tk]=(byProjTask[l.project][tk]||0)+(l.hours||0);
       });
-      const itemsHtml=Object.values(merged).sort((a,b)=>b.hours-a.hours).map(it=>{
-        const p=proj(it.project);
-        return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:0.8rem;">
-          <span style="background:${p.color}18;color:${p.color};font-size:0.7rem;font-weight:700;padding:1px 7px;border-radius:8px;flex-shrink:0;white-space:nowrap;">${p.name}</span>
-          <span style="flex:1;color:#374151;">${it.task||'(제목 없음)'}</span>
-          <span style="color:#64748b;font-weight:600;flex-shrink:0;">${it.hours}h</span>
+      const projEntries=Object.entries(byProjTask).map(([pid,taskMap])=>{
+        const pTotal=Object.values(taskMap).reduce((s,h)=>s+h,0);
+        return {pid, pTotal, taskMap};
+      }).sort((a,b)=>b.pTotal-a.pTotal);
+
+      const projBlocksHtml = projEntries.map(({pid,pTotal,taskMap})=>{
+        const p=proj(pid);
+        const taskRows=Object.entries(taskMap).sort((a,b)=>b[1]-a[1]).map(([taskName,h])=>{
+          return `<div style="display:flex;align-items:center;gap:8px;padding:3px 0 3px 4px;font-size:0.8rem;">
+            <span style="flex:1;color:#475569;">${taskName}</span>
+            <span style="color:#64748b;font-weight:600;flex-shrink:0;">${h}h</span>
+          </div>`;
+        }).join('');
+        return `<div style="margin-top:8px;padding:8px 10px;background:${p.color}0a;border-left:3px solid ${p.color};border-radius:6px;">
+          <div style="display:flex;align-items:center;gap:8px;font-size:0.82rem;font-weight:700;color:${p.color};">
+            <span>${p.name}</span><span style="margin-left:auto;">${pTotal}h</span>
+          </div>
+          ${taskRows}
         </div>`;
-      }).join('');
-      return `<div style="margin-bottom:10px;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;background:white;">
-        <div style="font-weight:700;font-size:0.82rem;color:#374151;margin-bottom:4px;">
-          ${dLabel} — 총 <strong style="color:#0ea5e9;">${dayTotal}h</strong>
+      }).join('') || '<div style="color:#94a3b8;font-size:0.82rem;padding:8px 0;">이 주에 업무 시간 기록이 없습니다.</div>';
+
+      return `<div style="margin-bottom:12px;padding:12px 14px;border:1px solid #e2e8f0;border-radius:10px;background:white;">
+        <div style="font-weight:700;font-size:0.86rem;color:#4f46e5;">
+          W${wn} (${fmtShort(wStart)} ~ ${fmtShort(wEnd)}) — 총 <strong>${wTotal}h</strong>
         </div>
-        ${itemsHtml}
+        ${projBlocksHtml}
       </div>`;
     }).join('') || '<div style="color:#94a3b8;padding:14px;text-align:center;font-size:0.85rem;">이 기간에 업무 시간 기록이 없습니다.</div>';
   }
@@ -4824,27 +4815,25 @@ function generateReport(){
       </div>
     </div>
 
-    <!-- 시간 시각화(월간 업무강도 또는 주별 기록) + 프로젝트별 시간 분배: 나란히 2단 -->
-    <div style="display:grid;grid-template-columns:${isMonthRange?'minmax(240px,260px) 1fr':'1.3fr 1fr'};gap:16px;margin-bottom:18px;align-items:start;">
+    <!-- 시간 시각화: 월간은 히트맵+프로젝트분배 2단, 주간은 "프로젝트별 한 일" 단일 섹션으로 대체 -->
+    ${isMonthRange ? `
+    <div style="display:grid;grid-template-columns:minmax(240px,260px) 1fr;gap:16px;margin-bottom:18px;align-items:start;">
       <div style="border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;background:white;">
-        <div style="font-size:0.85rem;font-weight:700;color:#374151;margin-bottom:8px;">${isMonthRange?'🔥 월간 업무 강도':'📅 주별 작업시간 기록'}</div>
-        ${isMonthRange
-          ? monthlyHeatmapReportHtml
-          : (weekHtml||'<div style="color:#94a3b8;padding:14px;text-align:center;font-size:0.85rem;">이 기간에 주간기록이 없습니다.</div>')}
+        <div style="font-size:0.85rem;font-weight:700;color:#374151;margin-bottom:8px;">🔥 월간 업무 강도</div>
+        ${monthlyHeatmapReportHtml}
       </div>
       <div style="border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;background:white;">
         <div style="font-size:0.85rem;font-weight:700;color:#374151;margin-bottom:8px;">📊 프로젝트별 시간 분배</div>
         ${projBarsHtml}
       </div>
     </div>
-
-    ${!isMonthRange ? `
-    <!-- 주간 레포트일 때만: 날짜별로 어떤 프로젝트의 무슨 업무를 했는지 상세 내역 -->
+    ` : `
+    <!-- 주간 레포트일 때만: 한 주 안에서 프로젝트별로 묶어 어떤 업무에 얼마나 썼는지 표시 -->
     <div style="border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;background:white;margin-bottom:18px;">
-      <div style="font-size:0.85rem;font-weight:700;color:#374151;margin-bottom:8px;">📝 날짜별 한 일</div>
-      ${dailyTaskLogHtml}
+      <div style="font-size:0.85rem;font-weight:700;color:#374151;margin-bottom:8px;">📝 프로젝트별 한 일</div>
+      ${weeklyTaskByProjHtml}
     </div>
-    ` : ''}
+    `}
 
     ${meetingSectionHtml}
 
