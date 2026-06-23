@@ -1570,6 +1570,8 @@ let dailyPlans = {};       // {'2026-06-23': {taskId: 계획시간(h), ...}} - �
 let taskTags = {};        // {taskId: ['#회의','#문서']}
 let quickLinks = [];      // {id, title, url, group, icon}
 let currentFilter = 'all';
+// 전체 보기에서 숨길 프로젝트 id 목록 (눈 아이콘 토글로 켜고 끔, localStorage에 저장해서 새로고침해도 유지)
+let hiddenProjects = (()=>{ try { return new Set(JSON.parse(localStorage.getItem('hiddenProjects')||'[]')); } catch(e){ return new Set(); } })();
 // 'all'(전체 프로젝트) 필터로 볼 때도 서브프로젝트별 그룹 헤더를 보여줄지 여부 (토글)
 let showSubProjGroupsInAll = false;
 // 홈 탭의 "오늘 할 일 & 미팅" 카드에서 현재 보고 있는 날짜 (기본값: 오늘). ◀▶로 다른 날짜로 이동 가능
@@ -1599,7 +1601,10 @@ const todayMs = TODAY.getTime();
 
 function isOverdue(t){ const e=d(t.end); const todayD=new Date(TODAY.getFullYear(),TODAY.getMonth(),TODAY.getDate()); const eD=new Date(e.getFullYear(),e.getMonth(),e.getDate()); return !t.done && eD<todayD; }
 function isEarly(t){  return t.done && t.actualEnd && d(t.actualEnd)<d(t.end); }
-function filteredTasks(){ return currentFilter==='all'?tasks:tasks.filter(t=>t.project===currentFilter); }
+function filteredTasks(){
+  if(currentFilter==='all') return tasks.filter(t=>!hiddenProjects.has(t.project));
+  return tasks.filter(t=>t.project===currentFilter);
+}
 
 /* ISO week number */
 function getISOWeek(date){
@@ -1659,15 +1664,19 @@ function inactiveColor(days){
 function renderSidebar(){
   const el = document.getElementById('project-list');
   const allActive = currentFilter==='all';
+  const hiddenCount = hiddenProjects.size;
   let html = `<div class="project-item ${allActive?'active':''}" onclick="setFilter('all')">
-    <span class="proj-dot" style="background:#64748b"></span>전체 보기</div>`;
+    <span class="proj-dot" style="background:#64748b"></span><span style="flex:1;">전체 보기</span>
+    ${hiddenCount>0?`<span style="font-size:0.68rem;color:${allActive?'rgba(255,255,255,0.75)':'#94a3b8'};font-weight:600;flex-shrink:0;" title="${hiddenCount}개 프로젝트 숨김 중">🙈 ${hiddenCount}</span>`:''}
+  </div>`;
   projects.forEach(p=>{
     const days = inactiveDays(p);
     const ic   = inactiveColor(days);
     const dot  = ic ? `<span class="inactive-dot" style="background:${ic}" title="${days}일 미활동"></span>` : '';
     const isAct=currentFilter===p.id;
     const iconCol=isAct?'rgba(255,255,255,0.65)':'#cbd5e1';
-    html += `<div class="project-item ${isAct?'active':''}" style="padding-right:2px;"
+    const isHidden=hiddenProjects.has(p.id);
+    html += `<div class="project-item ${isAct?'active':''}" style="padding-right:2px;${isHidden?'opacity:0.45;':''}"
         draggable="true"
         data-pid="${p.id}"
         ondragstart="projDragStart(event,'${p.id}')"
@@ -1679,6 +1688,10 @@ function renderSidebar(){
       <span class="proj-dot" style="background:${p.color};flex-shrink:0;cursor:pointer" onclick="setFilter('${p.id}')"></span>
       <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="setFilter('${p.id}')">${p.name}</span>
       ${dot}
+      <span onclick="event.stopPropagation();toggleProjectHidden('${p.id}')" onmousedown="event.stopPropagation()" draggable="false"
+        title="${isHidden?'전체 보기에 다시 표시':'전체 보기에서 숨기기'}"
+        style="color:${isHidden?'#94a3b8':iconCol};font-size:0.85rem;cursor:pointer;padding:2px 4px;flex-shrink:0;line-height:1;"
+        onmouseover="this.style.color='#a5b4fc'" onmouseout="this.style.color='${isHidden?'#94a3b8':iconCol}'">${isHidden?'🙈':'👁️'}</span>
       <span onclick="event.stopPropagation();toggleProjMenu('${p.id}')" onmousedown="event.stopPropagation()" draggable="false" title="더보기" style="color:${iconCol};font-size:0.95rem;cursor:pointer;padding:2px 5px;flex-shrink:0;line-height:1;font-weight:700;" onmouseover="this.style.color='#a5b4fc'" onmouseout="this.style.color='${iconCol}'">⋮</span>
       <div id="proj-menu-${p.id}" class="proj-menu-dropdown" style="display:none;" onclick="event.stopPropagation()" onmousedown="event.stopPropagation()">
         <div onclick="closeAllProjMenus();openProjNote('${p.id}')">📋 노트/일정</div>
@@ -1709,6 +1722,15 @@ function renderSidebar(){
     const opts=[...subSel.options].map(o=>o.value);
     if(opts.includes(curSub)) subSel.value=curSub;
   }
+}
+
+// 👁️ 전체 보기에서 특정 프로젝트를 숨기거나 다시 보이게 토글 (개별 프로젝트 선택 시에는 영향 없음)
+function toggleProjectHidden(projId){
+  if(hiddenProjects.has(projId)) hiddenProjects.delete(projId);
+  else hiddenProjects.add(projId);
+  try { localStorage.setItem('hiddenProjects', JSON.stringify([...hiddenProjects])); } catch(e){}
+  renderSidebar();
+  render();
 }
 
 function setFilter(id){ currentFilter=id; render(); updateSubProjToggleVisibility(); }
