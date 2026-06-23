@@ -4714,35 +4714,54 @@ function generateReport(){
       const wEnd=new Date(wStart); wEnd.setDate(wStart.getDate()+6);
       const fmtShort=dt2=>`${dt2.getMonth()+1}/${dt2.getDate()}`;
 
-      // 프로젝트+하위분류 조합으로 묶고, 그 안에서 업무(task)별로 시간 합산
-      // (같은 프로젝트라도 하위분류(예: KEMS)가 다르면 별도 그룹으로 구분해서 보여줌)
-      const byProjTask={};
+      // 1단계: 프로젝트별로 묶고 → 2단계: 같은 프로젝트 안에서 하위분류(예: KEMS)별로 다시 묶음
+      // (하위분류가 다르다고 프로젝트 블록 자체가 흩어지면 같은 프로젝트인데도 여기저기 떨어져 보여 헷갈리므로,
+      //  프로젝트 블록 하나는 유지하고 그 내부에서만 하위분류로 세분화한다)
+      const byProjSub={};
       wLogs.forEach(l=>{
         const matchedTask=tasks.find(x=>x.project===l.project && x.text===l.task);
         const subProj=matchedTask?.subProject||'';
-        const groupKey=`${l.project}__${subProj}`;
-        if(!byProjTask[groupKey]) byProjTask[groupKey]={project:l.project, subProject:subProj, taskMap:{}};
+        if(!byProjSub[l.project]) byProjSub[l.project]={};
+        if(!byProjSub[l.project][subProj]) byProjSub[l.project][subProj]={};
         const tk=l.task||'(제목 없음)';
-        byProjTask[groupKey].taskMap[tk]=(byProjTask[groupKey].taskMap[tk]||0)+(l.hours||0);
+        byProjSub[l.project][subProj][tk]=(byProjSub[l.project][subProj][tk]||0)+(l.hours||0);
       });
-      const projEntries=Object.values(byProjTask).map(g=>{
-        const pTotal=Object.values(g.taskMap).reduce((s,h)=>s+h,0);
-        return {...g, pTotal};
+      const projEntries=Object.entries(byProjSub).map(([project,subMap])=>{
+        const pTotal=Object.values(subMap).reduce((s,taskMap)=>s+Object.values(taskMap).reduce((s2,h)=>s2+h,0),0);
+        return {project, subMap, pTotal};
       }).sort((a,b)=>b.pTotal-a.pTotal);
 
-      const projBlocksHtml = projEntries.map(({project,subProject,pTotal,taskMap})=>{
+      const projBlocksHtml = projEntries.map(({project,subMap,pTotal})=>{
         const p=proj(project);
-        const taskRows=Object.entries(taskMap).sort((a,b)=>b[1]-a[1]).map(([taskName,h])=>{
-          return `<div style="display:flex;align-items:center;gap:8px;padding:3px 0 3px 4px;font-size:0.8rem;">
-            <span style="flex:1;color:#475569;">${taskName}</span>
-            <span style="color:#64748b;font-weight:600;flex-shrink:0;">${h}h</span>
-          </div>`;
+        // 하위분류 그룹들을 시간 큰 순서로, 하위분류 없는 그룹('')은 맨 위에 표시
+        const subEntries=Object.entries(subMap).map(([subProj,taskMap])=>{
+          const subTotal=Object.values(taskMap).reduce((s,h)=>s+h,0);
+          return {subProj, taskMap, subTotal};
+        }).sort((a,b)=>(a.subProj===''?-1:b.subProj===''?1:b.subTotal-a.subTotal));
+
+        const subBlocksHtml = subEntries.map(({subProj,taskMap,subTotal})=>{
+          const taskRows=Object.entries(taskMap).sort((a,b)=>b[1]-a[1]).map(([taskName,h])=>{
+            return `<div style="display:flex;align-items:center;gap:8px;padding:3px 0 3px 4px;font-size:0.8rem;">
+              <span style="flex:1;color:#475569;">${taskName}</span>
+              <span style="color:#64748b;font-weight:600;flex-shrink:0;">${h}h</span>
+            </div>`;
+          }).join('');
+          // 하위분류가 있으면 작은 서브헤더를 붙이고, 없으면 헤더 없이 업무 목록만 바로 표시
+          return subProj
+            ? `<div style="margin-top:6px;padding-left:8px;border-left:2px dashed ${p.color}55;">
+                <div style="display:flex;align-items:center;gap:6px;font-size:0.74rem;font-weight:700;color:${p.color}cc;">
+                  <span>🏷️ ${subProj}</span><span style="margin-left:auto;">${subTotal}h</span>
+                </div>
+                ${taskRows}
+              </div>`
+            : taskRows;
         }).join('');
+
         return `<div style="margin-top:8px;padding:8px 10px;background:${p.color}0a;border-left:3px solid ${p.color};border-radius:6px;">
           <div style="display:flex;align-items:center;gap:8px;font-size:0.82rem;font-weight:700;color:${p.color};">
-            <span>${p.name}${subProject?` · ${subProject}`:''}</span><span style="margin-left:auto;">${pTotal}h</span>
+            <span>${p.name}</span><span style="margin-left:auto;">${pTotal}h</span>
           </div>
-          ${taskRows}
+          ${subBlocksHtml}
         </div>`;
       }).join('') || '<div style="color:#94a3b8;font-size:0.82rem;padding:8px 0;">이 주에 업무 시간 기록이 없습니다.</div>';
 
