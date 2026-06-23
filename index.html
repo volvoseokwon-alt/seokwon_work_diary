@@ -118,6 +118,15 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 .task-item.drag-over{border-top:3px solid var(--primary);}
 .project-item.dragging{opacity:.35;}
 .project-item.drag-over{border-top:2px solid var(--primary);}
+
+/* 🔘 프로젝트 숨김 토글: 작은 알약형 스위치 (눈 이모지 대신 깔끔한 on/off 표시) */
+.proj-hide-toggle{display:inline-flex;align-items:center;width:22px;height:13px;border-radius:7px;background:#cbd5e1;position:relative;cursor:pointer;transition:background .15s;padding:0;}
+.proj-hide-toggle.on{background:#a5b4fc;}
+.proj-hide-toggle.off{background:#e2e8f0;}
+.proj-hide-toggle-knob{position:absolute;top:1.5px;left:1.5px;width:10px;height:10px;border-radius:50%;background:white;box-shadow:0 1px 2px rgba(0,0,0,0.25);transition:left .15s;}
+.proj-hide-toggle.on .proj-hide-toggle-knob{left:11.5px;}
+.project-item.active .proj-hide-toggle.on{background:rgba(255,255,255,0.55);}
+.project-item.active .proj-hide-toggle.off{background:rgba(255,255,255,0.2);}
 .prio-group-label{font-size:0.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:4px 2px 2px;margin-top:4px;}
 .p-badge{font-size:0.7rem;padding:2px 6px;border-radius:4px;font-weight:600;}
 .date-badge{font-size:0.7rem;color:var(--muted);background:#f8fafc;padding:2px 6px;border-radius:4px;border:1px solid var(--border);}
@@ -1667,7 +1676,7 @@ function renderSidebar(){
   const hiddenCount = hiddenProjects.size;
   let html = `<div class="project-item ${allActive?'active':''}" onclick="setFilter('all')">
     <span class="proj-dot" style="background:#64748b"></span><span style="flex:1;">전체 보기</span>
-    ${hiddenCount>0?`<span style="font-size:0.68rem;color:${allActive?'rgba(255,255,255,0.75)':'#94a3b8'};font-weight:600;flex-shrink:0;" title="${hiddenCount}개 프로젝트 숨김 중">🙈 ${hiddenCount}</span>`:''}
+    ${hiddenCount>0?`<span style="font-size:0.68rem;color:${allActive?'rgba(255,255,255,0.75)':'#94a3b8'};font-weight:600;flex-shrink:0;background:${allActive?'rgba(255,255,255,0.15)':'var(--bg)'};padding:1px 6px;border-radius:8px;" title="${hiddenCount}개 프로젝트 숨김 중">숨김 ${hiddenCount}</span>`:''}
   </div>`;
   projects.forEach(p=>{
     const days = inactiveDays(p);
@@ -1690,8 +1699,9 @@ function renderSidebar(){
       ${dot}
       <span onclick="event.stopPropagation();toggleProjectHidden('${p.id}')" onmousedown="event.stopPropagation()" draggable="false"
         title="${isHidden?'전체 보기에 다시 표시':'전체 보기에서 숨기기'}"
-        style="color:${isHidden?'#94a3b8':iconCol};font-size:0.85rem;cursor:pointer;padding:2px 4px;flex-shrink:0;line-height:1;"
-        onmouseover="this.style.color='#a5b4fc'" onmouseout="this.style.color='${isHidden?'#94a3b8':iconCol}'">${isHidden?'🙈':'👁️'}</span>
+        class="proj-hide-toggle ${isHidden?'off':'on'}" style="flex-shrink:0;">
+        <span class="proj-hide-toggle-knob"></span>
+      </span>
       <span onclick="event.stopPropagation();toggleProjMenu('${p.id}')" onmousedown="event.stopPropagation()" draggable="false" title="더보기" style="color:${iconCol};font-size:0.95rem;cursor:pointer;padding:2px 5px;flex-shrink:0;line-height:1;font-weight:700;" onmouseover="this.style.color='#a5b4fc'" onmouseout="this.style.color='${iconCol}'">⋮</span>
       <div id="proj-menu-${p.id}" class="proj-menu-dropdown" style="display:none;" onclick="event.stopPropagation()" onmousedown="event.stopPropagation()">
         <div onclick="closeAllProjMenus();openProjNote('${p.id}')">📋 노트/일정</div>
@@ -1724,7 +1734,7 @@ function renderSidebar(){
   }
 }
 
-// 👁️ 전체 보기에서 특정 프로젝트를 숨기거나 다시 보이게 토글 (개별 프로젝트 선택 시에는 영향 없음)
+// 전체 보기에서 특정 프로젝트를 숨기거나 다시 보이게 토글 (개별 프로젝트 선택 시에는 영향 없음)
 function toggleProjectHidden(projId){
   if(hiddenProjects.has(projId)) hiddenProjects.delete(projId);
   else hiddenProjects.add(projId);
