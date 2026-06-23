@@ -3280,7 +3280,7 @@ function renderHome(){
     const lbl=t._diff<0?`D+${-t._diff}`:t._diff===0?'D-Day':`D-${t._diff}`;
     return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:0.82rem;">
       <span style="background:${col};color:white;border-radius:5px;padding:1px 7px;font-weight:700;font-size:0.72rem;white-space:nowrap;">${lbl}</span>
-      <span style="color:${p.color};font-weight:600;font-size:0.72rem;">${p.name}</span>
+      <span style="color:${p.color};font-weight:600;font-size:0.72rem;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
       <span style="flex:1">${t.text}</span>
     </div>`;
   }).join('');
@@ -3299,7 +3299,7 @@ function renderHome(){
       ? `🔴 ${fmt(t.end)} 마감 → ${overdueDays}일 지남`
       : `⚠️ 진행 ${h}% 뒤처짐`;
     return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:0.82rem;">
-      <span style="color:${p.color};font-weight:600;font-size:0.72rem;">${p.name}</span>
+      <span style="color:${p.color};font-weight:600;font-size:0.72rem;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
       <span style="flex:1">${t.text}</span>
       <span style="font-size:0.72rem;color:${hc};font-weight:700;white-space:nowrap;">${statusTxt}</span>
     </div>`;
@@ -3400,7 +3400,7 @@ function renderHome(){
         <span style="cursor:grab;color:var(--muted);flex-shrink:0;font-size:0.8rem;user-select:none;" title="드래그해서 순서 변경">⠿</span>
         <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask(${t.id})" style="flex-shrink:0;">
         ${t.priority?`<span style="background:${pc};color:white;font-size:0.68rem;font-weight:800;padding:1px 6px;border-radius:4px;flex-shrink:0;">${t.priority}</span>`:''}
-        <span style="color:${p.color};font-weight:600;font-size:0.72rem;flex-shrink:0;">${p.name}</span>
+        <span style="color:${p.color};font-weight:600;font-size:0.72rem;flex-shrink:0;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
         <span style="flex:1;${t.done?'text-decoration:line-through;':''}">${t.text}</span>
         <select class="status-select" draggable="false" onmousedown="event.stopPropagation()" style="color:${stInfo.color};border-color:${stInfo.color}22;background:${stInfo.color}11;flex-shrink:0;font-size:0.68rem;"
             onchange="setTaskStatus(${t.id},this.value)">
@@ -3428,9 +3428,11 @@ function renderHome(){
     } else {
       tmEl.innerHTML=selMeetings.map(l=>{
         const p=proj(l.project);
+        const matchedTask=tasks.find(x=>x.project===l.project && x.text===l.task);
+        const subLbl=matchedTask?.subProject?` · ${matchedTask.subProject}`:'';
         return `<div style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--border);font-size:0.84rem;">
           <span style="background:#a855f7;color:white;font-size:0.68rem;font-weight:800;padding:1px 6px;border-radius:4px;flex-shrink:0;">🗣️ ${l.hours}h</span>
-          ${p?`<span style="color:${p.color};font-weight:600;font-size:0.72rem;flex-shrink:0;">${p.name}</span>`:''}
+          ${p?`<span style="color:${p.color};font-weight:600;font-size:0.72rem;flex-shrink:0;">${p.name}${subLbl}</span>`:''}
           <span style="flex:1;">${l.task||'(제목 없음)'}</span>
           <button class="btn-sm" style="background:var(--bg);color:var(--muted);flex-shrink:0;padding:2px 8px;" onclick="openEditWeekly(${l.id})">수정</button>
         </div>`;
@@ -3456,9 +3458,13 @@ function renderHome(){
         return `<div style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--border);font-size:0.84rem;">
           <input type="checkbox" onchange="toggleTask(${t.id})" style="flex-shrink:0;" title="완료 처리">
           ${t.priority?`<span style="background:${pc};color:white;font-size:0.68rem;font-weight:800;padding:1px 6px;border-radius:4px;flex-shrink:0;">${t.priority}</span>`:''}
-          <span style="color:${p.color};font-weight:600;font-size:0.72rem;flex-shrink:0;">${p.name}</span>
+          <span style="color:${p.color};font-weight:600;font-size:0.72rem;flex-shrink:0;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
           <span style="flex:1;">${t.text}</span>
-          <span class="status-chip" style="background:${stInfo.color};font-size:0.68rem;flex-shrink:0;">${stInfo.icon} ${stInfo.label}</span>
+          <select class="status-select" draggable="false" onmousedown="event.stopPropagation()" style="color:${stInfo.color};border-color:${stInfo.color}22;background:${stInfo.color}11;flex-shrink:0;font-size:0.68rem;"
+              onchange="setTaskStatus(${t.id},this.value)">
+            ${st==='overdue'?`<option value="overdue" selected>🔴 기한초과</option>`:''}
+            ${Object.entries(TASK_STATUS).filter(([k])=>k!=='done'&&k!=='early_done'&&k!=='overdue').map(([k,v])=>`<option value="${k}" ${st===k?'selected':''}>${v.icon} ${v.label}</option>`).join('')}
+          </select>
           <span style="display:flex;align-items:center;gap:3px;flex-shrink:0;background:#f0fdf4;border-radius:6px;padding:2px 6px;" title="오늘 실제 투입 시간(h)">
             ⏱️<input type="number" min="0" step="0.5" value="${actualForTask||''}" placeholder="0"
               style="width:38px;border:none;background:transparent;font-size:0.78rem;font-weight:700;color:#10b981;text-align:right;"
@@ -3491,7 +3497,7 @@ function renderHome(){
         return `<div style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--border);font-size:0.84rem;">
           <input type="checkbox" onchange="toggleTask(${t.id})" style="flex-shrink:0;">
           <span style="background:${pc};color:white;font-size:0.68rem;font-weight:800;padding:1px 6px;border-radius:4px;flex-shrink:0;">${t.priority}</span>
-          <span style="color:${p.color};font-weight:600;font-size:0.72rem;flex-shrink:0;">${p.name}</span>
+          <span style="color:${p.color};font-weight:600;font-size:0.72rem;flex-shrink:0;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
           <span style="flex:1;">${t.text}</span>
           <select class="status-select" draggable="false" onmousedown="event.stopPropagation()" style="color:${stInfo.color};border-color:${stInfo.color}22;background:${stInfo.color}11;flex-shrink:0;font-size:0.68rem;"
               onchange="setTaskStatus(${t.id},this.value)">
@@ -4685,7 +4691,7 @@ function generateReport(){
     else { statusTxt=`🔵 진행 ${getTaskProgress(t)}%`; statusCol='#64748b'; }
     return `<div style="display:flex;align-items:center;gap:7px;font-size:0.8rem;padding:5px 0;border-bottom:1px solid #f1f5f9;">
       ${t.priority?`<span style="color:${pc};font-weight:700;font-size:0.68rem;min-width:24px;">${t.priority}</span>`:'<span style="min-width:24px;"></span>'}
-      <span style="color:${p.color};font-weight:600;font-size:0.72rem;min-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name}</span>
+      <span style="color:${p.color};font-weight:600;font-size:0.72rem;min-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
       <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${t.text}</span>
       <span style="color:${statusCol};font-size:0.72rem;font-weight:600;white-space:nowrap;">${statusTxt}</span>
       <span style="color:#94a3b8;font-size:0.7rem;white-space:nowrap;">~${fmt(t.end)}</span>
@@ -4704,20 +4710,24 @@ function generateReport(){
       const wEnd=new Date(wStart); wEnd.setDate(wStart.getDate()+6);
       const fmtShort=dt2=>`${dt2.getMonth()+1}/${dt2.getDate()}`;
 
-      // 프로젝트별로 묶고, 각 프로젝트 안에서 업무(task)별로 시간 합산
+      // 프로젝트+하위분류 조합으로 묶고, 그 안에서 업무(task)별로 시간 합산
+      // (같은 프로젝트라도 하위분류(예: KEMS)가 다르면 별도 그룹으로 구분해서 보여줌)
       const byProjTask={};
       wLogs.forEach(l=>{
-        if(!byProjTask[l.project]) byProjTask[l.project]={};
+        const matchedTask=tasks.find(x=>x.project===l.project && x.text===l.task);
+        const subProj=matchedTask?.subProject||'';
+        const groupKey=`${l.project}__${subProj}`;
+        if(!byProjTask[groupKey]) byProjTask[groupKey]={project:l.project, subProject:subProj, taskMap:{}};
         const tk=l.task||'(제목 없음)';
-        byProjTask[l.project][tk]=(byProjTask[l.project][tk]||0)+(l.hours||0);
+        byProjTask[groupKey].taskMap[tk]=(byProjTask[groupKey].taskMap[tk]||0)+(l.hours||0);
       });
-      const projEntries=Object.entries(byProjTask).map(([pid,taskMap])=>{
-        const pTotal=Object.values(taskMap).reduce((s,h)=>s+h,0);
-        return {pid, pTotal, taskMap};
+      const projEntries=Object.values(byProjTask).map(g=>{
+        const pTotal=Object.values(g.taskMap).reduce((s,h)=>s+h,0);
+        return {...g, pTotal};
       }).sort((a,b)=>b.pTotal-a.pTotal);
 
-      const projBlocksHtml = projEntries.map(({pid,pTotal,taskMap})=>{
-        const p=proj(pid);
+      const projBlocksHtml = projEntries.map(({project,subProject,pTotal,taskMap})=>{
+        const p=proj(project);
         const taskRows=Object.entries(taskMap).sort((a,b)=>b[1]-a[1]).map(([taskName,h])=>{
           return `<div style="display:flex;align-items:center;gap:8px;padding:3px 0 3px 4px;font-size:0.8rem;">
             <span style="flex:1;color:#475569;">${taskName}</span>
@@ -4726,7 +4736,7 @@ function generateReport(){
         }).join('');
         return `<div style="margin-top:8px;padding:8px 10px;background:${p.color}0a;border-left:3px solid ${p.color};border-radius:6px;">
           <div style="display:flex;align-items:center;gap:8px;font-size:0.82rem;font-weight:700;color:${p.color};">
-            <span>${p.name}</span><span style="margin-left:auto;">${pTotal}h</span>
+            <span>${p.name}${subProject?` · ${subProject}`:''}</span><span style="margin-left:auto;">${pTotal}h</span>
           </div>
           ${taskRows}
         </div>`;
