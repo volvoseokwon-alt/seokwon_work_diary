@@ -409,7 +409,7 @@ ZB 교체 둘</textarea>
           <div style="display:flex;align-items:center;gap:8px;margin:10px 0 4px;">
             <span style="font-size:0.76rem;font-weight:700;color:var(--muted);">⏱️ 오늘 시간 투입한 업무</span>
             <span id="home-today-done-count" style="font-size:0.68rem;color:var(--muted);background:var(--bg);padding:1px 7px;border-radius:8px;"></span>
-            <span style="font-size:0.66rem;color:var(--muted);">(A1 외 우선순위 · 완료 업무 포함)</span>
+            <span style="font-size:0.66rem;color:var(--muted);">(전체 우선순위 · 완료 업무 포함)</span>
           </div>
           <div id="home-today-done-tasks"></div>
         </div>
@@ -3320,17 +3320,14 @@ function renderHome(){
     return selD>=sd && selD<=ed;
   }), false); // A1만 모인 목록이라 서브그룹 구분은 불필요 — subOrder로 정렬
 
-  // ── 선택한 날짜에 "시간이 투입된" 업무를 모음 (완료 여부 무관 — 오늘 작업하고 오늘 완료한 업무도 보여야 함)
-  //    단, 위쪽 "✅ 할 일"(A1 미완료) 섹션에 이미 나온 업무는 중복 표시하지 않도록 제외.
-  //    → A2/A3 업무에 시간을 기록했는데 어디에도 안 보여서 혼동되는 문제, 그리고 오늘 완료한 업무가
-  //      시간 기록과 함께 사라져 보이는 문제를 함께 해결.
-  //    weeklyLogs는 taskId가 아니라 project+task(텍스트) 조합으로 업무를 식별하는 구조라 동일하게 매칭한다.
-  const selTaskIds = new Set(selTasks.map(t=>t.id));
+  // ── 선택한 날짜에 "시간이 투입된" 업무를 모두 모음 (완료 여부·우선순위 무관)
+  //    A1 업무도 위쪽 "✅ 할 일" 섹션과 별개로 여기 함께 표시한다 — 시간을 입력하면 바로 이 리스트에도
+  //    반영되어야 직관적이라는 피드백을 반영. (이전엔 A1과 중복이라 제외했었는데, 그 때문에 "시간을 바꿨는데
+  //    왜 안 뜨지?"하는 혼동이 생겼음)
   const loggedTaskKeys = new Set(
     weeklyLogs.filter(l=>l.date===homeSelectedDate && l.type!=='meeting' && l.hours>0).map(l=>`${l.project}__${l.task}`)
   );
   const selDoneTasks = sortTasksForDisplay(ft.filter(t=>{
-    if(selTaskIds.has(t.id)) return false; // 이미 위쪽 A1 섹션에 표시됨
     return loggedTaskKeys.has(`${t.project}__${t.text}`);
   }), false);
 
