@@ -4714,6 +4714,42 @@ function generateReport(){
     </div>`;
   }).join('');
 
+  // 주간(이번 주/지난 주) 선택 시: 날짜별로 "무슨 프로젝트의 어떤 업무를 했는지"를 한 일 형태로 보여줌
+  // (월간 레포트는 히트맵으로 전체 흐름만 보면 되지만, 주간은 구체적으로 뭘 했는지가 더 궁금하므로 별도 섹션으로 제공)
+  let dailyTaskLogHtml='';
+  if(!isMonthRange){
+    const byDate={};
+    taskLogs.forEach(l=>{ (byDate[l.date]=byDate[l.date]||[]).push(l); });
+    const dateKeys=Object.keys(byDate).sort();
+    dailyTaskLogHtml = dateKeys.map(dk=>{
+      const dayLogs=byDate[dk];
+      const dayTotal=dayLogs.reduce((s,l)=>s+(l.hours||0),0);
+      const dt=new Date(dk+'T00:00:00');
+      const dLabel=`${dt.getMonth()+1}/${dt.getDate()} (${['일','월','화','수','목','금','토'][dt.getDay()]})`;
+      // 같은 날 같은 업무(project+task)에 기록이 여러 번 있으면 합산해서 한 줄로
+      const merged={};
+      dayLogs.forEach(l=>{
+        const key=`${l.project}__${l.task}`;
+        if(!merged[key]) merged[key]={project:l.project, task:l.task, hours:0};
+        merged[key].hours+=(l.hours||0);
+      });
+      const itemsHtml=Object.values(merged).sort((a,b)=>b.hours-a.hours).map(it=>{
+        const p=proj(it.project);
+        return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:0.8rem;">
+          <span style="background:${p.color}18;color:${p.color};font-size:0.7rem;font-weight:700;padding:1px 7px;border-radius:8px;flex-shrink:0;white-space:nowrap;">${p.name}</span>
+          <span style="flex:1;color:#374151;">${it.task||'(제목 없음)'}</span>
+          <span style="color:#64748b;font-weight:600;flex-shrink:0;">${it.hours}h</span>
+        </div>`;
+      }).join('');
+      return `<div style="margin-bottom:10px;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;background:white;">
+        <div style="font-weight:700;font-size:0.82rem;color:#374151;margin-bottom:4px;">
+          ${dLabel} — 총 <strong style="color:#0ea5e9;">${dayTotal}h</strong>
+        </div>
+        ${itemsHtml}
+      </div>`;
+    }).join('') || '<div style="color:#94a3b8;padding:14px;text-align:center;font-size:0.85rem;">이 기간에 업무 시간 기록이 없습니다.</div>';
+  }
+
   // 월단위(이번 달/지난 달) 선택 시: 캘린더 탭과 동일한 달력형(요일 그리드) 히트맵으로 표시
   let monthlyHeatmapReportHtml='';
   if(isMonthRange){
@@ -4801,6 +4837,14 @@ function generateReport(){
         ${projBarsHtml}
       </div>
     </div>
+
+    ${!isMonthRange ? `
+    <!-- 주간 레포트일 때만: 날짜별로 어떤 프로젝트의 무슨 업무를 했는지 상세 내역 -->
+    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;background:white;margin-bottom:18px;">
+      <div style="font-size:0.85rem;font-weight:700;color:#374151;margin-bottom:8px;">📝 날짜별 한 일</div>
+      ${dailyTaskLogHtml}
+    </div>
+    ` : ''}
 
     ${meetingSectionHtml}
 
