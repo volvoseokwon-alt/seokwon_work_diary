@@ -792,6 +792,18 @@ ZB 교체 둘</textarea>
   </div>
 </div>
 
+<div class="modal" id="modal-complete-date">
+  <div class="modal-box" style="max-width:340px;">
+    <h3 id="complete-date-title">✅ 완료 처리</h3>
+    <div style="font-size:0.84rem;color:var(--muted);margin:-4px 0 6px;" id="complete-date-tasktext"></div>
+    <div class="date-grp"><label>완료일</label><input type="date" id="complete-date-input" style="flex:1;padding:8px;border:1.5px solid var(--border);border-radius:6px;font-size:0.9rem;"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="cancelCompleteDate()">취소</button>
+      <button class="btn-primary" onclick="confirmCompleteDate()">완료 처리</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyAG_ZlGUuWDORpHX1RiD68EDjuSCi2pUwE",
@@ -2165,7 +2177,7 @@ function renderTaskList(list){
             onchange="setTaskStatus(${t.id},this.value)">
           ${st==='overdue'?`<option value="overdue" selected>🔴 기한초과</option>`:''}
           ${Object.entries(TASK_STATUS).filter(([k])=>k!=='done'&&k!=='early_done'&&k!=='overdue').map(([k,v])=>`<option value="${k}" ${st===k?'selected':''}>${v.icon} ${v.label}</option>`).join('')}
-        </select>`:`<span class="status-chip" style="background:${stInfo.color};flex-shrink:0;display:flex;align-items:center;gap:4px;">${stInfo.icon} ${stInfo.label}${t.actualEnd?`<span style="font-size:0.68rem;opacity:0.85;font-weight:400;">(${fmt(t.actualEnd)})</span>`:''}</span>`}
+        </select>`:`<span class="status-chip" onclick="event.stopPropagation();editCompleteDate(${t.id})" title="클릭하여 완료일 변경" style="background:${stInfo.color};flex-shrink:0;display:flex;align-items:center;gap:4px;cursor:pointer;">${stInfo.icon} ${stInfo.label}${t.actualEnd?`<span style="font-size:0.68rem;opacity:0.85;font-weight:400;">(${fmt(t.actualEnd)})</span>`:''}</span>`}
         ${!t.done?`<span style="display:flex;align-items:center;gap:3px;flex-shrink:0;background:#f0fdf4;border-radius:6px;padding:2px 6px;" title="오늘 실제 투입 시간(h) — 입력하면 주간/월간 기록에도 반영됩니다" onmousedown="event.stopPropagation()">
           ⏱️<input type="number" min="0" step="0.5" value="${(()=>{const h=weeklyLogs.filter(l=>l.date===TODAY_STR && l.type!=='meeting' && l.project===t.project && l.task===t.text).reduce((s,l)=>s+(l.hours||0),0); return h||'';})()}" placeholder="0"
             draggable="false" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()"
@@ -3032,21 +3044,16 @@ function setTaskPriorityFromPicker(id, newPriority){
 }
 
 function setTaskStatus(id, status){
-  let completedTask=null;
+  // '완료'(on_track) 선택 시: 체크박스와 동일하게 완료일을 먼저 물어본다
+  if(status==='on_track'){
+    pendingStatusOnComplete='on_track';
+    openCompleteDateModal(id);
+    return;
+  }
   tasks=tasks.map(t=>{
     if(t.id!==id) return t;
-    // '완료'(on_track) 선택 시 실제 완료 처리 (체크박스와 동일하게)
-    if(status==='on_track'){
-      touchProject(t.project);
-      completedTask={...t, done:true, actualEnd:TODAY_STR, status:'on_track'};
-      return completedTask;
-    }
     return {...t, status};
   });
-  if(completedTask){
-    autoAddWeeklyLog(completedTask);
-    addToHistory(completedTask);
-  }
   saveToFirebase();
   const ft=filteredTasks();
   renderTaskList(ft);
@@ -3501,7 +3508,7 @@ function renderHome(){
           <span style="flex:1;${t.done?'text-decoration:line-through;':''}">${t.text}</span>
           ${t.memo?`<span title="${t.memo.replace(/"/g,'&quot;')}" style="font-size:0.7rem;color:#92660d;background:#fef9c3;border:1px solid #fde68a;font-weight:600;padding:1px 7px;border-radius:5px;flex-shrink:0;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:default;">📝 ${t.memo}</span>`:''}
           ${t.done
-            ? `<span class="status-chip" style="background:${stInfo.color};font-size:0.68rem;flex-shrink:0;display:flex;align-items:center;gap:4px;">${stInfo.icon} ${stInfo.label}</span>`
+            ? `<span class="status-chip" onclick="editCompleteDate(${t.id})" title="클릭하여 완료일 변경 (현재: ${fmt(t.actualEnd)})" style="background:${stInfo.color};font-size:0.68rem;flex-shrink:0;display:flex;align-items:center;gap:4px;cursor:pointer;">${stInfo.icon} ${stInfo.label}</span>`
             : `<select class="status-select" draggable="false" onmousedown="event.stopPropagation()" style="color:${stInfo.color};border-color:${stInfo.color}22;background:${stInfo.color}11;flex-shrink:0;font-size:0.68rem;"
                 onchange="setTaskStatus(${t.id},this.value)">
               ${st==='overdue'?`<option value="overdue" selected>🔴 기한초과</option>`:''}
@@ -3762,7 +3769,7 @@ function renderSearch(){
       <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
         <span style="background:${p.color}22;color:${p.color};font-size:0.72rem;font-weight:700;padding:2px 7px;border-radius:4px;">${p.name}</span>
         <span style="font-size:0.85rem;flex:1;">${hl(t.text)}</span>
-        <span class="status-chip" style="background:${stI.color};font-size:0.7rem;">${stI.icon} ${stI.label}</span>
+        <span class="status-chip" ${t.done?`onclick="editCompleteDate(${t.id})" title="클릭하여 완료일 변경" style="background:${stI.color};font-size:0.7rem;cursor:pointer;"`:`style="background:${stI.color};font-size:0.7rem;"`}>${stI.icon} ${stI.label}</span>
         <span class="date-badge">${fmt(t.start)}~${fmt(t.end)}</span>
       </div>
       ${t.memo?`<div style="margin-top:5px;font-size:0.78rem;color:var(--muted);padding:4px 8px;background:#f8fafc;border-radius:4px;">📝 ${hl(t.memo)}</div>`:''}
@@ -3851,45 +3858,71 @@ function autoArchiveCompletedTasks(){
 /* ══════════════════════════════════════
    완료 시 자동 주간기록 + 히스토리
 ══════════════════════════════════════ */
-function autoAddWeeklyLog(t){
-  // 이미 오늘 같은 업무 기록이 있으면 중복 방지
-  const exists=weeklyLogs.find(l=>l.project===t.project&&l.task===t.text&&l.date===TODAY_STR);
+function autoAddWeeklyLog(t, completeDate){
+  const d=completeDate||TODAY_STR;
+  // 이미 같은 업무 기록(같은 날짜)이 있으면 중복 방지
+  const exists=weeklyLogs.find(l=>l.project===t.project&&l.task===t.text&&l.date===d);
   if(exists) return;
   weeklyLogs.push({
     id:Date.now()+Math.random(),
     project:t.project,
     task:t.text,
-    date:TODAY_STR,
+    date:d,
     hours:1,
     memo:'✅ 완료 자동 기록 (시간 수정 가능)',
     _auto:true
   });
 }
 
-function addToHistory(t){
+function addToHistory(t, completeDate){
+  const d=completeDate||TODAY_STR;
   const p=projects.find(x=>x.id===t.project)||{name:'기타',color:'#888',id:t.project};
   // 같은 날 + 같은 프로젝트 묶기 (_key 방식)
-  const wKey=isoWeekKey(TODAY_STR); // 주차별로 묶기
+  const wKey=isoWeekKey(d); // 주차별로 묶기
   const histKey=`__done_${t.project}_${wKey}`;
   const existing=completedProjects.find(cp=>cp._key===histKey);
   if(existing){
     if(!existing.tasks.find(x=>x.id===t.id)){
-      existing.tasks.push({...t, _completedAt:TODAY_STR});
-      existing.completedAt=TODAY_STR;
+      existing.tasks.push({...t, _completedAt:d});
+      existing.completedAt=d;
     }
   } else {
     completedProjects.push({
       _key:histKey,
       _type:'task_done',
       project:{...p},
-      tasks:[{...t, _completedAt:TODAY_STR}],
-      completedAt:TODAY_STR,
+      tasks:[{...t, _completedAt:d}],
+      completedAt:d,
       _weekKey:wKey,
       _archiveNote:'완료 자동 기록'
     });
   }
   // 히스토리 탭이 열려있으면 즉시 갱신
   if(currentTab==='history') renderHistory();
+}
+
+// 완료된 업무의 완료일을 변경할 때: weeklyLogs 자동기록과 히스토리에 남아있는
+// 기존 기록을 새 날짜로 옮긴다 (중복 추가하지 않음).
+function moveCompletionDate(t, oldDate, newDate){
+  if(oldDate===newDate) return;
+  // 1) 자동기록된 weeklyLog 이동 (oldDate에 있던 _auto 기록만 대상)
+  const log=weeklyLogs.find(l=>l._auto&&l.project===t.project&&l.task===t.text&&l.date===oldDate);
+  if(log){
+    // newDate에 이미 다른 기록이 있으면 중복을 피하기 위해 날짜만 갱신
+    log.date=newDate;
+  }
+  // 2) 히스토리: 기존 주차 묶음에서 제거
+  const oldWKey=isoWeekKey(oldDate);
+  const oldHistKey=`__done_${t.project}_${oldWKey}`;
+  const oldGroup=completedProjects.find(cp=>cp._key===oldHistKey);
+  if(oldGroup){
+    oldGroup.tasks=oldGroup.tasks.filter(x=>x.id!==t.id);
+    if(!oldGroup.tasks.length){
+      completedProjects=completedProjects.filter(cp=>cp!==oldGroup);
+    }
+  }
+  // 3) 새 날짜 기준 묶음에 추가
+  addToHistory({...t, actualEnd:newDate}, newDate);
 }
 
 /* ══════════════════════════════════════
@@ -5320,19 +5353,80 @@ function duplicateTask(id){
   saveAndRender();
 }
 function toggleTask(id){
+  const t=tasks.find(x=>x.id===id);
+  if(!t) return;
+  if(!t.done){
+    // 미완료 → 완료: 완료일을 먼저 물어본다 (체크박스는 모달 확정 전까지 보류)
+    openCompleteDateModal(id);
+    render(); // 체크박스 표시를 원래(미완료) 상태로 되돌려 그림 (아직 데이터 변경 없음)
+    return;
+  }
+  // 완료 → 미완료: 즉시 처리
+  tasks=tasks.map(x=>{
+    if(x.id!==id) return x;
+    touchProject(x.project);
+    return{...x, done:false, actualEnd:null, status:(x.status==='done'||x.status==='early_done')?'not_started':x.status};
+  });
+  saveAndRender();
+}
+
+/* ── 완료일 선택 모달 ── */
+let completeDateTaskId=null;
+let pendingStatusOnComplete=null; // setTaskStatus(on_track)에서 호출된 경우 'on_track' 저장
+function openCompleteDateModal(id){
+  const t=tasks.find(x=>x.id===id); if(!t) return;
+  completeDateTaskId=id;
+  document.getElementById('complete-date-title').textContent='✅ 완료 처리';
+  document.getElementById('complete-date-tasktext').textContent=t.text;
+  document.getElementById('complete-date-input').value=TODAY_STR;
+  openModal('modal-complete-date');
+}
+function cancelCompleteDate(){
+  completeDateTaskId=null;
+  pendingStatusOnComplete=null;
+  closeModal('modal-complete-date');
+  // setTaskStatus의 select가 'on_track'으로 바뀐 채 남아있을 수 있으니 다시 그려서 원복
+  render();
+}
+function confirmCompleteDate(){
+  const id=completeDateTaskId;
+  const dateVal=document.getElementById('complete-date-input').value;
+  if(!id||!dateVal) return;
+  const existing=tasks.find(x=>x.id===id);
+  if(!existing) return;
+  const wasAlreadyDone=existing.done;
+  const oldDate=existing.actualEnd;
+  const statusToSet=pendingStatusOnComplete==='on_track' ? 'on_track' : (existing.status==='early_done'?'early_done':'done');
   let completedTask=null;
   tasks=tasks.map(t=>{
     if(t.id!==id) return t;
     touchProject(t.project);
-    const nowDone=!t.done;
-    if(nowDone) completedTask={...t, done:true, actualEnd:TODAY_STR, status:'done'};
-    return{...t, done:nowDone, actualEnd:nowDone?TODAY_STR:null, status:nowDone?'done':(t.status==='done'?'not_started':t.status)};
+    completedTask={...t, done:true, actualEnd:dateVal, status:statusToSet};
+    return completedTask;
   });
   if(completedTask){
-    autoAddWeeklyLog(completedTask);
-    addToHistory(completedTask);
+    if(wasAlreadyDone){
+      // 완료일만 변경하는 경우: 기존 기록을 새 날짜로 이동 (중복 생성 방지)
+      moveCompletionDate(completedTask, oldDate, dateVal);
+    } else {
+      autoAddWeeklyLog(completedTask, dateVal);
+      addToHistory(completedTask, dateVal);
+    }
   }
+  completeDateTaskId=null;
+  pendingStatusOnComplete=null;
+  closeModal('modal-complete-date');
   saveAndRender();
+}
+
+/* ── 이미 완료된 업무의 완료일 수정 ── */
+function editCompleteDate(id){
+  const t=tasks.find(x=>x.id===id); if(!t||!t.done) return;
+  completeDateTaskId=id;
+  document.getElementById('complete-date-title').textContent='📅 완료일 변경';
+  document.getElementById('complete-date-tasktext').textContent=t.text;
+  document.getElementById('complete-date-input').value=t.actualEnd||TODAY_STR;
+  openModal('modal-complete-date');
 }
 function completeEarly(id){
   const t=tasks.find(x=>x.id===id);
