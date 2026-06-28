@@ -2178,11 +2178,15 @@ function renderTaskList(list){
           ${st==='overdue'?`<option value="overdue" selected>🔴 기한초과</option>`:''}
           ${Object.entries(TASK_STATUS).filter(([k])=>k!=='done'&&k!=='early_done'&&k!=='overdue').map(([k,v])=>`<option value="${k}" ${st===k?'selected':''}>${v.icon} ${v.label}</option>`).join('')}
         </select>`:`<span class="status-chip" onclick="event.stopPropagation();editCompleteDate(${t.id})" title="클릭하여 완료일 변경" style="background:${stInfo.color};flex-shrink:0;display:flex;align-items:center;gap:4px;cursor:pointer;">${stInfo.icon} ${stInfo.label}${t.actualEnd?`<span style="font-size:0.68rem;opacity:0.85;font-weight:400;">(${fmt(t.actualEnd)})</span>`:''}</span>`}
-        ${!t.done?`<span style="display:flex;align-items:center;gap:3px;flex-shrink:0;background:#f0fdf4;border-radius:6px;padding:2px 6px;" title="오늘 실제 투입 시간(h) — 입력하면 주간/월간 기록에도 반영됩니다" onmousedown="event.stopPropagation()">
-          ⏱️<input type="number" min="0" step="0.5" value="${(()=>{const h=weeklyLogs.filter(l=>l.date===TODAY_STR && l.type!=='meeting' && l.project===t.project && l.task===t.text).reduce((s,l)=>s+(l.hours||0),0); return h||'';})()}" placeholder="0"
+        ${!t.done?`<span style="display:flex;align-items:center;gap:3px;flex-shrink:0;background:#f0fdf4;border-radius:6px;padding:2px 6px;" title="실제 투입 시간(h) — 입력하면 주간/월간 기록에도 반영됩니다. 날짜를 바꾸면 그 날짜로 기록됩니다." onmousedown="event.stopPropagation()">
+          <input type="date" value="${TODAY_STR}" max="${TODAY_STR}"
+            draggable="false" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()"
+            style="border:none;background:transparent;font-size:0.68rem;color:#10b981;width:84px;padding:0;cursor:pointer;"
+            onchange="syncActualHoursDate(${t.id}, this.value, 'ah-${t.id}')">
+          ⏱️<input type="number" id="ah-${t.id}" min="0" step="0.5" data-log-date="${TODAY_STR}" value="${(()=>{const h=weeklyLogs.filter(l=>l.date===TODAY_STR && l.type!=='meeting' && l.project===t.project && l.task===t.text).reduce((s,l)=>s+(l.hours||0),0); return h||'';})()}" placeholder="0"
             draggable="false" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()"
             style="width:38px;border:none;background:transparent;font-size:0.78rem;font-weight:700;color:#10b981;text-align:right;"
-            onchange="setDailyActual(${t.id}, this.value, TODAY_STR)">h
+            onchange="setDailyActual(${t.id}, this.value, this.dataset.logDate)">h
         </span>`:''}
         <div style="display:flex;gap:5px;flex-shrink:0;">
           <button class="btn-sm" style="background:var(--pri-light);color:var(--primary)" onclick="openEdit(${t.id})" onmousedown="event.stopPropagation()" draggable="false">수정</button>
@@ -3246,6 +3250,19 @@ function setDailyPlan(taskId, value){
 // 특정 날짜에 특정 업무의 "실제 투입 시간"을 직접 입력/수정한다.
 // 그 값을 weeklyLogs(주간/월간 기록)에 정식으로 반영하므로 레포트에도 그대로 잡힌다.
 // dateStr을 생략하면 homeSelectedDate(홈에서 보고 있는 날짜)를 기본값으로 사용한다.
+
+// "📋 할 일" 탭의 날짜 선택 + 시간 입력 조합용 헬퍼.
+// 날짜를 바꾸면 그 업무가 해당 날짜에 이미 기록된 시간이 있는지 찾아 시간 입력칸에 채워주고,
+// 이후 시간을 입력하면 setDailyActual이 그 날짜(this.dataset.logDate)로 기록한다.
+function syncActualHoursDate(taskId, dateStr, hoursInputId){
+  const t=tasks.find(x=>x.id===taskId); if(!t) return;
+  const hoursInput=document.getElementById(hoursInputId);
+  if(!hoursInput) return;
+  hoursInput.dataset.logDate=dateStr;
+  const h=weeklyLogs.filter(l=>l.date===dateStr && l.type!=='meeting' && l.project===t.project && l.task===t.text).reduce((s,l)=>s+(l.hours||0),0);
+  hoursInput.value=h||'';
+}
+
 function setDailyActual(taskId, value, dateStr){
   const t=tasks.find(x=>x.id===taskId); if(!t) return;
   const targetDate = dateStr || homeSelectedDate || TODAY_STR;
