@@ -3646,8 +3646,9 @@ function buildHeatmapHtml(year, month, opts){
 
   // h: 그 날 기록된 총 시간, overHours: 화면에 표시할 "+Nh"에 해당하는 초과시간
   // (평일은 8h 초과분, 휴무일은 기록된 시간 전체가 곧 초과시간)
-  const colorFor=(h, overHours)=>{
+  const colorFor=(h, overHours, isShort)=>{
     if(!h) return '#ebedf0';
+    if(isShort) return '#f9a8d4';
     if(overHours<=0) return '#bfdbfe';
     if(overHours<=1) return '#fde68a';
     if(overHours<=2) return '#fbbf24';
@@ -3669,12 +3670,16 @@ function buildHeatmapHtml(year, month, opts){
     // 기록된 시간 자체가 곧 "추가로 일한 시간"이라 그 전체를 +Nh로 표시한다.
     const dayIsWorkday = (typeof isWorkday==='function') ? isWorkday(dateKey) : true;
     const over = !dayIsWorkday ? h : (h>8 ? h-8 : 0);
-    const textColor = h>9 ? 'white' : '#475569';
+    // 평일인데 기록된 시간이 7.5h 이하면 "미달근무"로 분홍색 표시
+    const isShort = dayIsWorkday && h>0 && h<=7.5;
+    const shortBy = isShort ? Math.round((8-h)*10)/10 : 0;
+    const textColor = h>9 ? 'white' : (isShort ? '#9d174d' : '#475569');
     const holLabel=isHoliday(dateKey)?getHolidayLabel(dateKey):null;
-    const tooltipExtra = !dayIsWorkday ? (h?' (휴무일 추가근무 +'+h+'h)':'') : (over?' (8h 초과 +'+over+'h)':'');
-    cellsHtml+=`<div title="${dateKey}: ${h}시간${tooltipExtra}${holLabel?' · '+holLabel:''}" style="width:${cellSize}px;height:${cellSize+4}px;border-radius:6px;background:${colorFor(h,over)};display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:0.62rem;color:${holLabel&&!h?'#ef4444':textColor};border:${isToday?'2px solid #4f46e5':holLabel?'1.5px solid #ef444466':'1px solid rgba(0,0,0,0.04)'};cursor:default;line-height:1.15;">
+    const tooltipExtra = !dayIsWorkday ? (h?' (휴무일 추가근무 +'+h+'h)':'') : (isShort ? ' (미달 -'+shortBy+'h)' : (over?' (8h 초과 +'+over+'h)':''));
+    cellsHtml+=`<div title="${dateKey}: ${h}시간${tooltipExtra}${holLabel?' · '+holLabel:''}" style="width:${cellSize}px;height:${cellSize+4}px;border-radius:6px;background:${colorFor(h,over,isShort)};display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:0.62rem;color:${holLabel&&!h?'#ef4444':textColor};border:${isToday?'2px solid #4f46e5':holLabel?'1.5px solid #ef444466':'1px solid rgba(0,0,0,0.04)'};cursor:default;line-height:1.15;">
       <span>${d}</span>
       ${over>0?`<span style="font-size:0.56rem;font-weight:700;">+${over}h</span>`:''}
+      ${isShort?`<span style="font-size:0.56rem;font-weight:700;">-${shortBy}h</span>`:''}
     </div>`;
   }
 
@@ -3703,6 +3708,7 @@ function buildHeatmapHtml(year, month, opts){
       <span style="width:12px;height:12px;border-radius:3px;background:#ea580c;display:inline-block;"></span><span>+4h</span>
       <span style="width:12px;height:12px;border-radius:3px;background:#dc2626;display:inline-block;"></span><span>+5h</span>
       <span style="width:12px;height:12px;border-radius:3px;background:#991b1b;display:inline-block;"></span><span>+6h↑</span>
+      <span style="width:12px;height:12px;border-radius:3px;background:#f9a8d4;display:inline-block;margin-left:6px;"></span><span>8h 미달</span>
       <span style="margin-left:6px;border:1.5px solid #ef444466;width:12px;height:12px;border-radius:3px;display:inline-block;"></span><span>공휴일</span>
     </div>`;
 }
