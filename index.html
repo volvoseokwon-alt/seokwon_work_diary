@@ -68,7 +68,9 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 /* Alert */
 .alert-box{border-left:4px solid;padding:10px 14px;border-radius:6px;font-size:0.82rem;display:flex;flex-direction:column;gap:4px;}
 .alert-title{font-weight:700;font-size:0.85rem;}
-.alert-item{margin-left:12px;line-height:1.6;}
+.alert-item{margin-left:12px;line-height:1.6;display:flex;align-items:center;gap:4px;flex-wrap:wrap;}
+.alert-dismiss{margin-left:auto;cursor:pointer;opacity:0.45;font-weight:700;padding:0 6px;border-radius:4px;flex-shrink:0;user-select:none;}
+.alert-dismiss:hover{opacity:1;background:rgba(0,0,0,0.08);}
 /* Tabs */
 .tabs{display:flex;gap:2px;border-bottom:2px solid var(--border);flex-wrap:wrap;}
 .tab-btn{background:none;border:none;padding:8px 13px;cursor:pointer;font-size:0.85rem;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px;transition:.15s;white-space:nowrap;}
@@ -1792,6 +1794,7 @@ function checkAlerts(){
   listEl.innerHTML='';
   let items=[];
   projects.forEach(p=>{
+    if(p.alertDismissed && p.alertDismissed === p.lastAction) return; // X로 숨김 (새 활동 시 자동 해제)
     const days = inactiveDays(p);
     if(days>=14){
       const ic = inactiveColor(days);
@@ -1810,9 +1813,16 @@ function checkAlerts(){
   document.getElementById('alert-title').style.color = strongest.textColor;
   items.forEach(({p,days,textColor})=>{
     listEl.innerHTML+=`<div class="alert-item" style="color:${textColor}">
-      🛑 <strong>[${p.name}]</strong> ${days}일간 활동 없음 (마지막: ${p.lastAction})</div>`;
+      <span>🛑 <strong>[${p.name}]</strong> ${days}일간 활동 없음 (마지막: ${p.lastAction})</span>
+      <span class="alert-dismiss" title="이 알림 숨기기 (새 활동 시 다시 표시)" onclick="dismissAlert('${p.id}')">✕</span></div>`;
   });
   box.style.display='flex';
+}
+function dismissAlert(pid){
+  const p = projects.find(x=>x.id===pid);
+  if(!p) return;
+  p.alertDismissed = p.lastAction; // 현재 lastAction 기준으로 숨김 → 새 활동이 생기면 자동으로 다시 표시됨
+  saveAndRender();
 }
 
 /* ══════════════════════════════════════
