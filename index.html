@@ -213,6 +213,32 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
   .prog-cards{grid-template-columns:repeat(2,1fr);}
   .week-selector{overflow-x:auto;}
 }
+/* ===== 주차(Week) 표시 커스텀 달력 ===== */
+#wk-picker{position:fixed;z-index:99999;background:white;border:1px solid var(--border);border-radius:10px;
+  box-shadow:0 8px 28px rgba(0,0,0,0.18);padding:10px 12px;font-size:0.82rem;user-select:none;width:295px;}
+#wk-picker .wkp-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+#wk-picker .wkp-title{font-weight:700;font-size:0.9rem;}
+#wk-picker .wkp-nav{display:flex;gap:2px;}
+#wk-picker .wkp-nav button{border:none;background:none;cursor:pointer;font-size:1rem;padding:2px 8px;border-radius:6px;color:#444;}
+#wk-picker .wkp-nav button:hover{background:#f0f0f5;}
+#wk-picker table{border-collapse:collapse;width:100%;}
+#wk-picker th{font-weight:600;color:#888;padding:3px 0;font-size:0.72rem;text-align:center;}
+#wk-picker th.wkp-wcol,#wk-picker td.wkp-wcell{color:#7c6ee6;font-weight:700;font-size:0.7rem;
+  border-right:1px solid #eee;padding-right:5px;text-align:center;background:#faf9ff;}
+#wk-picker td{text-align:center;padding:0;}
+#wk-picker td .wkp-day{display:inline-flex;align-items:center;justify-content:center;width:30px;height:28px;
+  border-radius:6px;cursor:pointer;margin:1px 0;}
+#wk-picker td .wkp-day:hover{background:#eef0ff;}
+#wk-picker td .wkp-day.other{color:#c5c5c5;}
+#wk-picker td .wkp-day.today{background:#e8e8ee;font-weight:700;}
+#wk-picker td .wkp-day.sel{outline:2px solid #4646e0;font-weight:700;}
+#wk-picker td .wkp-day.sun{color:#d64545;}
+#wk-picker td .wkp-day.sun.other{color:#eab6b6;}
+#wk-picker tr.wkp-thisweek td.wkp-wcell{background:#efeaff;border-radius:4px;}
+#wk-picker .wkp-foot{display:flex;justify-content:space-between;align-items:center;margin-top:7px;font-size:0.78rem;}
+#wk-picker .wkp-foot button{border:none;background:none;color:#2f6fe0;cursor:pointer;font-size:0.78rem;padding:3px 6px;border-radius:5px;}
+#wk-picker .wkp-foot button:hover{background:#eef3ff;}
+#wk-picker .wkp-selinfo{color:#7c6ee6;font-weight:700;font-size:0.74rem;}
 </style>
 <!-- Firebase compat SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -5900,6 +5926,109 @@ document.getElementById('sidebar-note')?.addEventListener('input', ()=>{
     clearTimeout(_resizeTimer);
     _resizeTimer=setTimeout(()=>{ if(currentTab==='today') render(); }, 200);
   });
+})();
+
+// ===== 📅 주차(Week) 표시 커스텀 달력 =====
+// 모든 <input type="date">의 기본(native) 달력을 가로채서 ISO 주차(W1~W53) 컬럼이 있는 달력을 띄운다.
+// 날짜 선택 시 input/change 이벤트를 그대로 발생시켜 기존 로직과 100% 호환.
+(function(){
+  const WDAYS=['일','월','화','수','목','금','토'];
+  let popEl=null, curInput=null, viewY=0, viewM=0; // viewM: 0~11
+
+  function isoWeek(d){ // ISO-8601 주차 (월요일 시작, 목요일 기준)
+    const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+    const dow=t.getUTCDay()||7;
+    t.setUTCDate(t.getUTCDate()+4-dow);
+    const yStart=new Date(Date.UTC(t.getUTCFullYear(),0,1));
+    return Math.ceil(((t-yStart)/86400000+1)/7);
+  }
+  const pad=n=>String(n).padStart(2,'0');
+  const fmt=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+
+  function build(){
+    const today=new Date(); const todayStr=fmt(today);
+    const selStr=curInput.value||'';
+    const first=new Date(viewY,viewM,1);
+    const gridStart=new Date(viewY,viewM,1-first.getDay()); // 일요일 시작
+    let html=`<div class="wkp-head">
+      <span class="wkp-title">${viewY}년 ${viewM+1}월</span>
+      <span class="wkp-nav">
+        <button type="button" data-nav="-1" title="이전 달">▲</button>
+        <button type="button" data-nav="1" title="다음 달">▼</button>
+      </span></div>
+      <table><tr><th class="wkp-wcol">W</th>${WDAYS.map(w=>`<th>${w}</th>`).join('')}</tr>`;
+    for(let r=0;r<6;r++){
+      const rowStart=new Date(gridStart); rowStart.setDate(gridStart.getDate()+r*7);
+      // 주차는 ISO(월요일 기준)이므로 해당 주의 목요일 날짜로 계산
+      const thu=new Date(rowStart); thu.setDate(rowStart.getDate()+4);
+      const wk=isoWeek(thu);
+      const isThisWeek=(()=>{const e=new Date(rowStart);e.setDate(e.getDate()+6);return today>=rowStart&&today<=new Date(e.getFullYear(),e.getMonth(),e.getDate(),23,59,59);})();
+      html+=`<tr${isThisWeek?' class="wkp-thisweek"':''}><td class="wkp-wcell">W${wk}</td>`;
+      for(let c=0;c<7;c++){
+        const d=new Date(rowStart); d.setDate(rowStart.getDate()+c);
+        const ds=fmt(d);
+        const cls=['wkp-day'];
+        if(d.getMonth()!==viewM)cls.push('other');
+        if(ds===todayStr)cls.push('today');
+        if(ds===selStr)cls.push('sel');
+        if(c===0)cls.push('sun');
+        html+=`<td><span class="${cls.join(' ')}" data-date="${ds}">${d.getDate()}</span></td>`;
+      }
+      html+='</tr>';
+    }
+    const selInfo=selStr?`선택: W${isoWeek(new Date(selStr+'T00:00:00'))}`:`오늘: W${isoWeek(today)}`;
+    html+=`</table><div class="wkp-foot">
+      <button type="button" data-act="clear">지우기</button>
+      <span class="wkp-selinfo">${selInfo}</span>
+      <button type="button" data-act="today">오늘</button></div>`;
+    popEl.innerHTML=html;
+  }
+
+  function position(){
+    const r=curInput.getBoundingClientRect();
+    const pw=popEl.offsetWidth||295, ph=popEl.offsetHeight||300;
+    let top=r.bottom+4, left=r.left;
+    if(top+ph>window.innerHeight-8) top=Math.max(8,r.top-ph-4);
+    if(left+pw>window.innerWidth-8) left=Math.max(8,window.innerWidth-pw-8);
+    popEl.style.top=top+'px'; popEl.style.left=left+'px';
+  }
+
+  function open(input){
+    curInput=input;
+    const base=input.value?new Date(input.value+'T00:00:00'):new Date();
+    viewY=base.getFullYear(); viewM=base.getMonth();
+    if(!popEl){
+      popEl=document.createElement('div'); popEl.id='wk-picker';
+      document.body.appendChild(popEl);
+      popEl.addEventListener('mousedown',e=>e.preventDefault()); // input blur 방지
+      popEl.addEventListener('click',e=>{
+        const nav=e.target.closest('[data-nav]');
+        if(nav){viewM+=+nav.dataset.nav; if(viewM<0){viewM=11;viewY--;} if(viewM>11){viewM=0;viewY++;} build(); return;}
+        const day=e.target.closest('[data-date]');
+        if(day){setVal(day.dataset.date); close(); return;}
+        const act=e.target.closest('[data-act]');
+        if(act){ if(act.dataset.act==='today') setVal(fmt(new Date())); else setVal(''); close(); }
+      });
+    }
+    build(); popEl.style.display='block'; position();
+  }
+  function close(){ if(popEl)popEl.style.display='none'; curInput=null; }
+  function setVal(v){
+    if(!curInput)return;
+    curInput.value=v;
+    curInput.dispatchEvent(new Event('input',{bubbles:true}));
+    curInput.dispatchEvent(new Event('change',{bubbles:true}));
+  }
+
+  // 모든 date input 클릭을 가로채 native 달력 대신 커스텀 달력 표시
+  document.addEventListener('mousedown',e=>{
+    const inp=e.target.closest('input[type="date"]');
+    if(inp){ e.preventDefault(); if(curInput===inp&&popEl&&popEl.style.display==='block'){close();} else open(inp); return; }
+    if(popEl&&popEl.style.display==='block'&&!e.target.closest('#wk-picker')) close();
+  },true);
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape') close(); });
+  window.addEventListener('resize',()=>{ if(curInput&&popEl&&popEl.style.display==='block') position(); });
+  window.addEventListener('scroll',()=>{ if(curInput&&popEl&&popEl.style.display==='block') position(); },true);
 })();
 </script>
 </body>
