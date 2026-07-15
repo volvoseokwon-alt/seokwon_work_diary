@@ -592,6 +592,8 @@ ZB 교체 둘</textarea>
           <strong>🔗 자주 가는 링크</strong>
           <span style="font-size:0.78rem;color:var(--muted);">업무용/개인용 등 그룹으로 정리</span>
           <button class="btn-primary" style="margin-left:auto;font-size:0.8rem;padding:6px 14px;" onclick="openAddLinkModal()">+ 링크 추가</button>
+          <button style="font-size:0.78rem;padding:6px 12px;border:1.5px solid var(--border);border-radius:6px;background:white;cursor:pointer;color:#555;" title="백업 JSON에서 링크만 가져오기 (다른 데이터는 그대로 유지)" onclick="document.getElementById('restore-links-file-input').click()">📤 백업에서 링크만 복원</button>
+          <input type="file" id="restore-links-file-input" accept=".json" style="display:none;" onchange="restoreLinksFromFile(this.files[0]);this.value='';">
         </div>
         <div id="links-groups" style="margin-top:14px;"></div>
       </div>
@@ -1381,6 +1383,7 @@ function restoreFromFile(file){
       repeatTasks = data.repeatTasks || [];
       calMemos = data.calMemos || {};
       taskTags = data.taskTags || {};
+      if (data.quickLinks) quickLinks = data.quickLinks; // 🐛 fix: 전체 복원 시 링크가 빠져있던 문제
       customHolidays = data.customHolidays || [];
       dailyPlans = data.dailyPlans || {};
       const noteEl = document.getElementById('sidebar-note');
@@ -1391,6 +1394,57 @@ function restoreFromFile(file){
       alert('복원이 완료되었습니다. 서버에도 저장됩니다.');
     } catch(err) {
       alert('백업 파일을 읽는 데 실패했습니다. 올바른 백업 파일인지 확인해주세요.');
+      console.error(err);
+    }
+  };
+  reader.readAsText(file);
+}
+
+/* 🔗 백업 파일에서 링크(quickLinks)만 선택 복원 — 다른 데이터는 건드리지 않음 */
+function restoreLinksFromFile(file){
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      const bkLinks = data.quickLinks;
+      if (!Array.isArray(bkLinks) || bkLinks.length === 0) {
+        alert('이 백업 파일에는 저장된 링크가 없습니다.\n(quickLinks 항목이 비어있음)\n\n다른 날짜의 백업 파일을 열어보세요.');
+        return;
+      }
+      // 현재 목록과 합치기: URL(없으면 제목) 기준으로 이미 있는 링크는 건너뜀
+      const keyOf = l => (l.url || '').trim().toLowerCase() || ('t:'+(l.title||'').trim());
+      const existing = new Set(quickLinks.map(keyOf));
+      const toAdd = bkLinks.filter(l => !existing.has(keyOf(l)));
+
+      const preview = toAdd.slice(0,8).map(l=>` • ${l.icon||'🔗'} ${l.title||l.url}`).join('\n')
+        + (toAdd.length>8 ? `\n … 외 ${toAdd.length-8}개` : '');
+      if (toAdd.length === 0) {
+        alert(`백업에 링크 ${bkLinks.length}개가 있지만,\n모두 현재 목록에 이미 존재합니다. 추가할 링크가 없어요.`);
+        return;
+      }
+      const confirmed = confirm(
+        `백업 시각: ${data._backupAt || '알수없음'}\n`+
+        `백업 속 링크: ${bkLinks.length}개 / 새로 추가될 링크: ${toAdd.length}개\n\n`+
+        `${preview}\n\n`+
+        `현재 링크(${quickLinks.length}개)는 그대로 두고 위 링크만 추가합니다.\n`+
+        `업무/프로젝트 등 다른 데이터는 전혀 변경되지 않습니다.\n계속하시겠습니까?`
+      );
+      if (!confirmed) return;
+
+      // id 충돌 방지: 기존 id와 겹치면 새 id 부여
+      const usedIds = new Set(quickLinks.map(l=>l.id));
+      toAdd.forEach(l => {
+        if (!l.id || usedIds.has(l.id)) l.id = 'lk_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+        usedIds.add(l.id);
+        quickLinks.push(l);
+      });
+
+      renderLinks();
+      saveToFirebase();
+      alert(`✅ 링크 ${toAdd.length}개를 복원했습니다. (총 ${quickLinks.length}개)`);
+    } catch(err) {
+      alert('백업 파일을 읽는 데 실패했습니다. 올바른 백업 JSON 파일인지 확인해주세요.');
       console.error(err);
     }
   };
