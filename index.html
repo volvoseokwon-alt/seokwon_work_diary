@@ -404,8 +404,12 @@ ZB 교체 둘</textarea>
             <option value="B1" style="color:#f59e0b">B1</option><option value="B2" style="color:#f59e0b" selected>B2</option><option value="B3" style="color:#f59e0b">B3</option>
             <option value="C1" style="color:#10b981">C1</option><option value="C2" style="color:#10b981">C2</option><option value="C3" style="color:#10b981">C3</option>
           </select>
-          <div class="date-grp"><label>시작</label><input type="date" id="start-date"></div>
-          <div class="date-grp"><label>종료</label><input type="date" id="end-date"></div>
+          <div class="date-grp" id="add-date-start-grp"><label>시작</label><input type="date" id="start-date"></div>
+          <div class="date-grp" id="add-date-end-grp"><label>종료</label><input type="date" id="end-date"></div>
+          <label id="add-park-label" title="날짜를 정하지 않고 보류함에 담아둡니다 (타임라인/통계 제외)"
+            style="display:flex;align-items:center;gap:4px;font-size:0.76rem;font-weight:700;color:#7c3aed;background:#f5f3ff;border:1.5px solid #ddd6fe;border-radius:6px;padding:5px 8px;cursor:pointer;white-space:nowrap;">
+            <input type="checkbox" id="task-parked" onchange="toggleParkInput(this.checked)" style="cursor:pointer;">📥 보류
+          </label>
           <button class="btn-primary" onclick="addTask()">추가</button>
         </div>
       </div>
@@ -416,6 +420,19 @@ ZB 교체 둘</textarea>
         </label>
       </div>
       <div class="task-list" id="task-list"></div>
+
+      <!-- ═══ 보류함 (Parking Lot) — 날짜 미정 업무 ═══ -->
+      <div class="card" id="parking-lot-card" style="margin-top:12px;border:1.5px dashed #c4b5fd;background:#faf9ff;">
+        <div style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;" onclick="toggleParkingLotOpen()">
+          <span style="font-size:0.85rem;font-weight:800;color:#7c3aed;">📥 보류함 (Parking Lot)</span>
+          <span id="parking-lot-count" style="background:#7c3aed;color:white;font-size:0.7rem;font-weight:800;border-radius:9px;padding:1px 8px;">0</span>
+          <span style="font-size:0.72rem;color:var(--muted);">일정 미정 · 타임라인/통계/알림에서 제외</span>
+          <span id="parking-lot-arrow" style="margin-left:auto;font-size:0.72rem;color:var(--muted);">▼</span>
+        </div>
+        <div id="parking-lot-body" style="margin-top:9px;">
+          <div id="parking-lot-list"></div>
+        </div>
+      </div>
     </div>
 
     <!-- 홈 대시보드 -->
@@ -811,7 +828,11 @@ ZB 교체 둘</textarea>
       <select id="edit-sub-project" style="flex:1;padding:8px;border:1.5px solid var(--border);border-radius:6px;font-size:0.85rem;" onchange="onSubProjSelectChange('edit-sub-project','edit-sub-project-custom')"></select>
       <input type="text" id="edit-sub-project-custom" placeholder="하위 분류명 입력" style="display:none;flex:1;padding:7px 10px;border:1.5px solid var(--primary);border-radius:6px;font-size:0.85rem;">
     </div>
-    <div style="display:flex;gap:8px;">
+    <label style="display:flex;align-items:center;gap:6px;font-size:0.8rem;font-weight:700;color:#7c3aed;background:#f5f3ff;border:1.5px solid #ddd6fe;border-radius:6px;padding:7px 9px;cursor:pointer;">
+      <input type="checkbox" id="edit-parked" onchange="toggleEditParkInput(this.checked)" style="cursor:pointer;">
+      📥 보류함에 두기 (날짜 미정 — 타임라인/통계 제외)
+    </label>
+    <div style="display:flex;gap:8px;" id="edit-date-wrap">
       <div class="date-grp" style="flex:1;"><label>시작</label><input type="date" id="edit-start" style="flex:1;padding:7px;border:1.5px solid var(--border);border-radius:6px;font-size:0.8rem;"></div>
       <div class="date-grp" style="flex:1;"><label>종료</label><input type="date" id="edit-end" style="flex:1;padding:7px;border:1.5px solid var(--border);border-radius:6px;font-size:0.8rem;"></div>
     </div>
@@ -1549,6 +1570,7 @@ function getTaskProgress(t){
 
 // 경과율 계산: 시작일~종료일 중 오늘이 몇%인지
 function getTimeElapsedPct(t){
+  if(t.parked||!t.start||!t.end) return 0; // 보류함 업무는 기간 개념이 없음
   const todayD=new Date(TODAY.getFullYear(),TODAY.getMonth(),TODAY.getDate());
   const s=new Date(t.start); const sD=new Date(s.getFullYear(),s.getMonth(),s.getDate());
   const e=new Date(t.end);   const eD=new Date(e.getFullYear(),e.getMonth(),e.getDate());
@@ -1702,11 +1724,23 @@ const proj = id => {
 };
 const todayMs = TODAY.getTime();
 
-function isOverdue(t){ const e=d(t.end); const todayD=new Date(TODAY.getFullYear(),TODAY.getMonth(),TODAY.getDate()); const eD=new Date(e.getFullYear(),e.getMonth(),e.getDate()); return !t.done && eD<todayD; }
+function isOverdue(t){ if(t.parked||!t.end) return false; const e=d(t.end); const todayD=new Date(TODAY.getFullYear(),TODAY.getMonth(),TODAY.getDate()); const eD=new Date(e.getFullYear(),e.getMonth(),e.getDate()); return !t.done && eD<todayD; }
 function isEarly(t){  return t.done && t.actualEnd && d(t.actualEnd)<d(t.end); }
+/* ── 보류함(Parking Lot) ──────────────────────────────
+   t.parked === true 인 업무는 시작/종료일이 없다(start/end = null).
+   filteredTasks()에서 아예 걸러내므로 타임라인·홈 통계·마감알림·리포트 등
+   날짜 기반 로직은 전혀 건드리지 않아도 자동으로 제외된다.
+   화면에는 할 일 목록 아래 별도 "보류함" 카드로만 나타난다.        */
+function isParked(t){ return !!t.parked; }
+
 function filteredTasks(){
-  if(currentFilter==='all') return tasks.filter(t=>!hiddenProjects.has(t.project));
-  return tasks.filter(t=>t.project===currentFilter);
+  if(currentFilter==='all') return tasks.filter(t=>!t.parked && !hiddenProjects.has(t.project));
+  return tasks.filter(t=>!t.parked && t.project===currentFilter);
+}
+// 보류함 목록 (현재 프로젝트 필터 / 숨김 프로젝트 설정을 동일하게 적용)
+function parkedTasks(){
+  if(currentFilter==='all') return tasks.filter(t=>t.parked && !hiddenProjects.has(t.project));
+  return tasks.filter(t=>t.parked && t.project===currentFilter);
 }
 
 /* ISO week number */
@@ -2279,6 +2313,7 @@ function renderTaskList(list){
             onchange="setDailyActual(${t.id}, this.value, this.dataset.logDate)">h
         </span>`:''}
         <div style="display:flex;gap:5px;flex-shrink:0;">
+          ${!t.done?`<button class="btn-sm" style="background:#ede9fe;color:#6d28d9;font-weight:700;" onclick="parkTask(${t.id})" onmousedown="event.stopPropagation()" draggable="false" title="날짜를 지우고 보류함으로 보냅니다">📥</button>`:''}
           <button class="btn-sm" style="background:var(--pri-light);color:var(--primary)" onclick="openEdit(${t.id})" onmousedown="event.stopPropagation()" draggable="false">수정</button>
           <button class="btn-sm" style="background:#fee2e2;color:var(--warn)" onclick="deleteTask(${t.id})" onmousedown="event.stopPropagation()" draggable="false">삭제</button>
         </div>
@@ -2501,7 +2536,7 @@ function renderProgress(){
   const bEl=document.getElementById('project-bars');
   bEl.innerHTML='';
   projects.forEach(p=>{
-    const pt=tasks.filter(t=>t.project===p.id);
+    const pt=tasks.filter(t=>t.project===p.id && !t.parked); // 보류함은 진행률 계산에서 제외
     if(!pt.length) return;
     const pd=pt.filter(t=>t.done).length;
     // 평균 진행률 (완료=100% 포함)
@@ -2798,7 +2833,7 @@ function taskDrop(e, targetTid, targetPrio){
   e.currentTarget.classList.remove('drag-over');
   if(!dragTaskId || dragTaskId===targetTid || dragTaskPrio!==targetPrio) return;
   // 같은 priority 그룹 내에서 subOrder 재정렬
-  const samePrio=tasks.filter(t=>(t.priority||'')===(dragTaskPrio||'')).sort((a,b)=>(a.subOrder||0)-(b.subOrder||0));
+  const samePrio=tasks.filter(t=>(t.priority||'')===(dragTaskPrio||'') && !t.parked).sort((a,b)=>(a.subOrder||0)-(b.subOrder||0));
   const fromIdx=samePrio.findIndex(t=>t.id===dragTaskId);
   const toIdx=samePrio.findIndex(t=>t.id===targetTid);
   if(fromIdx<0||toIdx<0) return;
@@ -2812,6 +2847,7 @@ function taskDrop(e, targetTid, targetPrio){
     const ft=filteredTasks();
     renderTaskList(ft);
     renderGantt(sortTasksForDisplay(ft, currentFilter!=='all' || showSubProjGroupsInAll));
+    renderParkingLot();
   } else if(currentTab==='home'){
     renderHome();
   }
@@ -2853,7 +2889,7 @@ function renderTrash(){
         <span style="font-size:1.2rem">📋</span>
         <div class="ti-meta">
           <div class="ti-name">${t.text}</div>
-          <div class="ti-sub"><span style="color:${p.color}">${p.name}</span> · ${t.start}~${t.end} · 삭제일: ${item.deletedAt}</div>
+          <div class="ti-sub"><span style="color:${p.color}">${p.name}</span> · ${t.parked?'📥 보류함(날짜 미정)':`${t.start}~${t.end}`} · 삭제일: ${item.deletedAt}</div>
         </div>
         <button class="btn-sm" style="background:var(--pri-light);color:var(--primary)" onclick="restoreTrash(${i})">복원</button>
         <button class="btn-sm" style="background:#fee2e2;color:var(--warn)" onclick="permanentDelete(${i})">영구삭제</button>
@@ -3152,6 +3188,7 @@ function setTaskStatus(id, status){
   const ft=filteredTasks();
   renderTaskList(ft);
   renderGantt(sortTasksForDisplay(ft, currentFilter!=='all' || showSubProjGroupsInAll));
+  renderParkingLot();
   calcScore();
   if(typeof renderHome === 'function' && currentTab === 'home') renderHome();
 }
@@ -3883,7 +3920,7 @@ function renderSearch(){
         <span style="background:${p.color}22;color:${p.color};font-size:0.72rem;font-weight:700;padding:2px 7px;border-radius:4px;">${p.name}</span>
         <span style="font-size:0.85rem;flex:1;">${hl(t.text)}</span>
         <span class="status-chip" ${t.done?`onclick="editCompleteDate(${t.id})" title="클릭하여 완료일 변경" style="background:${stI.color};font-size:0.7rem;cursor:pointer;"`:`style="background:${stI.color};font-size:0.7rem;"`}>${stI.icon} ${stI.label}</span>
-        <span class="date-badge">${fmt(t.start)}~${fmt(t.end)}</span>
+        ${t.parked?`<span class="date-badge" style="background:#f5f3ff;color:#7c3aed;border-color:#ddd6fe;">📥 보류함</span>`:`<span class="date-badge">${fmt(t.start)}~${fmt(t.end)}</span>`}
       </div>
       ${t.memo?`<div style="margin-top:5px;font-size:0.78rem;color:var(--muted);padding:4px 8px;background:#f8fafc;border-radius:4px;">📝 ${hl(t.memo)}</div>`:''}
     </div>`;
@@ -4059,7 +4096,7 @@ function checkDeadlineAlert(){
   if(h<6||alreadyShown) return;
 
   const todayD=new Date(TODAY.getFullYear(),TODAY.getMonth(),TODAY.getDate());
-  const deadlines=tasks.filter(t=>!t.done).map(t=>{
+  const deadlines=tasks.filter(t=>!t.done && !t.parked).map(t=>{
     const eD=new Date(t.end); const end=new Date(eD.getFullYear(),eD.getMonth(),eD.getDate());
     return{...t,_diff:Math.ceil((end-todayD)/86400000)};
   }).filter(t=>t._diff<=3).sort((a,b)=>a._diff-b._diff);
@@ -4744,7 +4781,7 @@ function generateReport(){
 
   // ── 현재 보유 업무 현황 (이 기간에 걸쳐있는 미완료 업무 전체) — 팀장이 가장 궁금해할 부분
   const activeTasks = tasks.filter(t=>{
-    if(t.done) return false;
+    if(t.done || t.parked) return false; // 보류함(일정 미정)은 기간 집계에서 제외
     return t.start<=endKey && t.end>=startKey; // 기간과 겹치는 업무
   });
   const byPrioCount={A:0,B:0,C:0};
@@ -5344,6 +5381,7 @@ function render(){
   if(currentTab==='today'){
     renderGantt(sortTasksForDisplay(ft, currentFilter!=='all' || showSubProjGroupsInAll));
     renderTaskList(ft);
+    renderParkingLot();
   }
   else if(currentTab==='home'){ renderHome(); }
   else if(currentTab==='calendar'){ renderCalendar(); }
@@ -5430,15 +5468,140 @@ function addTask(){
   const start=document.getElementById('start-date').value;
   const end=document.getElementById('end-date').value;
   const priority=document.getElementById('task-priority').value;
-  if(!text||!start||!end) return;
+  const parked=!!document.getElementById('task-parked')?.checked;
+  if(!text) return;
+  if(!parked && (!start||!end)) return;
   // Firestore는 undefined 값이 섞인 객체를 저장하면 에러를 던지므로(저장 실패의 주 원인),
   // subProject가 없을 때는 그 키를 아예 넣지 않는다 (undefined로 채우지 않음).
-  const newTask={id:Date.now(),text,project:projId,done:false,start,end,actualEnd:null,priority,status:'not_started'};
+  // 보류함 업무는 start/end를 null로 둔다 (undefined 금지 — Firestore 저장 실패 방지).
+  const newTask={id:Date.now(),text,project:projId,done:false,
+    start:parked?null:start, end:parked?null:end,
+    actualEnd:null,priority,status:'not_started'};
+  if(parked) newTask.parked=true;
   if(subProject) newTask.subProject=subProject;
   tasks.push(newTask);
   touchProject(projId);
   document.getElementById('task-input').value='';
   saveAndRender();
+}
+
+/* ══════════════════════════════════════
+   PARKING LOT (보류함) — 날짜 미정 업무
+══════════════════════════════════════ */
+let parkingLotOpen = true;
+
+// 추가 폼의 "보류" 체크 → 날짜 입력칸 비활성화
+function toggleParkInput(on){
+  ['start-date','end-date'].forEach(id=>{
+    const el=document.getElementById(id); if(!el) return;
+    el.disabled=on; el.style.opacity=on?'0.35':'1';
+  });
+  ['add-date-start-grp','add-date-end-grp'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.style.opacity=on?'0.4':'1';
+  });
+}
+// 수정 모달의 "보류" 체크 → 날짜 입력칸 비활성화
+function toggleEditParkInput(on){
+  ['edit-start','edit-end'].forEach(id=>{
+    const el=document.getElementById(id); if(!el) return;
+    el.disabled=on; el.style.opacity=on?'0.35':'1';
+  });
+  const wrap=document.getElementById('edit-date-wrap');
+  if(wrap) wrap.style.opacity=on?'0.4':'1';
+}
+
+function toggleParkingLotOpen(){
+  parkingLotOpen=!parkingLotOpen;
+  const body=document.getElementById('parking-lot-body');
+  const arw=document.getElementById('parking-lot-arrow');
+  if(body) body.style.display=parkingLotOpen?'':'none';
+  if(arw) arw.textContent=parkingLotOpen?'▼':'▶';
+}
+
+// 기존 업무 → 보류함으로 보내기 (날짜 백업 후 제거)
+function parkTask(id){
+  tasks=tasks.map(t=>{
+    if(t.id!==id) return t;
+    touchProject(t.project);
+    return {...t, parked:true, _prevStart:t.start||null, _prevEnd:t.end||null, start:null, end:null};
+  });
+  saveAndRender();
+}
+
+// 보류함 → 일정 지정하며 꺼내기 (수정 모달을 열어 날짜를 정하게 함)
+function unparkTask(id){
+  const t=tasks.find(x=>x.id===id); if(!t) return;
+  openEdit(id);
+  const cb=document.getElementById('edit-parked');
+  if(cb){ cb.checked=false; toggleEditParkInput(false); }
+  // 이전에 쓰던 날짜가 있으면 그대로, 없으면 오늘 ~ 오늘+6일 기본값
+  const defEnd=(()=>{ const dd=new Date(TODAY.getFullYear(),TODAY.getMonth(),TODAY.getDate()+6);
+    return `${dd.getFullYear()}-${String(dd.getMonth()+1).padStart(2,'0')}-${String(dd.getDate()).padStart(2,'0')}`; })();
+  document.getElementById('edit-start').value = t._prevStart || TODAY_STR;
+  document.getElementById('edit-end').value   = t._prevEnd   || defEnd;
+}
+
+function renderParkingLot(){
+  const el=document.getElementById('parking-lot-list');
+  const cntEl=document.getElementById('parking-lot-count');
+  if(!el) return;
+  const list=parkedTasks().filter(t=>!t.done);
+  if(cntEl) cntEl.textContent=list.length;
+
+  const body=document.getElementById('parking-lot-body');
+  const arw=document.getElementById('parking-lot-arrow');
+  if(body) body.style.display=parkingLotOpen?'':'none';
+  if(arw) arw.textContent=parkingLotOpen?'▼':'▶';
+
+  el.innerHTML='';
+  if(!list.length){
+    el.innerHTML='<div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:14px 0;">'
+      +'비어 있음 — 날짜를 정하기 애매한 업무는 위에서 <b style="color:#7c3aed;">📥 보류</b>에 체크하고 추가하세요.</div>';
+    return;
+  }
+  // 우선순위 → subOrder 순
+  const sorted=[...list].sort((a,b)=>prioSort(a,b)||((a.subOrder||0)-(b.subOrder||0)));
+  let lastPrio=null;
+  sorted.forEach(t=>{
+    const prio=t.priority||'';
+    if(prio!==lastPrio){
+      const lbl=document.createElement('div');
+      lbl.className='prio-group-label';
+      lbl.innerHTML=`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${prioColor(prio)};margin-right:4px;vertical-align:middle;"></span>${prio[0]==='A'?'긴급':prio[0]==='B'?'중요':'일반'} (${prio[0]||'-'})`;
+      el.appendChild(lbl);
+      lastPrio=prio;
+    }
+    const p=proj(t.project);
+    const item=document.createElement('div');
+    item.className='task-item';
+    item.style.cssText='background:white;border-left:3px solid #a78bfa;';
+    item.innerHTML=`
+      <div style="display:flex;align-items:center;gap:8px;width:100%;">
+        <span style="flex-shrink:0;font-size:0.8rem;">📥</span>
+        ${prio?`<span onclick="event.stopPropagation();showPriorityPicker(event, ${t.id})" title="클릭하여 우선순위 변경" style="background:${prioColor(prio)};color:white;font-size:0.7rem;font-weight:800;padding:2px 6px;border-radius:4px;min-width:26px;text-align:center;flex-shrink:0;cursor:pointer;">${prio}</span>`:''}
+        <span class="p-badge" style="background:${p.color}22;color:${p.color};flex-shrink:0">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
+        <span class="task-text" ondblclick="event.stopPropagation();startInlineEditTaskText(${t.id}, this)" title="더블클릭하여 수정" style="font-size:0.85rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;">${t.text}</span>
+        <span onclick="event.stopPropagation();toggleTaskMemo(${t.id})"
+          title="${t.memo?t.memo.slice(0,40)+(t.memo.length>40?'...':''):'메모 추가'}"
+          style="font-size:0.78rem;cursor:pointer;flex-shrink:0;display:inline-flex;align-items:center;padding:2px 6px;border-radius:5px;
+            ${t.memo?'background:#fef9c3;color:#92660d;font-weight:700;border:1px solid #fde68a;':'background:transparent;color:#cbd5e1;border:1px dashed #cbd5e1;'}">📝</span>
+        <span class="date-badge" style="flex-shrink:0;background:#f5f3ff;color:#7c3aed;border-color:#ddd6fe;">날짜 미정</span>
+        <div style="display:flex;gap:5px;flex-shrink:0;">
+          <button class="btn-sm" style="background:#ede9fe;color:#6d28d9;font-weight:700;" onclick="unparkTask(${t.id})" title="시작/종료일을 정해서 일정(타임라인)으로 올립니다">📅 일정 지정</button>
+          <button class="btn-sm" style="background:var(--pri-light);color:var(--primary)" onclick="openEdit(${t.id})">수정</button>
+          <button class="btn-sm" style="background:#fee2e2;color:var(--warn)" onclick="deleteTask(${t.id})">삭제</button>
+        </div>
+      </div>
+      <div id="task-memo-${t.id}" style="display:none;margin-top:8px;padding:10px;background:#f8fafc;border-radius:6px;border-left:3px solid var(--primary);">
+        <textarea id="task-memo-ta-${t.id}" placeholder="메모 (예: 왜 보류중인지, 언제쯤 다시 볼지...)"
+          style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:0.82rem;resize:vertical;min-height:60px;font-family:inherit;background:white;color:${t.memoStyle?.color||'#1e293b'};font-weight:${t.memoStyle?.bold?'700':'400'};"
+          onblur="saveTaskMemo(${t.id},this.value)">${t.memo||''}</textarea>
+      </div>`;
+    item.style.flexDirection='column';
+    item.style.alignItems='stretch';
+    item.style.gap='0';
+    el.appendChild(item);
+  });
 }
 function deleteTask(id){
   const t=tasks.find(x=>x.id===id); if(!t) return;
@@ -5449,6 +5612,10 @@ function deleteTask(id){
 }
 function duplicateTask(id){
   const t=tasks.find(x=>x.id===id); if(!t) return;
+  if(t.parked){ // 보류함 업무는 날짜 없이 그대로 복제
+    tasks.push({...t, id:Date.now(), done:false, actualEnd:null, status:'not_started', memo:'', memoStyle:undefined});
+    touchProject(t.project); saveAndRender(); return;
+  }
   // 원래 기간 길이를 유지하면서 오늘부터 새로 시작
   const origStart=new Date(t.start);
   const origEnd=new Date(t.end);
@@ -5522,6 +5689,11 @@ function confirmCompleteDate(){
     if(t.id!==id) return t;
     touchProject(t.project);
     completedTask={...t, done:true, actualEnd:dateVal, status:statusToSet};
+    if(t.parked){ // 보류함 업무를 완료하면 완료일을 시작/종료일로 확정해 일반 완료 업무처럼 다룬다
+      delete completedTask.parked;
+      completedTask.start=t.start||t._prevStart||dateVal;
+      completedTask.end=dateVal;
+    }
     return completedTask;
   });
   if(completedTask){
@@ -5561,8 +5733,10 @@ function openEdit(id){
   const sel=document.getElementById('edit-project');
   sel.innerHTML=projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
   sel.value=t.project;
-  document.getElementById('edit-start').value=t.start;
-  document.getElementById('edit-end').value=t.end;
+  document.getElementById('edit-start').value=t.start||'';
+  document.getElementById('edit-end').value=t.end||'';
+  const pcb=document.getElementById('edit-parked');
+  if(pcb){ pcb.checked=!!t.parked; toggleEditParkInput(!!t.parked); }
   document.getElementById('edit-priority').value=t.priority||'B2';
   syncSubProjSelect('edit-project','edit-sub-project',t.subProject||'');
   openModal('modal-edit');
@@ -5574,10 +5748,22 @@ function saveEdit(){
   const start=document.getElementById('edit-start').value;
   const end=document.getElementById('edit-end').value;
   const priority=document.getElementById('edit-priority').value;
-  if(!text||!start||!end) return;
+  const parked=!!document.getElementById('edit-parked')?.checked;
+  if(!text) return;
+  if(!parked && (!start||!end)){ alert('시작일/종료일을 입력하거나 "보류함에 두기"를 체크하세요.'); return; }
   tasks=tasks.map(t=>{
     if(t.id!==editingId) return t;
-    const updated={...t,text,project:projId,start,end,priority};
+    const updated={...t,text,project:projId,priority};
+    if(parked){
+      // 보류함으로: 쓰던 날짜는 _prevStart/_prevEnd에 보관해뒀다가 나중에 꺼낼 때 기본값으로 씀
+      updated.parked=true;
+      updated._prevStart=t.start||t._prevStart||null;
+      updated._prevEnd=t.end||t._prevEnd||null;
+      updated.start=null; updated.end=null;
+    } else {
+      delete updated.parked;
+      updated.start=start; updated.end=end;
+    }
     if(subProject) updated.subProject=subProject; else delete updated.subProject;
     return updated;
   });
