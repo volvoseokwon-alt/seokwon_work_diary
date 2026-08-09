@@ -359,11 +359,6 @@ ZB 교체 둘</textarea>
   </div>
 
   <main>
-    <div class="alert-box" id="alert-section" style="display:none;">
-      <div class="alert-title" id="alert-title">⚠️ 장기 미활동 프로젝트</div>
-      <div id="alert-list"></div>
-    </div>
-
     <div class="tabs">
       <button class="tab-btn active" onclick="switchTab('today',this)">📋 할 일</button>
       <button class="tab-btn" onclick="switchTab('home',this)">🏠 홈</button>
@@ -620,9 +615,33 @@ ZB 교체 둘</textarea>
     <div id="tab-history" style="display:none;">
       <div class="card">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-          <strong>📂 완료된 프로젝트 히스토리</strong>
-          <span style="font-size:0.78rem;color:var(--muted);margin-left:4px;">완료 처리한 프로젝트와 업무 기록</span>
+          <strong>📂 완료 히스토리</strong>
+          <div style="display:flex;gap:0;margin-left:6px;border:1.5px solid var(--border);border-radius:7px;overflow:hidden;">
+            <button id="hist-mode-date" class="hist-mode-btn" onclick="setHistoryViewMode('date')">📅 날짜별</button>
+            <button id="hist-mode-project" class="hist-mode-btn" onclick="setHistoryViewMode('project')">📁 프로젝트별</button>
+          </div>
         </div>
+
+        <!-- 프로젝트별 뷰 전용 필터 -->
+        <div id="hist-proj-controls" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;padding:9px 11px;background:var(--bg);border-radius:8px;">
+          <label style="font-size:0.76rem;color:var(--muted);font-weight:700;">기간</label>
+          <select id="hist-range" onchange="renderHistory()" style="padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:0.78rem;background:white;">
+            <option value="all">전체</option>
+            <option value="this_month">이번 달</option>
+            <option value="last_3m">최근 3개월</option>
+            <option value="this_year">올해</option>
+          </select>
+          <label style="font-size:0.76rem;color:var(--muted);font-weight:700;margin-left:4px;">프로젝트</label>
+          <select id="hist-project" onchange="renderHistory()" style="padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:0.78rem;background:white;min-width:130px;"></select>
+          <label style="font-size:0.76rem;color:var(--muted);font-weight:700;margin-left:4px;">정렬</label>
+          <select id="hist-sort" onchange="renderHistory()" style="padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:0.78rem;background:white;">
+            <option value="asc">시간 순 (오래된 → 최근)</option>
+            <option value="desc">최근 → 오래된</option>
+          </select>
+          <button class="btn-sm" style="margin-left:auto;background:var(--pri-light);color:var(--primary);font-weight:700;" onclick="copyHistoryByProject()" title="지금 보이는 목록을 텍스트로 복사 (보고용)">📋 텍스트 복사</button>
+          <button class="btn-sm" style="background:#ecfdf5;color:#047857;font-weight:700;" onclick="downloadHistoryCsv()" title="지금 보이는 목록을 CSV로 저장">⬇️ CSV</button>
+        </div>
+
         <div id="history-list"></div>
       </div>
     </div>
@@ -842,6 +861,19 @@ ZB 교체 둘</textarea>
     </div>
   </div>
 </div>
+
+<style>
+.hist-mode-btn{padding:5px 12px;border:none;background:white;color:var(--muted);font-size:0.78rem;font-weight:700;cursor:pointer;transition:.12s;}
+.hist-mode-btn.active{background:var(--primary);color:#fff;}
+.hist-mode-btn:not(.active):hover{background:var(--pri-light);color:var(--primary);}
+.hp-card{border:1.5px solid var(--border);border-radius:9px;margin-bottom:10px;overflow:hidden;background:var(--card);}
+.hp-head{display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;user-select:none;}
+.hp-head:hover{background:var(--bg);}
+.hp-row{display:flex;align-items:flex-start;gap:9px;padding:6px 12px 6px 16px;border-top:1px solid #f1f5f9;font-size:0.82rem;}
+.hp-row:hover{background:#fafbff;}
+.hp-date{flex-shrink:0;font-size:0.73rem;color:#64748b;font-variant-numeric:tabular-nums;font-weight:700;min-width:52px;}
+.hp-month{padding:5px 12px 4px;background:#f8fafc;font-size:0.73rem;font-weight:800;color:#64748b;border-top:1px solid #eef2f7;}
+</style>
 
 <div class="modal" id="modal-complete-date">
   <div class="modal-box" style="max-width:340px;">
@@ -1903,9 +1935,12 @@ document.addEventListener('click', closeAllProjMenus);
    ALERT (gradient inactivity)
 ══════════════════════════════════════ */
 function checkAlerts(){
+  // 상단 "장기 미활동 프로젝트" 배너는 제거됨 (사이드바의 미활동 색점 표시는 그대로 유지)
+  const box = document.getElementById('alert-section');
+  if(box) box.style.display='none';
+  return;
+  /* eslint-disable no-unreachable */
   const listEl = document.getElementById('alert-list');
-  const box    = document.getElementById('alert-section');
-  listEl.innerHTML='';
   let items=[];
   projects.forEach(p=>{
     if(p.alertDismissed && p.alertDismissed === p.lastAction) return; // X로 숨김 (새 활동 시 자동 해제)
@@ -2944,7 +2979,222 @@ function emptyTrash(){
   renderTrash();
 }
 
+/* ══════════════════════════════════════
+   완료 히스토리 — 프로젝트별 / 시간순 보기
+   완료 업무는 두 군데에 있다:
+     1) completedProjects[].tasks  (주간 자동보관 + 완료 자동기록 + 프로젝트 완료 아카이브)
+     2) tasks 중 done===true       (아직 보관 전인 이번 주 완료분)
+   두 곳을 합쳐 id 기준 중복 제거 후 완료일 순으로 정렬한다.
+══════════════════════════════════════ */
+let historyViewMode = 'date';        // 'date' | 'project'
+let histOpenProjects = null;         // Set<projId> — 펼쳐진 프로젝트 (null이면 전부 펼침)
+
+function setHistoryViewMode(mode){
+  historyViewMode = mode;
+  renderHistory();
+}
+
+// 모든 완료 업무를 평탄한 배열로 수집
+function collectCompletedTasks(){
+  const out=[]; const seen=new Set();
+  const push=(t, projInfo, date, note)=>{
+    if(!date) return;
+    const key=t.id!=null?('id:'+t.id):('k:'+projInfo.id+'|'+t.text+'|'+date);
+    if(seen.has(key)) return;
+    seen.add(key);
+    out.push({
+      id:t.id, text:t.text||'', date,
+      projId:projInfo.id, projName:projInfo.name, projColor:projInfo.color,
+      priority:t.priority||'', subProject:t.subProject||'',
+      memo:t.memo||'', memoStyle:t.memoStyle||null,
+      note:note||''
+    });
+  };
+  // 1) 아카이브된 히스토리
+  completedProjects.forEach(cp=>{
+    const pi=cp.project||{id:'?',name:'기타',color:'#888'};
+    (cp.tasks||[]).forEach(t=>push(t, pi, t._completedAt||cp.completedAt, cp._archiveNote));
+  });
+  // 2) 아직 목록에 남아있는 완료 업무
+  tasks.forEach(t=>{
+    if(!t.done || !t.actualEnd) return;
+    const pi=proj(t.project);
+    push(t, {id:t.project, name:pi.name, color:pi.color}, t.actualEnd, '진행 목록에 있음');
+  });
+  return out;
+}
+
+// 기간 필터 시작일(YYYY-MM-DD) — 'all'이면 null
+function histRangeStart(){
+  const v=document.getElementById('hist-range')?.value||'all';
+  const y=TODAY.getFullYear(), m=TODAY.getMonth();
+  const f=dt=>`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+  if(v==='this_month') return f(new Date(y,m,1));
+  if(v==='last_3m')    return f(new Date(y,m-2,1));
+  if(v==='this_year')  return f(new Date(y,0,1));
+  return null;
+}
+
+// 현재 필터/정렬이 적용된 목록 (복사·CSV도 이걸 그대로 씀)
+function getHistoryProjectView(){
+  const startKey=histRangeStart();
+  const pFilter=document.getElementById('hist-project')?.value||'all';
+  const asc=(document.getElementById('hist-sort')?.value||'asc')==='asc';
+
+  let items=collectCompletedTasks();
+  if(startKey) items=items.filter(x=>x.date>=startKey);
+  if(pFilter!=='all') items=items.filter(x=>x.projId===pFilter);
+
+  // 프로젝트별 묶기
+  const byProj=new Map();
+  items.forEach(x=>{
+    if(!byProj.has(x.projId)) byProj.set(x.projId,{id:x.projId,name:x.projName,color:x.projColor,items:[]});
+    byProj.get(x.projId).items.push(x);
+  });
+  const groups=[...byProj.values()];
+  groups.forEach(g=>{
+    g.items.sort((a,b)=>asc?a.date.localeCompare(b.date):b.date.localeCompare(a.date));
+    g.first=g.items.reduce((m,x)=>!m||x.date<m?x.date:m,null);
+    g.last =g.items.reduce((m,x)=>!m||x.date>m?x.date:m,null);
+  });
+  // 프로젝트 순서: 완료 건수 많은 순 → 이름순
+  groups.sort((a,b)=>(b.items.length-a.items.length)||a.name.localeCompare(b.name,'ko'));
+  return {groups, total:items.length, asc};
+}
+
+// 프로젝트 필터 select 채우기 (완료 기록이 있는 프로젝트만)
+function syncHistProjectSelect(){
+  const sel=document.getElementById('hist-project'); if(!sel) return;
+  const prev=sel.value;
+  const seen=new Map();
+  collectCompletedTasks().forEach(x=>{ if(!seen.has(x.projId)) seen.set(x.projId,x.projName); });
+  const opts=[...seen.entries()].sort((a,b)=>a[1].localeCompare(b[1],'ko'));
+  sel.innerHTML=`<option value="all">전체 (${opts.length}개)</option>`
+    + opts.map(([id,name])=>`<option value="${id}">${name}</option>`).join('');
+  if(prev && [...seen.keys()].includes(prev)) sel.value=prev;
+}
+
+function toggleHistProject(pid){
+  if(histOpenProjects===null){
+    // 전부 펼침 상태 → 클릭한 것만 접는다
+    const {groups}=getHistoryProjectView();
+    histOpenProjects=new Set(groups.map(g=>g.id));
+  }
+  if(histOpenProjects.has(pid)) histOpenProjects.delete(pid); else histOpenProjects.add(pid);
+  renderHistory();
+}
+function histExpandAll(open){
+  const {groups}=getHistoryProjectView();
+  histOpenProjects = open ? new Set(groups.map(g=>g.id)) : new Set();
+  renderHistory();
+}
+
+function renderHistoryByProject(){
+  const el=document.getElementById('history-list');
+  syncHistProjectSelect();
+  const {groups,total,asc}=getHistoryProjectView();
+
+  if(!total){
+    el.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted);font-size:0.85rem;">해당 기간에 완료한 업무가 없습니다.</div>';
+    return;
+  }
+  const isOpen=pid=>histOpenProjects===null || histOpenProjects.has(pid);
+
+  const head=`<div style="display:flex;align-items:center;gap:8px;margin:12px 0 9px;">
+      <span style="font-size:0.8rem;font-weight:800;color:var(--primary);">총 ${total}건 완료 · 프로젝트 ${groups.length}개</span>
+      <button class="btn-sm" style="margin-left:auto;background:var(--bg);color:var(--muted);" onclick="histExpandAll(true)">모두 펼치기</button>
+      <button class="btn-sm" style="background:var(--bg);color:var(--muted);" onclick="histExpandAll(false)">모두 접기</button>
+    </div>`;
+
+  el.innerHTML = head + groups.map(g=>{
+    const open=isOpen(g.id);
+    const period = g.first===g.last ? fmt(g.first) : `${fmt(g.first)} ~ ${fmt(g.last)}`;
+    let lastMonth=null;
+    const rows = open ? g.items.map(x=>{
+      const ym=x.date.slice(0,7);
+      let monthHdr='';
+      if(ym!==lastMonth){
+        lastMonth=ym;
+        const cnt=g.items.filter(y=>y.date.slice(0,7)===ym).length;
+        monthHdr=`<div class="hp-month">${ym.replace('-','년 ')}월 · ${cnt}건</div>`;
+      }
+      const wd=(()=>{ try{ const dt=new Date(x.date+'T00:00:00'); return ['일','월','화','수','목','금','토'][dt.getDay()]; }catch(e){return '';} })();
+      const pc=prioColor(x.priority||'');
+      return monthHdr + `<div class="hp-row">
+        <span class="hp-date" title="${x.date}(${wd})">${fmt(x.date)}<span style="font-weight:400;color:#94a3b8;">(${wd})</span></span>
+        ${x.priority?`<span style="flex-shrink:0;color:${pc};font-weight:800;font-size:0.68rem;margin-top:2px;">${x.priority}</span>`:''}
+        <div style="flex:1;min-width:0;">
+          <div>${x.subProject?`<span style="font-size:0.7rem;color:${g.color};background:${g.color}18;padding:1px 6px;border-radius:4px;margin-right:5px;font-weight:700;">${x.subProject}</span>`:''}✓ ${x.text}</div>
+          ${x.memo&&x.memo.trim()?`<div style="margin-top:3px;font-size:0.74rem;color:${x.memoStyle&&x.memoStyle.color||'#64748b'};font-weight:${x.memoStyle&&x.memoStyle.bold?'700':'400'};background:#f8fafc;border-left:2px solid #cbd5e1;padding:3px 7px;border-radius:0 4px 4px 0;white-space:pre-wrap;">📝 ${x.memo}</div>`:''}
+        </div>
+      </div>`;
+    }).join('') : '';
+
+    return `<div class="hp-card">
+      <div class="hp-head" onclick="toggleHistProject('${g.id}')">
+        <span style="width:10px;height:10px;border-radius:50%;background:${g.color};flex-shrink:0;"></span>
+        <span style="font-size:0.87rem;font-weight:800;">${g.name}</span>
+        <span style="font-size:0.72rem;font-weight:800;background:${g.color}1f;color:${g.color};padding:1px 8px;border-radius:10px;">${g.items.length}건</span>
+        <span style="font-size:0.73rem;color:var(--muted);">${period}</span>
+        <span style="margin-left:auto;font-size:0.72rem;color:var(--muted);">${open?'▼':'▶'}</span>
+      </div>
+      ${rows}
+    </div>`;
+  }).join('');
+}
+
+// 지금 보이는 목록을 보고용 텍스트로 복사
+function copyHistoryByProject(){
+  const {groups,total}=getHistoryProjectView();
+  if(!total){ alert('복사할 내용이 없습니다.'); return; }
+  const rangeLbl=document.getElementById('hist-range')?.selectedOptions[0]?.text||'전체';
+  let txt=`■ 완료 업무 (${rangeLbl}) — 총 ${total}건\n`;
+  groups.forEach(g=>{
+    txt+=`\n[${g.name}] ${g.items.length}건\n`;
+    g.items.forEach(x=>{
+      txt+=`  - ${x.date}  ${x.subProject?'('+x.subProject+') ':''}${x.text}\n`;
+    });
+  });
+  const done=()=>alert('클립보드에 복사했습니다.');
+  if(navigator.clipboard?.writeText){ navigator.clipboard.writeText(txt).then(done).catch(()=>fallbackCopy(txt,done)); }
+  else fallbackCopy(txt,done);
+}
+function fallbackCopy(txt, cb){
+  const ta=document.createElement('textarea');
+  ta.value=txt; ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); cb&&cb(); }catch(e){ alert('복사 실패 — 수동으로 복사해주세요.'); }
+  document.body.removeChild(ta);
+}
+
+// 지금 보이는 목록을 CSV로 저장 (엑셀에서 열 수 있게 BOM 포함)
+function downloadHistoryCsv(){
+  const {groups,total}=getHistoryProjectView();
+  if(!total){ alert('저장할 내용이 없습니다.'); return; }
+  const esc=v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`;
+  let csv='완료일,프로젝트,하위분류,우선순위,업무명,메모\n';
+  groups.forEach(g=>g.items.forEach(x=>{
+    csv+=[x.date,g.name,x.subProject,x.priority,x.text,(x.memo||'').replace(/\r?\n/g,' ')].map(esc).join(',')+'\n';
+  }));
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`완료업무_${TODAY_STR}.csv`;
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); document.body.removeChild(a); },0);
+}
+
 function renderHistory(){
+  // 모드 버튼 / 필터바 상태 동기화
+  const bd=document.getElementById('hist-mode-date'), bp=document.getElementById('hist-mode-project');
+  if(bd&&bp){
+    bd.classList.toggle('active', historyViewMode==='date');
+    bp.classList.toggle('active', historyViewMode==='project');
+  }
+  const ctl=document.getElementById('hist-proj-controls');
+  if(ctl) ctl.style.display = historyViewMode==='project' ? 'flex' : 'none';
+  if(historyViewMode==='project') return renderHistoryByProject();
+
   const el=document.getElementById('history-list');
   if(!completedProjects.length){
     el.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted);font-size:0.85rem;">히스토리가 없습니다.<br><span style="font-size:0.75rem;">업무를 완료하면 자동으로 기록됩니다.</span></div>';
