@@ -2255,6 +2255,10 @@ function sortTasksForDisplay(list, showSubGroups){
 
 function renderTaskList(list){
   const el=document.getElementById('task-list');
+  // 보류함 카드가 목록 안(완료 구분선 위)으로 옮겨져 있을 수 있으므로,
+  // innerHTML을 비우기 전에 원래 자리(목록 바깥)로 되돌려 지워지지 않게 한다.
+  const plCard=document.getElementById('parking-lot-card');
+  if(plCard && plCard.parentElement===el && el.parentElement) el.parentElement.appendChild(plCard);
   el.innerHTML='';
   if(!list.length){ el.innerHTML='<div style="color:var(--muted);font-size:0.83rem;text-align:center;padding:18px">업무 없음. 위에서 추가하세요.</div>'; return; }
 
@@ -2274,6 +2278,7 @@ function renderTaskList(list){
     if(t.done && !shownDoneSep){
       shownDoneSep=true;
       const sep=document.createElement('div');
+      sep.id='done-separator';
       sep.style.cssText='border-top:2px dashed #e2e8f0;margin:8px 0;display:flex;align-items:center;gap:8px;';
       sep.innerHTML='<span style="font-size:0.72rem;color:#94a3b8;font-weight:700;white-space:nowrap;">✅ 완료된 업무</span>';
       el.appendChild(sep);
@@ -5807,6 +5812,7 @@ function renderParkingLot(){
   if(!list.length){
     el.innerHTML='<div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:14px 0;">'
       +'비어 있음 — 날짜를 정하기 애매한 업무는 위에서 <b style="color:#7c3aed;">📥 보류</b>에 체크하고 추가하세요.</div>';
+    positionParkingLotCard();
     return;
   }
   // 우선순위 → subOrder 순
@@ -5852,6 +5858,25 @@ function renderParkingLot(){
     item.style.gap='0';
     el.appendChild(item);
   });
+  positionParkingLotCard();
+}
+
+// 보류함 카드를 "완료된 업무" 구분선 바로 위로 옮긴다.
+// (완료 업무가 없으면 목록 바깥 원래 자리 = 목록 맨 아래에 그대로 둔다)
+function positionParkingLotCard(){
+  const card=document.getElementById('parking-lot-card');
+  const listEl=document.getElementById('task-list');
+  if(!card||!listEl) return;
+  const sep=document.getElementById('done-separator');
+  if(sep && sep.parentElement===listEl){
+    if(card.nextSibling!==sep || card.parentElement!==listEl) listEl.insertBefore(card, sep);
+    card.style.marginTop='10px';
+    card.style.marginBottom='2px';
+  } else if(card.parentElement===listEl){
+    if(listEl.parentElement) listEl.parentElement.appendChild(card);
+    card.style.marginTop='12px';
+    card.style.marginBottom='';
+  }
 }
 function deleteTask(id){
   const t=tasks.find(x=>x.id===id); if(!t) return;
