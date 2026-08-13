@@ -362,9 +362,9 @@ ZB 교체 둘</textarea>
     <div class="tabs">
       <button class="tab-btn active" onclick="switchTab('today',this)">📋 할 일</button>
       <button class="tab-btn" onclick="switchTab('home',this)">🏠 홈</button>
-      <button class="tab-btn" onclick="switchTab('links',this)">🔗 링크</button>
-      <button class="tab-btn" onclick="switchTab('calendar',this)">📅 캘린더</button>
       <button class="tab-btn" onclick="switchTab('weekly',this)">⏱️ 주간/월간 기록</button>
+      <button class="tab-btn" onclick="switchTab('calendar',this)">📅 캘린더</button>
+      <button class="tab-btn" onclick="switchTab('links',this)">🔗 링크</button>
       <button class="tab-btn" onclick="switchTab('search',this)">🔍 검색</button>
       <button class="tab-btn" onclick="switchTab('history',this)">📂 완료 히스토리</button>
       <button class="tab-btn" onclick="switchTab('report',this)">📄 레포트</button>
@@ -462,7 +462,7 @@ ZB 교체 둘</textarea>
         <div id="home-today-tasks"></div>
         <div style="display:flex;align-items:center;gap:8px;margin:10px 0 4px;">
           <span style="font-size:0.76rem;font-weight:700;color:var(--muted);">🗣️ 미팅</span>
-          <button class="btn-primary" style="margin-left:auto;font-size:0.74rem;padding:4px 10px;background:#a855f7;" onclick="openMeetingAdd(homeSelectedDate)">+ 미팅 추가</button>
+          <button class="btn-primary" style="margin-left:auto;font-size:0.74rem;padding:4px 10px;background:#a855f7;" onclick="openMeetingAdd()">+ 미팅 추가</button>
         </div>
         <div id="home-today-meetings"></div>
         <div id="home-today-done-wrap" style="display:none;">
@@ -855,37 +855,6 @@ ZB 교체 둘</textarea>
 </div>
 
 <!-- 업무 수정 -->
-<div class="modal" id="modal-edit">
-  <div class="modal-box" style="max-width:520px;">
-    <h3>✏️ 업무 수정</h3>
-    <input type="text" id="edit-text" placeholder="업무명">
-    <div style="display:flex;gap:8px;">
-      <select id="edit-project" style="flex:1;padding:8px;border:1.5px solid var(--border);border-radius:6px;" onchange="syncSubProjSelect('edit-project','edit-sub-project')"></select>
-      <select id="edit-priority" style="width:80px;padding:8px;border:1.5px solid var(--border);border-radius:6px;font-weight:700;">
-        <option value="A1">A1</option><option value="A2">A2</option><option value="A3">A3</option>
-        <option value="B1">B1</option><option value="B2">B2</option><option value="B3">B3</option>
-        <option value="C1">C1</option><option value="C2">C2</option><option value="C3">C3</option>
-      </select>
-    </div>
-    <div style="display:flex;gap:8px;">
-      <select id="edit-sub-project" style="flex:1;padding:8px;border:1.5px solid var(--border);border-radius:6px;font-size:0.85rem;" onchange="onSubProjSelectChange('edit-sub-project','edit-sub-project-custom')"></select>
-      <input type="text" id="edit-sub-project-custom" placeholder="하위 분류명 입력" style="display:none;flex:1;padding:7px 10px;border:1.5px solid var(--primary);border-radius:6px;font-size:0.85rem;">
-    </div>
-    <label style="display:flex;align-items:center;gap:6px;font-size:0.8rem;font-weight:700;color:#7c3aed;background:#f5f3ff;border:1.5px solid #ddd6fe;border-radius:6px;padding:7px 9px;cursor:pointer;">
-      <input type="checkbox" id="edit-parked" onchange="toggleEditParkInput(this.checked)" style="cursor:pointer;">
-      📥 보류함에 두기 (날짜 미정 — 타임라인/통계 제외)
-    </label>
-    <div style="display:flex;gap:8px;" id="edit-date-wrap">
-      <div class="date-grp" style="flex:1;"><label>시작</label><input type="date" id="edit-start" style="flex:1;padding:7px;border:1.5px solid var(--border);border-radius:6px;font-size:0.8rem;"></div>
-      <div class="date-grp" style="flex:1;"><label>종료</label><input type="date" id="edit-end" style="flex:1;padding:7px;border:1.5px solid var(--border);border-radius:6px;font-size:0.8rem;"></div>
-    </div>
-    <div class="modal-actions">
-      <button class="btn-cancel" onclick="closeModal('modal-edit')">취소</button>
-      <button class="btn-primary" onclick="saveEdit()">저장</button>
-    </div>
-  </div>
-</div>
-
 <style>
 /* ── 하루 시간대별 기록 (타임블록) ── */
 .tl-wrap{position:relative;border:1.5px solid var(--border);border-radius:9px;overflow:hidden;background:var(--card);}
@@ -1860,11 +1829,17 @@ let hiddenProjects = (()=>{ try { return new Set(JSON.parse(localStorage.getItem
 // 'all'(전체 프로젝트) 필터로 볼 때도 서브프로젝트별 그룹 헤더를 보여줄지 여부 (토글)
 let showSubProjGroupsInAll = false;
 // 홈 탭의 "오늘 할 일 & 미팅" 카드에서 현재 보고 있는 날짜 (기본값: 오늘). ◀▶로 다른 날짜로 이동 가능
-let homeSelectedDate = null; // render 시점에 TODAY_STR로 초기화
+/* ══════════════════════════════════════
+   📆 작업 날짜 (할 일 탭의 "기록 날짜" = 홈 탭의 선택 날짜)
+   두 화면이 같은 날짜를 본다. 할 일 탭에서 ⏱️ 시간을 고치면
+   홈의 계획/실적, 시간대 타임라인이 같은 날짜 기준으로 함께 갱신된다.
+   예전에는 홈(activeLogDate)과 할 일(activeLogDate)이 따로 놀아서
+   "할 일에서 바꿨는데 홈에 안 보인다" 문제가 있었다.
+══════════════════════════════════════ */
+let activeLogDate = null; // render 시점에 TODAY_STR로 초기화
 let currentTab    = 'today';
 let calYear  = TODAY.getFullYear();
 let calMonth = TODAY.getMonth();
-let editingId = null;
 let selectedWeekKey = null; // 'YYYY-Www'
 
 /* ══════════════════════════════════════
@@ -2105,7 +2080,7 @@ function dismissAlert(pid){
 /* ══════════════════════════════════════
    TABS
 ══════════════════════════════════════ */
-const TAB_IDS=['today','home','calendar','weekly','search','history','report','links','trash'];
+const TAB_IDS=['today','home','weekly','calendar','links','search','history','report','trash'];
 function switchTab(name,el){
   currentTab=name;
   document.querySelectorAll('.tab-btn:not(.sub-tab-btn)').forEach(b=>b.classList.remove('active'));
@@ -2457,7 +2432,7 @@ function renderTaskList(list){
         <input type="checkbox" draggable="false" onmousedown="event.stopPropagation()" ${t.done?'checked':''} onchange="toggleTask(${t.id})">
         ${taskAtRisk?`<span class="risk-warn-icon" title="남은 기간 대비 진행 부족! 경과 ${taskElapsed}% / 진행 ${getTaskProgress(t)}%" style="flex-shrink:0;">🚨</span>`:''}
         ${prio?`<span onclick="event.stopPropagation();showPriorityPicker(event, ${t.id})" title="클릭하여 우선순위 변경" style="background:${pc};color:white;font-size:0.7rem;font-weight:800;padding:2px 6px;border-radius:4px;min-width:26px;text-align:center;flex-shrink:0;cursor:pointer;">${prio}</span>`:''}
-        <span class="p-badge" style="background:${p.color}22;color:${p.color};flex-shrink:0">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
+        <span class="p-badge" onclick="event.stopPropagation();showProjectPicker(event, ${t.id})" onmousedown="event.stopPropagation()" title="클릭하여 프로젝트/하위분류 변경" style="background:${p.color}22;color:${p.color};flex-shrink:0;cursor:pointer;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
         <span class="task-text" ondblclick="event.stopPropagation();startInlineEditTaskText(${t.id}, this)" title="더블클릭하여 수정" style="font-size:0.85rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;${taskAtRisk?'color:#dc2626;font-weight:700;':''}">${t.text}</span>
         <span onclick="event.stopPropagation();toggleTaskMemo(${t.id})"
           title="${t.memo?t.memo.slice(0,40)+(t.memo.length>40?'...':''):'메모 추가'}"
@@ -2465,7 +2440,7 @@ function renderTaskList(list){
             ${t.memo?'background:#fef9c3;color:#92660d;font-weight:700;border:1px solid #fde68a;':'background:transparent;color:#cbd5e1;border:1px dashed #cbd5e1;'}"
           onmouseover="this.style.opacity='0.75'"
           onmouseout="this.style.opacity='1'">📝${t.memo?'':''}</span>
-        <span class="date-badge" style="flex-shrink:0;">📅 ${fmt(t.start)} ~ ${fmt(t.end)}</span>
+        <span class="date-badge" onclick="event.stopPropagation();showDatePicker(event, ${t.id})" onmousedown="event.stopPropagation()" title="클릭하여 기간 변경" style="flex-shrink:0;cursor:pointer;">📅 ${fmt(t.start)} ~ ${fmt(t.end)}</span>
         ${!t.done?`<select class="status-select" draggable="false" onmousedown="event.stopPropagation()" style="color:${stInfo.color};border-color:${stInfo.color}22;background:${stInfo.color}11;flex-shrink:0;"
             onchange="setTaskStatus(${t.id},this.value)">
           ${st==='overdue'?`<option value="overdue" selected>🔴 기한초과</option>`:''}
@@ -2483,7 +2458,6 @@ function renderTaskList(list){
         </span>`:''}
         <div style="display:flex;gap:5px;flex-shrink:0;">
           ${!t.done?`<button class="btn-sm" style="background:#ede9fe;color:#6d28d9;font-weight:700;" onclick="parkTask(${t.id})" onmousedown="event.stopPropagation()" draggable="false" title="날짜를 지우고 보류함으로 보냅니다">📥</button>`:''}
-          <button class="btn-sm" style="background:var(--pri-light);color:var(--primary)" onclick="openEdit(${t.id})" onmousedown="event.stopPropagation()" draggable="false">수정</button>
           <button class="btn-sm" style="background:#fee2e2;color:var(--warn)" onclick="deleteTask(${t.id})" onmousedown="event.stopPropagation()" draggable="false">삭제</button>
         </div>
       </div>
@@ -3558,6 +3532,146 @@ function setTaskPriorityFromPicker(id, newPriority){
   saveAndRender();
 }
 
+/* ══════════════════════════════════════
+   인라인 피커 — 프로젝트/하위분류, 기간
+   '수정' 모달 없이 목록에서 바로 고칠 수 있게 한다.
+   (업무명=더블클릭, 우선순위=배지 클릭, 보류=📥 버튼과 같은 방식)
+══════════════════════════════════════ */
+const INLINE_POPUP_ID='inline-edit-popup';
+
+function closeInlinePopup(){ document.getElementById(INLINE_POPUP_ID)?.remove(); }
+
+// 앵커 요소 아래에 팝업을 띄우고 화면 밖으로 넘치면 위치를 보정한다
+function openInlinePopup(anchorEl, innerHtml, minWidth){
+  closePriorityPicker(); closeInlinePopup();
+  const rect=anchorEl.getBoundingClientRect();
+  const box=document.createElement('div');
+  box.id=INLINE_POPUP_ID;
+  box.style.cssText=`position:fixed;top:${rect.bottom+4}px;left:${rect.left}px;background:white;border:1px solid var(--border);border-radius:9px;box-shadow:0 10px 26px rgba(0,0,0,0.18);z-index:9999;padding:10px;min-width:${minWidth||220}px;display:flex;flex-direction:column;gap:7px;`;
+  box.innerHTML=innerHtml;
+  box.addEventListener('click', e=>e.stopPropagation());
+  box.addEventListener('mousedown', e=>e.stopPropagation());
+  document.body.appendChild(box);
+  const r=box.getBoundingClientRect();
+  if(r.right>window.innerWidth) box.style.left=`${Math.max(8,window.innerWidth-r.width-8)}px`;
+  if(r.bottom>window.innerHeight) box.style.top=`${Math.max(8,rect.top-r.height-4)}px`;
+  setTimeout(()=>{ document.addEventListener('click', closeInlinePopup, {once:true}); },0);
+  return box;
+}
+
+/* ── 프로젝트 / 하위분류 ── */
+function showProjectPicker(evt, taskId){
+  const t=tasks.find(x=>x.id===taskId); if(!t) return;
+  const html=`
+    <div style="font-size:0.72rem;font-weight:800;color:var(--muted);">프로젝트</div>
+    <select id="ip-proj" onchange="ipSyncSub()" style="padding:6px 7px;border:1.5px solid var(--border);border-radius:6px;font-size:0.8rem;background:white;">
+      ${projects.map(p=>`<option value="${p.id}" ${p.id===t.project?'selected':''}>${p.name}</option>`).join('')}
+    </select>
+    <div style="font-size:0.72rem;font-weight:800;color:var(--muted);">하위 분류</div>
+    <select id="ip-sub" onchange="ipSubChanged()" style="padding:6px 7px;border:1.5px solid var(--border);border-radius:6px;font-size:0.8rem;background:white;"></select>
+    <input type="text" id="ip-sub-new" placeholder="새 하위분류명" style="display:none;padding:6px 8px;border:1.5px solid var(--primary);border-radius:6px;font-size:0.8rem;">
+    <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:2px;">
+      <button class="btn-sm" style="background:var(--bg);color:var(--muted);" onclick="closeInlinePopup()">취소</button>
+      <button class="btn-sm" style="background:var(--primary);color:white;font-weight:700;" onclick="applyProjectPicker(${taskId})">적용</button>
+    </div>`;
+  openInlinePopup(evt.currentTarget, html, 240);
+  ipSyncSub(t.subProject||'');
+}
+function ipSyncSub(preset){
+  const projId=document.getElementById('ip-proj')?.value;
+  const sub=document.getElementById('ip-sub'); if(!sub) return;
+  const names=getSubProjectsForProject(projId);
+  const cur=(typeof preset==='string')?preset:'';
+  sub.innerHTML=`<option value="">(하위분류 없음)</option>`
+    + names.map(n=>`<option value="${n}" ${n===cur?'selected':''}>${n}</option>`).join('')
+    + `<option value="__new__">✏️ 새 하위분류 추가...</option>`;
+  if(cur && !names.includes(cur)){
+    sub.insertAdjacentHTML('beforeend', `<option value="${cur}" selected>${cur}</option>`);
+    sub.value=cur;
+  }
+  ipSubChanged();
+}
+function ipSubChanged(){
+  const sub=document.getElementById('ip-sub');
+  const inp=document.getElementById('ip-sub-new');
+  if(!sub||!inp) return;
+  const isNew=sub.value==='__new__';
+  inp.style.display=isNew?'':'none';
+  if(isNew) setTimeout(()=>inp.focus(),0);
+}
+function applyProjectPicker(taskId){
+  const projId=document.getElementById('ip-proj').value;
+  const subSel=document.getElementById('ip-sub').value;
+  let sub = subSel==='__new__' ? document.getElementById('ip-sub-new').value.trim() : subSel;
+  closeInlinePopup();
+  tasks=tasks.map(t=>{
+    if(t.id!==taskId) return t;
+    const u={...t, project:projId};
+    if(sub) u.subProject=sub; else delete u.subProject;
+    return u;
+  });
+  touchProject(projId);
+  saveAndRender();
+}
+
+/* ── 기간(시작/종료) ── */
+function showDatePicker(evt, taskId){
+  const t=tasks.find(x=>x.id===taskId); if(!t) return;
+  // 보류함 업무는 예전에 쓰던 날짜, 없으면 오늘~오늘+6일을 기본값으로
+  const defEnd=(()=>{ const d=new Date(TODAY.getFullYear(),TODAY.getMonth(),TODAY.getDate()+6);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })();
+  const sv=t.start || t._prevStart || TODAY_STR;
+  const ev=t.end   || t._prevEnd   || defEnd;
+  const html=`
+    ${t.parked?`<div style="font-size:0.72rem;font-weight:800;color:#7c3aed;">📥 보류함 → 일정 지정</div>`:''}
+    <div style="display:flex;gap:7px;">
+      <div style="flex:1;">
+        <div style="font-size:0.72rem;font-weight:800;color:var(--muted);margin-bottom:3px;">시작</div>
+        <input type="date" id="idp-start" value="${sv}" style="width:100%;padding:6px;border:1.5px solid var(--border);border-radius:6px;font-size:0.8rem;">
+      </div>
+      <div style="flex:1;">
+        <div style="font-size:0.72rem;font-weight:800;color:var(--muted);margin-bottom:3px;">종료</div>
+        <input type="date" id="idp-end" value="${ev}" style="width:100%;padding:6px;border:1.5px solid var(--border);border-radius:6px;font-size:0.8rem;">
+      </div>
+    </div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap;">
+      <button class="btn-sm" style="background:var(--bg);color:var(--muted);" onclick="idpShiftEnd(7)">+1주</button>
+      <button class="btn-sm" style="background:var(--bg);color:var(--muted);" onclick="idpShiftEnd(14)">+2주</button>
+      <button class="btn-sm" style="background:var(--bg);color:var(--muted);" onclick="idpShiftEnd(30)">+1개월</button>
+    </div>
+    <div id="idp-warn" style="display:none;font-size:0.73rem;color:#b45309;"></div>
+    <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:2px;">
+      ${!t.parked?`<button class="btn-sm" style="margin-right:auto;background:#ede9fe;color:#6d28d9;font-weight:700;" onclick="closeInlinePopup();parkTask(${taskId})" title="날짜를 지우고 보류함으로 보냅니다">📥 보류함</button>`:''}
+      <button class="btn-sm" style="background:var(--bg);color:var(--muted);" onclick="closeInlinePopup()">취소</button>
+      <button class="btn-sm" style="background:var(--primary);color:white;font-weight:700;" onclick="applyDatePicker(${taskId})">적용</button>
+    </div>`;
+  openInlinePopup(evt.currentTarget, html, 250);
+}
+function idpShiftEnd(days){
+  const st=document.getElementById('idp-start').value||TODAY_STR;
+  const d=new Date(st+'T00:00:00');
+  d.setDate(d.getDate()+days);
+  document.getElementById('idp-end').value=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function applyDatePicker(taskId){
+  const st=document.getElementById('idp-start').value;
+  const en=document.getElementById('idp-end').value;
+  const warn=document.getElementById('idp-warn');
+  if(!st||!en){ if(warn){warn.style.display='';warn.textContent='시작일과 종료일을 모두 입력하세요.';} return; }
+  if(en<st){ if(warn){warn.style.display='';warn.textContent='종료일이 시작일보다 빠릅니다.';} return; }
+  closeInlinePopup();
+  tasks=tasks.map(t=>{
+    if(t.id!==taskId) return t;
+    const u={...t, start:st, end:en};
+    delete u.parked;          // 보류함에서 꺼내는 경우
+    delete u._prevStart; delete u._prevEnd;
+    return u;
+  });
+  const tk=tasks.find(x=>x.id===taskId);
+  if(tk) touchProject(tk.project);
+  saveAndRender();
+}
+
 function setTaskStatus(id, status){
   // '완료'(on_track) 선택 시: 체크박스와 동일하게 완료일을 먼저 물어본다
   if(status==='on_track'){
@@ -3743,16 +3857,16 @@ function hexToRgb(hex){
 // 홈 "할 일 & 미팅" 카드에서 특정 업무의 "오늘 계획 시간" 입력값을 저장
 function setDailyPlan(taskId, value){
   const h=parseFloat(value);
-  if(!dailyPlans[homeSelectedDate]) dailyPlans[homeSelectedDate]={};
+  if(!dailyPlans[activeLogDate]) dailyPlans[activeLogDate]={};
   if(isNaN(h) || h<=0){
-    delete dailyPlans[homeSelectedDate][taskId];
+    delete dailyPlans[activeLogDate][taskId];
   } else {
-    dailyPlans[homeSelectedDate][taskId]=h;
+    dailyPlans[activeLogDate][taskId]=h;
   }
   // 빈 날짜 객체는 정리
-  if(Object.keys(dailyPlans[homeSelectedDate]).length===0) delete dailyPlans[homeSelectedDate];
+  if(Object.keys(dailyPlans[activeLogDate]).length===0) delete dailyPlans[activeLogDate];
   saveToFirebase();
-  renderHome();
+  refreshDateViews();
 }
 
 // 홈 "할 일 & 미팅" 카드에서 특정 업무의 "오늘 실제 투입 시간"을 직접 입력 →
@@ -3761,7 +3875,7 @@ function setDailyPlan(taskId, value){
 // 0이나 빈 값이면 그 날짜의 기록을 모두 지운다.
 // 특정 날짜에 특정 업무의 "실제 투입 시간"을 직접 입력/수정한다.
 // 그 값을 weeklyLogs(주간/월간 기록)에 정식으로 반영하므로 레포트에도 그대로 잡힌다.
-// dateStr을 생략하면 homeSelectedDate(홈에서 보고 있는 날짜)를 기본값으로 사용한다.
+// dateStr을 생략하면 activeLogDate(홈에서 보고 있는 날짜)를 기본값으로 사용한다.
 
 // "📋 할 일" 탭의 날짜 선택 + 시간 입력 조합용 헬퍼.
 // 날짜를 바꾸면 그 업무가 해당 날짜에 이미 기록된 시간이 있는지 찾아 시간 입력칸에 채워주고,
@@ -3772,13 +3886,19 @@ function setDailyPlan(taskId, value){
    모든 업무의 ⏱️ 칸이 13일 기준 값으로 바뀌고, 입력하면 13일자로 저장된다.
    렌더링 때마다 초기화되지 않도록 전역 상태로 둔다.
 ══════════════════════════════════════ */
-let activeLogDate = TODAY_STR;
-
 function setLogDate(dateStr){
   if(!dateStr) return;
   activeLogDate = dateStr;
-  if(currentTab==='today') renderTaskList(filteredTasks());
+  refreshDateViews();
+}
+
+// 날짜가 바뀌거나 시간 기록이 바뀌었을 때, 그 날짜를 쓰는 화면을 모두 다시 그린다.
+// 숨어있는 탭도 갱신해두면 탭을 옮겼을 때 이전 값이 남아 보이지 않는다.
+function refreshDateViews(){
+  if(!activeLogDate) activeLogDate = TODAY_STR;
   syncLogDateBar();
+  if(document.getElementById('task-list')) renderTaskList(filteredTasks());
+  if(typeof renderHome==='function' && document.getElementById('home-today-tasks')) renderHome();
 }
 function logDateToday(){ setLogDate(TODAY_STR); }
 function logDateShift(delta){
@@ -3815,19 +3935,13 @@ function syncLogDateBar(){
 }
 
 function syncActualHoursDate(taskId, dateStr, hoursInputId){
-  activeLogDate = dateStr || activeLogDate;   // 개별 행에서 날짜를 바꾸면 전체 기준도 따라가게
-  syncLogDateBar();
-  const t=tasks.find(x=>x.id===taskId); if(!t) return;
-  const hoursInput=document.getElementById(hoursInputId);
-  if(!hoursInput) return;
-  hoursInput.dataset.logDate=dateStr;
-  const h=weeklyLogs.filter(l=>l.date===dateStr && l.type!=='meeting' && l.project===t.project && l.task===t.text).reduce((s,l)=>s+(l.hours||0),0);
-  hoursInput.value=h||'';
+  // 개별 행에서 날짜를 바꾸면 전체 기준 날짜(홈 포함)도 같이 따라간다
+  setLogDate(dateStr || activeLogDate);
 }
 
 function setDailyActual(taskId, value, dateStr){
   const t=tasks.find(x=>x.id===taskId); if(!t) return;
-  const targetDate = dateStr || (currentTab==='home' ? homeSelectedDate : activeLogDate) || TODAY_STR;
+  const targetDate = dateStr || (currentTab==='home' ? activeLogDate : activeLogDate) || TODAY_STR;
   const h=parseFloat(value);
 
   // 같은 업무 + 같은 날짜로 이미 기록된 항목들(미팅 제외) 찾기
@@ -3851,26 +3965,19 @@ function setDailyActual(taskId, value, dateStr){
     weeklyLogs.push({id:Date.now(), type:'task', project:t.project, task:t.text, date:targetDate, hours:rest, memo:''});
   }
   saveToFirebase();
-  // 현재 보고 있는 화면에 맞게 다시 그림
-  if(currentTab==='today'){
-    const ft=filteredTasks();
-    renderTaskList(ft);
-  } else if(currentTab==='home'){
-    renderHome();
-  }
+  // 할 일 탭과 홈은 같은 날짜를 보므로 항상 둘 다 다시 그린다
+  refreshDateViews();
 }
 
 // 홈 "할 일 & 미팅" 카드의 날짜를 하루씩 이동 (◀▶ 버튼)
 function homeMoveDate(delta){
-  if(!homeSelectedDate) homeSelectedDate=TODAY_STR;
-  const d=new Date(homeSelectedDate+'T00:00:00');
+  if(!activeLogDate) activeLogDate=TODAY_STR;
+  const d=new Date(activeLogDate+'T00:00:00');
   d.setDate(d.getDate()+delta);
-  homeSelectedDate=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-  renderHome();
+  setLogDate(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
 }
 function homeGoToday(){
-  homeSelectedDate=TODAY_STR;
-  renderHome();
+  setLogDate(TODAY_STR);
 }
 
 function renderHome(){
@@ -3933,10 +4040,10 @@ function renderHome(){
     </div>`;
   }).join('');
 
-  // ── 오늘 할 일 & 미팅 카드: homeSelectedDate 기준 (기본값 오늘, ◀▶로 다른 날짜 조회 가능)
-  if(!homeSelectedDate) homeSelectedDate=TODAY_STR;
-  const selD=new Date(homeSelectedDate+'T00:00:00');
-  const selIsToday = homeSelectedDate===TODAY_STR;
+  // ── 오늘 할 일 & 미팅 카드: activeLogDate 기준 (기본값 오늘, ◀▶로 다른 날짜 조회 가능)
+  if(!activeLogDate) activeLogDate=TODAY_STR;
+  const selD=new Date(activeLogDate+'T00:00:00');
+  const selIsToday = activeLogDate===TODAY_STR;
   const dateLabel = `${selD.getMonth()+1}/${selD.getDate()} (${['일','월','화','수','목','금','토'][selD.getDay()]})${selIsToday?' · 오늘':''}`;
   document.getElementById('home-today-date').textContent = dateLabel;
 
@@ -3953,28 +4060,28 @@ function renderHome(){
   //    반영되어야 직관적이라는 피드백을 반영. (이전엔 A1과 중복이라 제외했었는데, 그 때문에 "시간을 바꿨는데
   //    왜 안 뜨지?"하는 혼동이 생겼음)
   const loggedTaskKeys = new Set(
-    weeklyLogs.filter(l=>l.date===homeSelectedDate && l.type!=='meeting' && l.hours>0).map(l=>`${l.project}__${l.task}`)
+    weeklyLogs.filter(l=>l.date===activeLogDate && l.type!=='meeting' && l.hours>0).map(l=>`${l.project}__${l.task}`)
   );
   const selDoneTasks = sortTasksForDisplay(ft.filter(t=>{
     return loggedTaskKeys.has(`${t.project}__${t.text}`);
   }), false);
 
   // ── 해당 날짜 미팅 (weeklyLogs 중 선택된 날짜 + type==='meeting')
-  const selMeetings = weeklyLogs.filter(l=>l.type==='meeting' && l.date===homeSelectedDate)
+  const selMeetings = weeklyLogs.filter(l=>l.type==='meeting' && l.date===activeLogDate)
     .sort((a,b)=>(a.id||0)-(b.id||0));
   const meetingHours = selMeetings.reduce((s,l)=>s+(l.hours||0),0);
 
   // ── 해당 날짜 "계획" 시간 (dailyPlans에 직접 입력해둔 업무별 오늘 예상 투입시간의 합)
-  const plansForDate = dailyPlans[homeSelectedDate] || {};
+  const plansForDate = dailyPlans[activeLogDate] || {};
   const planHoursSum = selTasks.reduce((s,t)=>s+(parseFloat(plansForDate[t.id])||0),0);
 
   // ── 해당 날짜 "실제" 투입시간 (weeklyLogs에 기록된 모든 시간 — 업무+미팅 합계)
-  const actualHoursSum = weeklyLogs.filter(l=>l.date===homeSelectedDate).reduce((s,l)=>s+(l.hours||0),0);
+  const actualHoursSum = weeklyLogs.filter(l=>l.date===activeLogDate).reduce((s,l)=>s+(l.hours||0),0);
 
   // ── 가용 시간 = 하루 근무시간(8h) − 해당 날짜 미팅 시간
   // 휴무일이어도 일을 할 수 있으므로 계산 기준은 평일과 동일하게 적용하고, 휴무일이라는 사실만 참고용으로 표시
   const WORKDAY_HOURS=8;
-  const selIsWorkday = (typeof isWorkday==='function') ? isWorkday(homeSelectedDate) : true;
+  const selIsWorkday = (typeof isWorkday==='function') ? isWorkday(activeLogDate) : true;
   const dayBudget = WORKDAY_HOURS;
   const availableHours = Math.max(0, dayBudget - meetingHours);
   const holidayBadge = !selIsWorkday ? `<span style="font-weight:700;color:var(--muted);background:#f1f5f9;padding:1px 8px;border-radius:6px;font-size:0.72rem;">📅 휴무일</span>` : '';
@@ -4012,14 +4119,14 @@ function renderHome(){
 
   const ttEl=document.getElementById('home-today-tasks');
   if(!selTasks.length){
-    ttEl.innerHTML=`<div style="color:var(--muted);font-size:0.85rem;padding:10px 0;text-align:center;">${selIsToday?'오늘':fmt(homeSelectedDate)} 진행 중인 A1 업무가 없습니다.</div>`;
+    ttEl.innerHTML=`<div style="color:var(--muted);font-size:0.85rem;padding:10px 0;text-align:center;">${selIsToday?'오늘':fmt(activeLogDate)} 진행 중인 A1 업무가 없습니다.</div>`;
   } else {
     ttEl.innerHTML=selTasks.map(t=>{
       const p=proj(t.project);
       const st=getTaskStatus(t); const stInfo=TASK_STATUS[st]||TASK_STATUS['not_started'];
       const pc=t.done?'#94a3b8':prioColor(t.priority||'');
       const planVal=plansForDate[t.id]!=null?plansForDate[t.id]:'';
-      const actualForTask=weeklyLogs.filter(l=>l.date===homeSelectedDate && l.type!=='meeting' && l.project===t.project && l.task===t.text).reduce((s,l)=>s+(l.hours||0),0);
+      const actualForTask=weeklyLogs.filter(l=>l.date===activeLogDate && l.type!=='meeting' && l.project===t.project && l.task===t.text).reduce((s,l)=>s+(l.hours||0),0);
       return `<div draggable="true"
         ondragstart="taskDragStart(event, ${t.id}, 'A1')"
         ondragover="taskDragOver(event, 'A1')"
@@ -4055,7 +4162,7 @@ function renderHome(){
   const tmEl=document.getElementById('home-today-meetings');
   if(tmEl){
     if(!selMeetings.length){
-      tmEl.innerHTML=`<div style="color:var(--muted);font-size:0.85rem;padding:10px 0;text-align:center;">${selIsToday?'오늘':fmt(homeSelectedDate)} 등록된 미팅이 없습니다.</div>`;
+      tmEl.innerHTML=`<div style="color:var(--muted);font-size:0.85rem;padding:10px 0;text-align:center;">${selIsToday?'오늘':fmt(activeLogDate)} 등록된 미팅이 없습니다.</div>`;
     } else {
       tmEl.innerHTML=selMeetings.map(l=>{
         const p=proj(l.project);
@@ -4085,7 +4192,7 @@ function renderHome(){
         const p=proj(t.project);
         const st=getTaskStatus(t); const stInfo=TASK_STATUS[st]||TASK_STATUS['not_started'];
         const pc=t.done?'#94a3b8':prioColor(t.priority||'');
-        const actualForTask=weeklyLogs.filter(l=>l.date===homeSelectedDate && l.type!=='meeting' && l.project===t.project && l.task===t.text).reduce((s,l)=>s+(l.hours||0),0);
+        const actualForTask=weeklyLogs.filter(l=>l.date===activeLogDate && l.type!=='meeting' && l.project===t.project && l.task===t.text).reduce((s,l)=>s+(l.hours||0),0);
         return `<div style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--border);font-size:0.84rem;${t.done?'opacity:0.65;':''}">
           <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask(${t.id})" style="flex-shrink:0;" title="${t.done?'체크 해제하면 미완료로 되돌립니다':'완료 처리'}">
           ${t.priority?`<span style="background:${pc};color:white;font-size:0.68rem;font-weight:800;padding:1px 6px;border-radius:4px;flex-shrink:0;">${t.priority}</span>`:''}
@@ -4226,7 +4333,7 @@ function tlAssignColumns(blocks){
 function renderDayTimeline(){
   const wrap=document.getElementById('tl-timeline');
   if(!wrap) return;
-  const date=homeSelectedDate||TODAY_STR;
+  const date=activeLogDate||TODAY_STR;
   const lbl=document.getElementById('tl-date-lbl');
   if(lbl) lbl.textContent=fmt(date);
 
@@ -4361,7 +4468,7 @@ function tbSyncDuration(){
   if(e<=s){ el.textContent='—'; warn.style.display=''; warn.textContent='종료 시간이 시작 시간보다 빠릅니다.'; return; }
   el.textContent=tlFmtH(tlHours(e-s));
   // 같은 날짜 다른 블록과 겹치는지 안내 (막지는 않음)
-  const date=homeSelectedDate||TODAY_STR;
+  const date=activeLogDate||TODAY_STR;
   const ov=tlBlocks(date).filter(b=>b.id!==tbEditingId && b._s<e && b._e>s);
   if(ov.length){ warn.style.display=''; warn.textContent=`⚠️ ${ov.length}건과 시간이 겹칩니다 (${ov.map(b=>b.task||'').join(', ')}) — 저장은 가능합니다.`; }
   else warn.style.display='none';
@@ -4376,7 +4483,7 @@ function tbQuick(mins){
 }
 
 function openTimeBlockModal(logId, presetStart){
-  const date=homeSelectedDate||TODAY_STR;
+  const date=activeLogDate||TODAY_STR;
   tbEditingId=logId||null;
   const log=logId?weeklyLogs.find(l=>l.id===logId):null;
 
@@ -4434,7 +4541,7 @@ function closeTimeBlockModal(){
 }
 
 function saveTimeBlock(){
-  const date=homeSelectedDate||TODAY_STR;
+  const date=activeLogDate||TODAY_STR;
   const startTime=document.getElementById('tb-start').value;
   const endTime=document.getElementById('tb-end').value;
   const s=tlToMin(startTime), e=tlToMin(endTime);
@@ -6176,6 +6283,7 @@ function calcScore(){
    MAIN RENDER
 ══════════════════════════════════════ */
 function render(){
+  if(!activeLogDate) activeLogDate = TODAY_STR; // 홈/할 일이 공유하는 작업 날짜
   checkAlerts();
   renderSidebar();
   calcScore();
@@ -6303,16 +6411,6 @@ function toggleParkInput(on){
     const el=document.getElementById(id); if(el) el.style.opacity=on?'0.4':'1';
   });
 }
-// 수정 모달의 "보류" 체크 → 날짜 입력칸 비활성화
-function toggleEditParkInput(on){
-  ['edit-start','edit-end'].forEach(id=>{
-    const el=document.getElementById(id); if(!el) return;
-    el.disabled=on; el.style.opacity=on?'0.35':'1';
-  });
-  const wrap=document.getElementById('edit-date-wrap');
-  if(wrap) wrap.style.opacity=on?'0.4':'1';
-}
-
 function toggleParkingLotOpen(){
   parkingLotOpen=!parkingLotOpen;
   const body=document.getElementById('parking-lot-body');
@@ -6331,17 +6429,21 @@ function parkTask(id){
   saveAndRender();
 }
 
-// 보류함 → 일정 지정하며 꺼내기 (수정 모달을 열어 날짜를 정하게 함)
-function unparkTask(id){
+// 보류함 → 일정 지정하며 꺼내기 (날짜 피커에서 '적용'하면 parked가 해제된다)
+function unparkTask(id, evt){
   const t=tasks.find(x=>x.id===id); if(!t) return;
-  openEdit(id);
-  const cb=document.getElementById('edit-parked');
-  if(cb){ cb.checked=false; toggleEditParkInput(false); }
-  // 이전에 쓰던 날짜가 있으면 그대로, 없으면 오늘 ~ 오늘+6일 기본값
+  if(evt) return showDatePicker(evt, id);
+  // 이벤트 없이 호출된 경우: 이전 날짜(없으면 오늘~+6일)로 바로 꺼낸다
   const defEnd=(()=>{ const dd=new Date(TODAY.getFullYear(),TODAY.getMonth(),TODAY.getDate()+6);
     return `${dd.getFullYear()}-${String(dd.getMonth()+1).padStart(2,'0')}-${String(dd.getDate()).padStart(2,'0')}`; })();
-  document.getElementById('edit-start').value = t._prevStart || TODAY_STR;
-  document.getElementById('edit-end').value   = t._prevEnd   || defEnd;
+  tasks=tasks.map(x=>{
+    if(x.id!==id) return x;
+    const u={...x, start:x._prevStart||TODAY_STR, end:x._prevEnd||defEnd};
+    delete u.parked; delete u._prevStart; delete u._prevEnd;
+    return u;
+  });
+  touchProject(t.project);
+  saveAndRender();
 }
 
 function renderParkingLot(){
@@ -6383,7 +6485,7 @@ function renderParkingLot(){
       <div style="display:flex;align-items:center;gap:8px;width:100%;">
         <span style="flex-shrink:0;font-size:0.8rem;">📥</span>
         ${prio?`<span onclick="event.stopPropagation();showPriorityPicker(event, ${t.id})" title="클릭하여 우선순위 변경" style="background:${prioColor(prio)};color:white;font-size:0.7rem;font-weight:800;padding:2px 6px;border-radius:4px;min-width:26px;text-align:center;flex-shrink:0;cursor:pointer;">${prio}</span>`:''}
-        <span class="p-badge" style="background:${p.color}22;color:${p.color};flex-shrink:0">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
+        <span class="p-badge" onclick="event.stopPropagation();showProjectPicker(event, ${t.id})" title="클릭하여 프로젝트/하위분류 변경" style="background:${p.color}22;color:${p.color};flex-shrink:0;cursor:pointer;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
         <span class="task-text" ondblclick="event.stopPropagation();startInlineEditTaskText(${t.id}, this)" title="더블클릭하여 수정" style="font-size:0.85rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;">${t.text}</span>
         <span onclick="event.stopPropagation();toggleTaskMemo(${t.id})"
           title="${t.memo?t.memo.slice(0,40)+(t.memo.length>40?'...':''):'메모 추가'}"
@@ -6391,8 +6493,7 @@ function renderParkingLot(){
             ${t.memo?'background:#fef9c3;color:#92660d;font-weight:700;border:1px solid #fde68a;':'background:transparent;color:#cbd5e1;border:1px dashed #cbd5e1;'}">📝</span>
         <span class="date-badge" style="flex-shrink:0;background:#f5f3ff;color:#7c3aed;border-color:#ddd6fe;">날짜 미정</span>
         <div style="display:flex;gap:5px;flex-shrink:0;">
-          <button class="btn-sm" style="background:#ede9fe;color:#6d28d9;font-weight:700;" onclick="unparkTask(${t.id})" title="시작/종료일을 정해서 일정(타임라인)으로 올립니다">📅 일정 지정</button>
-          <button class="btn-sm" style="background:var(--pri-light);color:var(--primary)" onclick="openEdit(${t.id})">수정</button>
+          <button class="btn-sm" style="background:#ede9fe;color:#6d28d9;font-weight:700;" onclick="event.stopPropagation();showDatePicker(event, ${t.id})" title="시작/종료일을 정해서 일정(타임라인)으로 올립니다">📅 일정 지정</button>
           <button class="btn-sm" style="background:#fee2e2;color:var(--warn)" onclick="deleteTask(${t.id})">삭제</button>
         </div>
       </div>
@@ -6623,50 +6724,6 @@ function completeEarly(id){
   if(t){ autoAddWeeklyLog({...t,done:true,actualEnd:TODAY_STR,status:'early_done'}); addToHistory({...t,done:true,actualEnd:TODAY_STR,status:'early_done'}); }
   saveAndRender();
 }
-function openEdit(id){
-  const t=tasks.find(x=>x.id===id); if(!t) return;
-  editingId=id;
-  document.getElementById('edit-text').value=t.text;
-  const sel=document.getElementById('edit-project');
-  sel.innerHTML=projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
-  sel.value=t.project;
-  document.getElementById('edit-start').value=t.start||'';
-  document.getElementById('edit-end').value=t.end||'';
-  const pcb=document.getElementById('edit-parked');
-  if(pcb){ pcb.checked=!!t.parked; toggleEditParkInput(!!t.parked); }
-  document.getElementById('edit-priority').value=t.priority||'B2';
-  syncSubProjSelect('edit-project','edit-sub-project',t.subProject||'');
-  openModal('modal-edit');
-}
-function saveEdit(){
-  const text=document.getElementById('edit-text').value.trim();
-  const projId=document.getElementById('edit-project').value;
-  const subProject=readSubProjValue('edit-sub-project','edit-sub-project-custom');
-  const start=document.getElementById('edit-start').value;
-  const end=document.getElementById('edit-end').value;
-  const priority=document.getElementById('edit-priority').value;
-  const parked=!!document.getElementById('edit-parked')?.checked;
-  if(!text) return;
-  if(!parked && (!start||!end)){ alert('시작일/종료일을 입력하거나 "보류함에 두기"를 체크하세요.'); return; }
-  tasks=tasks.map(t=>{
-    if(t.id!==editingId) return t;
-    const updated={...t,text,project:projId,priority};
-    if(parked){
-      // 보류함으로: 쓰던 날짜는 _prevStart/_prevEnd에 보관해뒀다가 나중에 꺼낼 때 기본값으로 씀
-      updated.parked=true;
-      updated._prevStart=t.start||t._prevStart||null;
-      updated._prevEnd=t.end||t._prevEnd||null;
-      updated.start=null; updated.end=null;
-    } else {
-      delete updated.parked;
-      updated.start=start; updated.end=end;
-    }
-    if(subProject) updated.subProject=subProject; else delete updated.subProject;
-    return updated;
-  });
-  closeModal('modal-edit'); saveAndRender();
-}
-
 /* ══════════════════════════════════════
    PROJECT CRUD
 ══════════════════════════════════════ */
@@ -6830,6 +6887,7 @@ function openWeeklyAdd(){
 }
 
 function openMeetingAdd(dateStr){
+  dateStr = dateStr || activeLogDate || TODAY_STR;
   editingWeeklyId=null;
   document.getElementById('w-modal-btn').textContent='저장';
   const sel=document.getElementById('w-project');
