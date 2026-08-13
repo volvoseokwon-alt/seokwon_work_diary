@@ -2437,7 +2437,7 @@ function renderTaskList(list){
         <span class="p-badge editable" onclick="event.stopPropagation();showProjectPicker(event, ${t.id})" onmousedown="event.stopPropagation()" title="클릭하여 프로젝트/하위분류 변경" style="background:${p.color}22;color:${p.color};flex-shrink:0;cursor:pointer;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
         <span class="task-text" ondblclick="event.stopPropagation();startInlineEditTaskText(${t.id}, this)" title="더블클릭하여 수정" style="font-size:0.85rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;${taskAtRisk?'color:#dc2626;font-weight:700;':''}">${t.text}</span>
         <span onclick="event.stopPropagation();toggleTaskMemo(${t.id})"
-          title="${t.memo?t.memo.slice(0,40)+(t.memo.length>40?'...':''):'메모 추가'}"
+          title="${t.memo?(memoStampLabel(t)?memoStampLabel(t)+'\n':'')+t.memo.slice(0,80)+(t.memo.length>80?'...':''):'메모 추가'}"
           style="font-size:0.78rem;cursor:pointer;flex-shrink:0;transition:.15s;display:inline-flex;align-items:center;gap:2px;padding:2px 6px;border-radius:5px;
             ${t.memo?'background:#fef9c3;color:#92660d;font-weight:700;border:1px solid #fde68a;':'background:transparent;color:#cbd5e1;border:1px dashed #cbd5e1;'}"
           onmouseover="this.style.opacity='0.75'"
@@ -2473,11 +2473,13 @@ function renderTaskList(list){
           ${['#1e293b','#ef4444','#f59e0b','#10b981','#0284c7','#7c3aed','#64748b'].map(c=>
             `<span onclick="setMemoColor(${t.id},'${c}')" style="width:16px;height:16px;border-radius:50%;background:${c};cursor:pointer;display:inline-block;border:2px solid ${(t.memoStyle?.color||'#1e293b')===c?'#000':'transparent'};flex-shrink:0;"></span>`
           ).join('')}
+          <button class="btn-sm" onclick="insertMemoTimestamp(${t.id})" title="지금 시각을 메모에 삽입합니다" style="background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;font-weight:700;padding:2px 8px;">🕒 시각</button>
           <button onclick="closeTaskMemo(${t.id})" style="margin-left:auto;background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.8rem;">✕ 닫기</button>
         </div>
         <textarea id="task-memo-ta-${t.id}" placeholder="진행 메모 (예: 80%인 이유, 남은 작업...)"
           style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:0.82rem;resize:vertical;min-height:60px;font-family:inherit;background:white;color:${t.memoStyle?.color||'#1e293b'};font-weight:${t.memoStyle?.bold?'700':'400'};"
           onblur="saveTaskMemo(${t.id},this.value)">${t.memo||''}</textarea>
+        <div id="task-memo-time-${t.id}" style="margin-top:4px;font-size:0.7rem;color:var(--muted);text-align:right;">${memoStampLabel(t)}</div>
       </div>`;
     // task drag events
     item.addEventListener('dragstart', e=>taskDragStart(e, t.id, prio));
@@ -3117,7 +3119,7 @@ function collectCompletedTasks(){
       id:t.id, text:t.text||'', date,
       projId:projInfo.id, projName:projInfo.name, projColor:projInfo.color,
       priority:t.priority||'', subProject:t.subProject||'',
-      memo:t.memo||'', memoStyle:t.memoStyle||null,
+      memo:t.memo||'', memoStyle:t.memoStyle||null, memoUpdatedAt:t.memoUpdatedAt||null,
       note:note||''
     });
   };
@@ -3236,7 +3238,7 @@ function renderHistoryByProject(){
         ${x.priority?`<span style="flex-shrink:0;color:${pc};font-weight:800;font-size:0.68rem;margin-top:2px;">${x.priority}</span>`:''}
         <div style="flex:1;min-width:0;">
           <div>${x.subProject?`<span style="font-size:0.7rem;color:${g.color};background:${g.color}18;padding:1px 6px;border-radius:4px;margin-right:5px;font-weight:700;">${x.subProject}</span>`:''}✓ ${x.text}</div>
-          ${x.memo&&x.memo.trim()?`<div style="margin-top:3px;font-size:0.74rem;color:${x.memoStyle&&x.memoStyle.color||'#64748b'};font-weight:${x.memoStyle&&x.memoStyle.bold?'700':'400'};background:#f8fafc;border-left:2px solid #cbd5e1;padding:3px 7px;border-radius:0 4px 4px 0;white-space:pre-wrap;">📝 ${x.memo}</div>`:''}
+          ${x.memo&&x.memo.trim()?`<div style="margin-top:3px;font-size:0.74rem;color:${x.memoStyle&&x.memoStyle.color||'#64748b'};font-weight:${x.memoStyle&&x.memoStyle.bold?'700':'400'};background:#f8fafc;border-left:2px solid #cbd5e1;padding:3px 7px;border-radius:0 4px 4px 0;white-space:pre-wrap;">📝 ${x.memo}${x.memoUpdatedAt?`<span style="display:block;margin-top:2px;font-size:0.68rem;color:#94a3b8;font-weight:400;">✏️ ${fmtMemoStamp(x.memoUpdatedAt,true)} 작성</span>`:''}</div>`:''}
         </div>
       </div>`;
     }).join('') : '';
@@ -3350,7 +3352,7 @@ function renderHistory(){
             <span style="flex-shrink:0;margin-top:1px;">${t.priority?`<span style="color:${pc};font-weight:700;font-size:0.68rem;">${t.priority}</span>`:''}</span>
             <div style="flex:1;min-width:0;">
               <div style="font-size:0.82rem;">✓ ${t.text}</div>
-              ${hasMemo?`<div id="${memoId}" style="margin-top:3px;font-size:0.74rem;color:${t.memoStyle&&t.memoStyle.color||'#64748b'};font-weight:${t.memoStyle&&t.memoStyle.bold?'700':'400'};background:#f8fafc;border-left:2px solid #cbd5e1;padding:3px 7px;border-radius:0 4px 4px 0;white-space:pre-wrap;">📝 ${t.memo}</div>`:''}
+              ${hasMemo?`<div id="${memoId}" style="margin-top:3px;font-size:0.74rem;color:${t.memoStyle&&t.memoStyle.color||'#64748b'};font-weight:${t.memoStyle&&t.memoStyle.bold?'700':'400'};background:#f8fafc;border-left:2px solid #cbd5e1;padding:3px 7px;border-radius:0 4px 4px 0;white-space:pre-wrap;">📝 ${t.memo}${memoStampLabel(t)?`<span style="display:block;margin-top:2px;font-size:0.68rem;color:#94a3b8;font-weight:400;">${memoStampLabel(t)}</span>`:''}</div>`:''}
             </div>
             ${hasMemo?`<button onclick="toggleHistMemo('${memoId}',this)" style="flex-shrink:0;background:none;border:none;cursor:pointer;font-size:0.78rem;color:var(--muted);padding:2px;" title="메모 숨기기/보이기">🗒️</button>`:''}
           </div>`;
@@ -3428,8 +3430,59 @@ function updateActualHours(id, val){
   saveToFirebase();
 }
 
+/* ── 메모 작성 시각 ────────────────────────────────
+   메모를 저장할 때마다 마지막 수정 시각(memoUpdatedAt)을 남긴다.
+   여러 건을 이어 적는 경우에는 🕒 버튼으로 각 줄 앞에 시각을 직접 넣을 수 있다.
+   Firestore는 undefined를 저장하지 못하므로, 값이 없을 땐 키를 지운다. */
+function fmtMemoStamp(iso, withYear){
+  if(!iso) return '';
+  const d=new Date(iso);
+  if(isNaN(d)) return '';
+  const wd=['일','월','화','수','목','금','토'][d.getDay()];
+  const mm=String(d.getMonth()+1).padStart(2,'0');
+  const dd=String(d.getDate()).padStart(2,'0');
+  const hh=String(d.getHours()).padStart(2,'0');
+  const mi=String(d.getMinutes()).padStart(2,'0');
+  const y = withYear && d.getFullYear()!==TODAY.getFullYear() ? `${d.getFullYear()}. ` : '';
+  return `${y}${mm}/${dd}(${wd}) ${hh}:${mi}`;
+}
+function memoStampLabel(t){
+  if(!t || !t.memo || !t.memo.trim() || !t.memoUpdatedAt) return '';
+  return `✏️ ${fmtMemoStamp(t.memoUpdatedAt, true)} 작성`;
+}
+// 커서 위치에 "[08/14(금) 15:32] "를 넣는다 (새 줄이면 줄머리에)
+function insertMemoTimestamp(id){
+  const ta=document.getElementById(`task-memo-ta-${id}`);
+  if(!ta) return;
+  const stamp=`[${fmtMemoStamp(new Date().toISOString())}] `;
+  const start=ta.selectionStart ?? ta.value.length;
+  const end=ta.selectionEnd ?? start;
+  const before=ta.value.slice(0,start);
+  const after=ta.value.slice(end);
+  // 이미 쓴 내용이 있고 줄 끝에 커서가 있으면 새 줄에서 시작
+  const needsNewline = before.length>0 && !before.endsWith('\n');
+  const insert=(needsNewline?'\n':'')+stamp;
+  ta.value=before+insert+after;
+  const pos=before.length+insert.length;
+  ta.focus();
+  ta.setSelectionRange(pos,pos);
+}
+
 function saveTaskMemo(id, memo){
-  tasks=tasks.map(t=>t.id===id?{...t,memo:memo.trim()}:t);
+  const trimmedNew=memo.trim();
+  tasks=tasks.map(t=>{
+    if(t.id!==id) return t;
+    const u={...t, memo:trimmedNew};
+    if(!trimmedNew){
+      delete u.memoUpdatedAt;               // 메모를 비우면 시각도 제거
+    } else if(trimmedNew!==(t.memo||'')){
+      u.memoUpdatedAt=new Date().toISOString(); // 내용이 바뀔 때만 갱신
+    }
+    return u;
+  });
+  // 패널에 표시된 작성 시각을 즉시 갱신
+  const stampEl=document.getElementById(`task-memo-time-${id}`);
+  if(stampEl) stampEl.textContent=memoStampLabel(tasks.find(t=>t.id===id));
   saveToFirebase();
   // 전체 리렌더 대신 해당 업무의 메모 아이콘만 갱신 (열려있는 패널 유지)
   const trimmed=memo.trim();
@@ -6522,7 +6575,7 @@ function renderParkingLot(){
         <span class="p-badge editable" onclick="event.stopPropagation();showProjectPicker(event, ${t.id})" onmousedown="event.stopPropagation()" title="클릭하여 프로젝트/하위분류 변경" style="background:${p.color}22;color:${p.color};flex-shrink:0;cursor:pointer;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
         <span class="task-text" ondblclick="event.stopPropagation();startInlineEditTaskText(${t.id}, this)" title="더블클릭하여 수정" style="font-size:0.85rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;">${t.text}</span>
         <span onclick="event.stopPropagation();toggleTaskMemo(${t.id})"
-          title="${t.memo?t.memo.slice(0,40)+(t.memo.length>40?'...':''):'메모 추가'}"
+          title="${t.memo?(memoStampLabel(t)?memoStampLabel(t)+'\n':'')+t.memo.slice(0,80)+(t.memo.length>80?'...':''):'메모 추가'}"
           style="font-size:0.78rem;cursor:pointer;flex-shrink:0;display:inline-flex;align-items:center;padding:2px 6px;border-radius:5px;
             ${t.memo?'background:#fef9c3;color:#92660d;font-weight:700;border:1px solid #fde68a;':'background:transparent;color:#cbd5e1;border:1px dashed #cbd5e1;'}">📝</span>
         <span class="date-badge" style="flex-shrink:0;background:#f5f3ff;color:#7c3aed;border-color:#ddd6fe;">날짜 미정</span>
@@ -6532,6 +6585,10 @@ function renderParkingLot(){
         </div>
       </div>
       <div id="task-memo-${t.id}" style="display:none;margin-top:8px;padding:10px;background:#f8fafc;border-radius:6px;border-left:3px solid var(--primary);">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">
+          <button class="btn-sm" onclick="insertMemoTimestamp(${t.id})" title="지금 시각을 메모에 삽입합니다" style="background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;font-weight:700;padding:2px 8px;">🕒 시각</button>
+          <span id="task-memo-time-${t.id}" style="margin-left:auto;font-size:0.7rem;color:var(--muted);">${memoStampLabel(t)}</span>
+        </div>
         <textarea id="task-memo-ta-${t.id}" placeholder="메모 (예: 왜 보류중인지, 언제쯤 다시 볼지...)"
           style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:0.82rem;resize:vertical;min-height:60px;font-family:inherit;background:white;color:${t.memoStyle?.color||'#1e293b'};font-weight:${t.memoStyle?.bold?'700':'400'};"
           onblur="saveTaskMemo(${t.id},this.value)">${t.memo||''}</textarea>
