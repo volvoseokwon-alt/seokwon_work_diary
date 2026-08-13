@@ -132,6 +132,8 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 .prio-group-label{font-size:0.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:4px 2px 2px;margin-top:4px;}
 .p-badge{font-size:0.7rem;padding:2px 6px;border-radius:4px;font-weight:600;}
 .date-badge{font-size:0.7rem;color:var(--muted);background:#f8fafc;padding:2px 6px;border-radius:4px;border:1px solid var(--border);}
+.date-badge.editable:hover,.p-badge.editable:hover{outline:1.5px solid var(--primary);outline-offset:1px;filter:brightness(0.97);}
+.date-badge.editable,.p-badge.editable{cursor:pointer;}
 .status-chip{font-size:0.68rem;padding:2px 6px;border-radius:10px;color:white;font-weight:700;}
 /* Calendar */
 .cal-nav{display:flex;justify-content:space-between;align-items:center;}
@@ -2432,7 +2434,7 @@ function renderTaskList(list){
         <input type="checkbox" draggable="false" onmousedown="event.stopPropagation()" ${t.done?'checked':''} onchange="toggleTask(${t.id})">
         ${taskAtRisk?`<span class="risk-warn-icon" title="남은 기간 대비 진행 부족! 경과 ${taskElapsed}% / 진행 ${getTaskProgress(t)}%" style="flex-shrink:0;">🚨</span>`:''}
         ${prio?`<span onclick="event.stopPropagation();showPriorityPicker(event, ${t.id})" title="클릭하여 우선순위 변경" style="background:${pc};color:white;font-size:0.7rem;font-weight:800;padding:2px 6px;border-radius:4px;min-width:26px;text-align:center;flex-shrink:0;cursor:pointer;">${prio}</span>`:''}
-        <span class="p-badge" onclick="event.stopPropagation();showProjectPicker(event, ${t.id})" onmousedown="event.stopPropagation()" title="클릭하여 프로젝트/하위분류 변경" style="background:${p.color}22;color:${p.color};flex-shrink:0;cursor:pointer;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
+        <span class="p-badge editable" onclick="event.stopPropagation();showProjectPicker(event, ${t.id})" onmousedown="event.stopPropagation()" title="클릭하여 프로젝트/하위분류 변경" style="background:${p.color}22;color:${p.color};flex-shrink:0;cursor:pointer;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
         <span class="task-text" ondblclick="event.stopPropagation();startInlineEditTaskText(${t.id}, this)" title="더블클릭하여 수정" style="font-size:0.85rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;${taskAtRisk?'color:#dc2626;font-weight:700;':''}">${t.text}</span>
         <span onclick="event.stopPropagation();toggleTaskMemo(${t.id})"
           title="${t.memo?t.memo.slice(0,40)+(t.memo.length>40?'...':''):'메모 추가'}"
@@ -2440,7 +2442,7 @@ function renderTaskList(list){
             ${t.memo?'background:#fef9c3;color:#92660d;font-weight:700;border:1px solid #fde68a;':'background:transparent;color:#cbd5e1;border:1px dashed #cbd5e1;'}"
           onmouseover="this.style.opacity='0.75'"
           onmouseout="this.style.opacity='1'">📝${t.memo?'':''}</span>
-        <span class="date-badge" onclick="event.stopPropagation();showDatePicker(event, ${t.id})" onmousedown="event.stopPropagation()" title="클릭하여 기간 변경" style="flex-shrink:0;cursor:pointer;">📅 ${fmt(t.start)} ~ ${fmt(t.end)}</span>
+        <span class="date-badge editable" onclick="event.stopPropagation();showDatePicker(event, ${t.id})" onmousedown="event.stopPropagation()" title="클릭하여 기간 변경" style="flex-shrink:0;">📅 ${fmt(t.start)} ~ ${fmt(t.end)} <span style="opacity:0.5;">✎</span></span>
         ${!t.done?`<select class="status-select" draggable="false" onmousedown="event.stopPropagation()" style="color:${stInfo.color};border-color:${stInfo.color}22;background:${stInfo.color}11;flex-shrink:0;"
             onchange="setTaskStatus(${t.id},this.value)">
           ${st==='overdue'?`<option value="overdue" selected>🔴 기한초과</option>`:''}
@@ -3539,23 +3541,44 @@ function setTaskPriorityFromPicker(id, newPriority){
 ══════════════════════════════════════ */
 const INLINE_POPUP_ID='inline-edit-popup';
 
-function closeInlinePopup(){ document.getElementById(INLINE_POPUP_ID)?.remove(); }
+const INLINE_BACKDROP_ID='inline-edit-backdrop';
 
-// 앵커 요소 아래에 팝업을 띄우고 화면 밖으로 넘치면 위치를 보정한다
+function closeInlinePopup(){
+  document.getElementById(INLINE_POPUP_ID)?.remove();
+  document.getElementById(INLINE_BACKDROP_ID)?.remove();
+  document.removeEventListener('keydown', inlinePopupKeydown, true);
+}
+function inlinePopupKeydown(e){
+  if(e.key==='Escape'){ e.preventDefault(); closeInlinePopup(); }
+}
+
+// 앵커 요소 아래에 팝업을 띄우고 화면 밖으로 넘치면 위치를 보정한다.
+// 닫기는 전용 backdrop(투명 전체화면 레이어) 클릭 / Esc / 취소·적용 버튼으로만 일어난다.
+// (document 클릭 리스너를 쓰면 <input type="date">의 네이티브 달력을 여닫는 순간
+//  팝업이 같이 닫혀서 "날짜가 안 바뀐다"는 증상이 생긴다.)
 function openInlinePopup(anchorEl, innerHtml, minWidth){
   closePriorityPicker(); closeInlinePopup();
+
+  const backdrop=document.createElement('div');
+  backdrop.id=INLINE_BACKDROP_ID;
+  backdrop.style.cssText='position:fixed;inset:0;z-index:9998;background:transparent;';
+  backdrop.addEventListener('mousedown', e=>{ e.preventDefault(); closeInlinePopup(); });
+  document.body.appendChild(backdrop);
+
   const rect=anchorEl.getBoundingClientRect();
   const box=document.createElement('div');
   box.id=INLINE_POPUP_ID;
-  box.style.cssText=`position:fixed;top:${rect.bottom+4}px;left:${rect.left}px;background:white;border:1px solid var(--border);border-radius:9px;box-shadow:0 10px 26px rgba(0,0,0,0.18);z-index:9999;padding:10px;min-width:${minWidth||220}px;display:flex;flex-direction:column;gap:7px;`;
+  box.style.cssText=`position:fixed;top:${rect.bottom+4}px;left:${rect.left}px;background:white;border:1px solid var(--border);border-radius:9px;box-shadow:0 10px 26px rgba(0,0,0,0.2);z-index:9999;padding:10px;min-width:${minWidth||220}px;display:flex;flex-direction:column;gap:7px;`;
   box.innerHTML=innerHtml;
   box.addEventListener('click', e=>e.stopPropagation());
   box.addEventListener('mousedown', e=>e.stopPropagation());
   document.body.appendChild(box);
+
   const r=box.getBoundingClientRect();
   if(r.right>window.innerWidth) box.style.left=`${Math.max(8,window.innerWidth-r.width-8)}px`;
   if(r.bottom>window.innerHeight) box.style.top=`${Math.max(8,rect.top-r.height-4)}px`;
-  setTimeout(()=>{ document.addEventListener('click', closeInlinePopup, {once:true}); },0);
+
+  document.addEventListener('keydown', inlinePopupKeydown, true);
   return box;
 }
 
@@ -3645,7 +3668,18 @@ function showDatePicker(evt, taskId){
       <button class="btn-sm" style="background:var(--bg);color:var(--muted);" onclick="closeInlinePopup()">취소</button>
       <button class="btn-sm" style="background:var(--primary);color:white;font-weight:700;" onclick="applyDatePicker(${taskId})">적용</button>
     </div>`;
-  openInlinePopup(evt.currentTarget, html, 250);
+  const box=openInlinePopup(evt.currentTarget, html, 250);
+  // Enter로 바로 적용
+  box.addEventListener('keydown', e=>{
+    if(e.key==='Enter'){ e.preventDefault(); applyDatePicker(taskId); }
+  });
+  // 시작일을 종료일보다 뒤로 잡으면 종료일을 같이 밀어준다
+  const si=box.querySelector('#idp-start');
+  si?.addEventListener('change', ()=>{
+    const ei=box.querySelector('#idp-end');
+    if(ei && ei.value && si.value && ei.value<si.value) ei.value=si.value;
+  });
+  setTimeout(()=>si?.focus(),0);
 }
 function idpShiftEnd(days){
   const st=document.getElementById('idp-start').value||TODAY_STR;
@@ -6485,7 +6519,7 @@ function renderParkingLot(){
       <div style="display:flex;align-items:center;gap:8px;width:100%;">
         <span style="flex-shrink:0;font-size:0.8rem;">📥</span>
         ${prio?`<span onclick="event.stopPropagation();showPriorityPicker(event, ${t.id})" title="클릭하여 우선순위 변경" style="background:${prioColor(prio)};color:white;font-size:0.7rem;font-weight:800;padding:2px 6px;border-radius:4px;min-width:26px;text-align:center;flex-shrink:0;cursor:pointer;">${prio}</span>`:''}
-        <span class="p-badge" onclick="event.stopPropagation();showProjectPicker(event, ${t.id})" title="클릭하여 프로젝트/하위분류 변경" style="background:${p.color}22;color:${p.color};flex-shrink:0;cursor:pointer;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
+        <span class="p-badge editable" onclick="event.stopPropagation();showProjectPicker(event, ${t.id})" onmousedown="event.stopPropagation()" title="클릭하여 프로젝트/하위분류 변경" style="background:${p.color}22;color:${p.color};flex-shrink:0;cursor:pointer;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
         <span class="task-text" ondblclick="event.stopPropagation();startInlineEditTaskText(${t.id}, this)" title="더블클릭하여 수정" style="font-size:0.85rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;">${t.text}</span>
         <span onclick="event.stopPropagation();toggleTaskMemo(${t.id})"
           title="${t.memo?t.memo.slice(0,40)+(t.memo.length>40?'...':''):'메모 추가'}"
