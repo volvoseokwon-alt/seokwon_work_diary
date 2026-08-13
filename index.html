@@ -408,6 +408,17 @@ ZB 교체 둘</textarea>
           <button class="btn-primary" onclick="addTask()">추가</button>
         </div>
       </div>
+      <!-- 📆 기록 날짜 (지난 날짜 소급 입력) -->
+      <div id="logdate-bar" style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:8px;padding:7px 11px;border-radius:8px;background:#f0fdf4;border:1.5px solid #bbf7d0;">
+        <span style="font-size:0.77rem;font-weight:800;color:#047857;">📆 기록 날짜</span>
+        <input type="date" id="logdate-input" max="" onchange="setLogDate(this.value)"
+          style="padding:4px 7px;border:1.5px solid #86efac;border-radius:6px;font-size:0.78rem;color:#047857;font-weight:700;background:white;">
+        <button class="btn-sm" style="background:white;color:#047857;border:1px solid #86efac;font-weight:700;" onclick="logDateShift(-1)">◀ 전날</button>
+        <button class="btn-sm" style="background:white;color:#047857;border:1px solid #86efac;font-weight:700;" onclick="logDateShift(1)">다음날 ▶</button>
+        <button class="btn-sm" style="background:white;color:#047857;border:1px solid #86efac;font-weight:700;" onclick="logDateToday()">오늘</button>
+        <span id="logdate-hint" style="font-size:0.72rem;color:#059669;"></span>
+        <span id="logdate-total" style="margin-left:auto;font-size:0.75rem;font-weight:800;color:#047857;"></span>
+      </div>
       <div id="subproj-group-toggle-wrap" style="display:none;align-items:center;gap:7px;margin-bottom:7px;">
         <label style="display:flex;align-items:center;gap:5px;font-size:0.78rem;color:var(--muted);cursor:pointer;">
           <input type="checkbox" id="subproj-group-toggle" onchange="toggleSubProjGroupsInAll(this.checked)">
@@ -463,6 +474,19 @@ ZB 교체 둘</textarea>
           <div id="home-today-done-tasks"></div>
         </div>
       </div>
+      <!-- ⏰ 하루 시간대별 기록 -->
+      <div class="card" style="margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:9px;">
+          <span style="font-size:0.85rem;font-weight:700;color:var(--muted);">⏰ 시간대별 기록</span>
+          <span id="tl-date-lbl" style="font-size:0.72rem;color:var(--muted);background:var(--bg);padding:1px 8px;border-radius:8px;"></span>
+          <span style="font-size:0.68rem;color:var(--muted);">빈 칸을 클릭하면 그 시각부터 추가됩니다</span>
+          <button class="btn-primary" style="margin-left:auto;font-size:0.74rem;padding:4px 10px;" onclick="openTimeBlockModal(null,null)">+ 블록 추가</button>
+        </div>
+        <div id="tl-summary" style="margin-bottom:9px;"></div>
+        <div id="tl-timeline"></div>
+        <div id="tl-unassigned" style="margin-top:10px;"></div>
+      </div>
+
       <div class="card" style="margin-bottom:12px;">
         <div style="font-size:0.85rem;font-weight:700;color:var(--muted);margin-bottom:8px;">⚠️ 지연·초과 업무</div>
         <div id="home-risk"></div>
@@ -863,6 +887,23 @@ ZB 교체 둘</textarea>
 </div>
 
 <style>
+/* ── 하루 시간대별 기록 (타임블록) ── */
+.tl-wrap{position:relative;border:1.5px solid var(--border);border-radius:9px;overflow:hidden;background:var(--card);}
+.tl-grid{position:relative;}
+.tl-hour{position:relative;display:flex;border-top:1px solid #eef2f7;}
+.tl-hour:first-child{border-top:none;}
+.tl-hour-lbl{width:52px;flex-shrink:0;font-size:0.68rem;color:#94a3b8;font-weight:700;padding:2px 6px 0 0;text-align:right;font-variant-numeric:tabular-nums;background:#fbfcfe;border-right:1px solid #eef2f7;}
+.tl-hour-cell{flex:1;position:relative;cursor:crosshair;}
+.tl-hour-cell:hover{background:#f8fafc;}
+.tl-half{position:absolute;left:0;right:0;top:50%;border-top:1px dashed #f1f5f9;}
+.tl-layer{position:absolute;left:52px;right:0;top:0;bottom:0;pointer-events:none;}
+.tl-block{position:absolute;border-radius:6px;padding:3px 7px;font-size:0.72rem;line-height:1.25;overflow:hidden;cursor:pointer;pointer-events:auto;box-shadow:0 1px 3px rgba(0,0,0,.09);transition:.1s;}
+.tl-block:hover{filter:brightness(.96);box-shadow:0 2px 7px rgba(0,0,0,.16);}
+.tl-block b{display:block;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.tl-block .tl-t{font-size:0.64rem;opacity:.8;font-variant-numeric:tabular-nums;}
+.tl-now{position:absolute;left:52px;right:0;height:0;border-top:2px solid #ef4444;z-index:5;pointer-events:none;}
+.tl-now::before{content:'';position:absolute;left:-4px;top:-4px;width:7px;height:7px;border-radius:50%;background:#ef4444;}
+.tl-sumbar{display:flex;height:9px;border-radius:5px;overflow:hidden;background:#eef2f7;}
 .hist-mode-btn{padding:5px 12px;border:none;background:white;color:var(--muted);font-size:0.78rem;font-weight:700;cursor:pointer;transition:.12s;}
 .hist-mode-btn.active{background:var(--primary);color:#fff;}
 .hist-mode-btn:not(.active):hover{background:var(--pri-light);color:var(--primary);}
@@ -875,11 +916,98 @@ ZB 교체 둘</textarea>
 .hp-month{padding:5px 12px 4px;background:#f8fafc;font-size:0.73rem;font-weight:800;color:#64748b;border-top:1px solid #eef2f7;}
 </style>
 
+<div class="modal" id="modal-timeblock">
+  <div class="modal-box" style="max-width:420px;">
+    <h3 id="tb-title">⏰ 시간대 기록 추가</h3>
+    <div style="font-size:0.78rem;color:var(--muted);margin:-6px 0 0;" id="tb-datelbl"></div>
+
+    <div style="display:flex;gap:0;border:1.5px solid var(--border);border-radius:7px;overflow:hidden;">
+      <button type="button" id="tb-kind-task" class="hist-mode-btn" style="flex:1;" onclick="setTbKind('task')">📋 업무</button>
+      <button type="button" id="tb-kind-meeting" class="hist-mode-btn" style="flex:1;" onclick="setTbKind('meeting')">🗣️ 미팅</button>
+      <button type="button" id="tb-kind-etc" class="hist-mode-btn" style="flex:1;" onclick="setTbKind('etc')">✏️ 기타</button>
+    </div>
+
+    <div id="tb-task-wrap">
+      <label style="font-size:0.76rem;font-weight:700;color:var(--muted);">업무 선택</label>
+      <select id="tb-task"></select>
+    </div>
+    <div id="tb-free-wrap" style="display:none;">
+      <label style="font-size:0.76rem;font-weight:700;color:var(--muted);" id="tb-free-lbl">미팅 제목</label>
+      <input type="text" id="tb-free-title" placeholder="예: 주간 정례회의">
+      <div style="margin-top:7px;">
+        <label style="font-size:0.76rem;font-weight:700;color:var(--muted);">프로젝트</label>
+        <select id="tb-free-proj"></select>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;align-items:flex-end;">
+      <div style="flex:1;">
+        <label style="font-size:0.76rem;font-weight:700;color:var(--muted);">시작</label>
+        <input type="time" id="tb-start" step="300" onchange="tbSyncDuration()">
+      </div>
+      <div style="flex:1;">
+        <label style="font-size:0.76rem;font-weight:700;color:var(--muted);">종료</label>
+        <input type="time" id="tb-end" step="300" onchange="tbSyncDuration()">
+      </div>
+      <div style="flex-shrink:0;padding-bottom:9px;font-size:0.8rem;font-weight:800;color:var(--primary);min-width:46px;text-align:right;" id="tb-dur">0h</div>
+    </div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap;">
+      <button type="button" class="btn-sm" style="background:var(--bg);color:var(--muted);" onclick="tbQuick(30)">+30분</button>
+      <button type="button" class="btn-sm" style="background:var(--bg);color:var(--muted);" onclick="tbQuick(60)">+1시간</button>
+      <button type="button" class="btn-sm" style="background:var(--bg);color:var(--muted);" onclick="tbQuick(90)">+1.5시간</button>
+      <button type="button" class="btn-sm" style="background:var(--bg);color:var(--muted);" onclick="tbQuick(120)">+2시간</button>
+    </div>
+
+    <div>
+      <label style="font-size:0.76rem;font-weight:700;color:var(--muted);">메모 (선택)</label>
+      <input type="text" id="tb-memo" placeholder="무엇을 했는지 간단히">
+    </div>
+    <div id="tb-warn" style="display:none;font-size:0.75rem;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:6px 9px;"></div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" id="tb-delete" style="margin-right:auto;background:#fee2e2;color:var(--warn);display:none;" onclick="deleteTimeBlock()">삭제</button>
+      <button class="btn-cancel" onclick="closeTimeBlockModal()">취소</button>
+      <button class="btn-primary" onclick="saveTimeBlock()">저장</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="modal-complete-date">
   <div class="modal-box" style="max-width:340px;">
     <h3 id="complete-date-title">✅ 완료 처리</h3>
     <div style="font-size:0.84rem;color:var(--muted);margin:-4px 0 6px;" id="complete-date-tasktext"></div>
-    <div class="date-grp"><label>완료일</label><input type="date" id="complete-date-input" style="flex:1;padding:8px;border:1.5px solid var(--border);border-radius:6px;font-size:0.9rem;"></div>
+    <div class="date-grp"><label>완료일</label><input type="date" id="complete-date-input" onchange="syncCompleteHours()" style="flex:1;padding:8px;border:1.5px solid var(--border);border-radius:6px;font-size:0.9rem;"></div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:-4px;">
+      <button type="button" class="btn-sm" style="background:var(--bg);color:var(--muted);" onclick="cdQuickDate(0)">오늘</button>
+      <button type="button" class="btn-sm" style="background:var(--bg);color:var(--muted);" onclick="cdQuickDate(-1)">어제</button>
+      <button type="button" class="btn-sm" style="background:var(--bg);color:var(--muted);" onclick="cdQuickDate(-2)">그제</button>
+    </div>
+
+    <div style="border-top:1px dashed var(--border);padding-top:10px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <label style="font-size:0.8rem;font-weight:700;color:var(--muted);white-space:nowrap;">⏱️ 투입 시간</label>
+        <input type="number" id="complete-hours-input" min="0" step="0.5" placeholder="0"
+          style="width:74px;text-align:right;font-weight:700;color:#047857;">
+        <span style="font-size:0.82rem;color:var(--muted);">h</span>
+        <span id="complete-hours-note" style="font-size:0.7rem;color:var(--muted);margin-left:auto;text-align:right;"></span>
+      </div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px;">
+        <button type="button" class="btn-sm" style="background:var(--bg);color:var(--muted);" onclick="cdSetHours(0.5)">0.5h</button>
+        <button type="button" class="btn-sm" style="background:var(--bg);color:var(--muted);" onclick="cdSetHours(1)">1h</button>
+        <button type="button" class="btn-sm" style="background:var(--bg);color:var(--muted);" onclick="cdSetHours(2)">2h</button>
+        <button type="button" class="btn-sm" style="background:var(--bg);color:var(--muted);" onclick="cdSetHours(4)">4h</button>
+        <button type="button" class="btn-sm" style="background:var(--bg);color:var(--muted);" onclick="cdSetHours(8)">8h</button>
+      </div>
+      <label style="display:flex;align-items:center;gap:6px;font-size:0.76rem;color:var(--muted);margin-top:9px;cursor:pointer;">
+        <input type="checkbox" id="complete-usetime" onchange="cdToggleTime(this.checked)" style="cursor:pointer;">
+        시간대도 지정 (하루 타임라인에 표시)
+      </label>
+      <div id="complete-time-wrap" style="display:none;gap:8px;margin-top:6px;">
+        <div style="flex:1;"><label style="font-size:0.72rem;color:var(--muted);">시작</label><input type="time" id="complete-start-time" step="300" onchange="cdTimeChanged()"></div>
+        <div style="flex:1;"><label style="font-size:0.72rem;color:var(--muted);">종료</label><input type="time" id="complete-end-time" step="300" onchange="cdTimeChanged()"></div>
+      </div>
+    </div>
+
     <div class="modal-actions">
       <button class="btn-cancel" onclick="cancelCompleteDate()">취소</button>
       <button class="btn-primary" onclick="confirmCompleteDate()">완료 처리</button>
@@ -2259,6 +2387,7 @@ function renderTaskList(list){
   // innerHTML을 비우기 전에 원래 자리(목록 바깥)로 되돌려 지워지지 않게 한다.
   const plCard=document.getElementById('parking-lot-card');
   if(plCard && plCard.parentElement===el && el.parentElement) el.parentElement.appendChild(plCard);
+  syncLogDateBar();
   el.innerHTML='';
   if(!list.length){ el.innerHTML='<div style="color:var(--muted);font-size:0.83rem;text-align:center;padding:18px">업무 없음. 위에서 추가하세요.</div>'; return; }
 
@@ -2342,14 +2471,14 @@ function renderTaskList(list){
           ${st==='overdue'?`<option value="overdue" selected>🔴 기한초과</option>`:''}
           ${Object.entries(TASK_STATUS).filter(([k])=>k!=='done'&&k!=='early_done'&&k!=='overdue').map(([k,v])=>`<option value="${k}" ${st===k?'selected':''}>${v.icon} ${v.label}</option>`).join('')}
         </select>`:`<span class="status-chip" onclick="event.stopPropagation();editCompleteDate(${t.id})" title="클릭하여 완료일 변경" style="background:${stInfo.color};flex-shrink:0;display:flex;align-items:center;gap:4px;cursor:pointer;">${stInfo.icon} ${stInfo.label}${t.actualEnd?`<span style="font-size:0.68rem;opacity:0.85;font-weight:400;">(${fmt(t.actualEnd)})</span>`:''}</span>`}
-        ${!t.done?`<span style="display:flex;align-items:center;gap:3px;flex-shrink:0;background:#f0fdf4;border-radius:6px;padding:2px 6px;" title="실제 투입 시간(h) — 입력하면 주간/월간 기록에도 반영됩니다. 날짜를 바꾸면 그 날짜로 기록됩니다." onmousedown="event.stopPropagation()">
-          <input type="date" value="${TODAY_STR}" max="${TODAY_STR}"
+        ${!t.done?`<span style="display:flex;align-items:center;gap:3px;flex-shrink:0;background:${activeLogDate===TODAY_STR?'#f0fdf4':'#fff7ed'};border-radius:6px;padding:2px 6px;" title="실제 투입 시간(h) — 입력하면 주간/월간 기록에도 반영됩니다. 상단 '기록 날짜'를 바꾸면 그 날짜로 기록됩니다." onmousedown="event.stopPropagation()">
+          <input type="date" value="${activeLogDate}" max="${TODAY_STR}"
             draggable="false" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()"
-            style="border:none;background:transparent;font-size:0.68rem;color:#10b981;width:84px;padding:0;cursor:pointer;"
+            style="border:none;background:transparent;font-size:0.68rem;color:${activeLogDate===TODAY_STR?'#10b981':'#c2410c'};width:84px;padding:0;cursor:pointer;"
             onchange="syncActualHoursDate(${t.id}, this.value, 'ah-${t.id}')">
-          ⏱️<input type="number" id="ah-${t.id}" min="0" step="0.5" data-log-date="${TODAY_STR}" value="${(()=>{const h=weeklyLogs.filter(l=>l.date===TODAY_STR && l.type!=='meeting' && l.project===t.project && l.task===t.text).reduce((s,l)=>s+(l.hours||0),0); return h||'';})()}" placeholder="0"
+          ⏱️<input type="number" id="ah-${t.id}" min="0" step="0.5" data-log-date="${activeLogDate}" value="${(()=>{const h=weeklyLogs.filter(l=>l.date===activeLogDate && l.type!=='meeting' && l.project===t.project && l.task===t.text).reduce((s,l)=>s+(l.hours||0),0); return h||'';})()}" placeholder="0"
             draggable="false" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()"
-            style="width:38px;border:none;background:transparent;font-size:0.78rem;font-weight:700;color:#10b981;text-align:right;"
+            style="width:38px;border:none;background:transparent;font-size:0.78rem;font-weight:700;color:${activeLogDate===TODAY_STR?'#10b981':'#c2410c'};text-align:right;"
             onchange="setDailyActual(${t.id}, this.value, this.dataset.logDate)">h
         </span>`:''}
         <div style="display:flex;gap:5px;flex-shrink:0;">
@@ -2821,6 +2950,7 @@ function renderWeekly(){
         ${matchedTask?.memo?`<div style="font-size:0.72rem;color:#92660d;background:#fef9c3;border-left:2px solid #fde68a;padding:2px 7px;border-radius:0 4px 4px 0;margin-top:2px;display:inline-block;">📝 ${matchedTask.memo}</div>`:''}
       </div>
       <div style="color:var(--muted);font-size:0.78rem;white-space:nowrap">${fmt(l.date)}</div>
+      ${l.startTime&&l.endTime?`<div style="font-size:0.7rem;font-weight:700;color:#0f766e;background:#ccfbf1;border-radius:5px;padding:1px 6px;white-space:nowrap;" title="시간대 지정된 기록">⏰ ${l.startTime}~${l.endTime}</div>`:''}
       <div style="font-weight:700;color:${isMeeting?'#a855f7':'var(--primary)'};white-space:nowrap;min-width:34px;text-align:right">${l.hours}h</div>
       <button class="btn-sm" style="background:var(--pri-light);color:var(--primary)" onclick="openEditWeekly(${l.id})">수정</button>
       <button class="btn-sm" style="background:#fee2e2;color:var(--warn)" onclick="deleteWeekly(${l.id})">삭제</button>
@@ -3636,7 +3766,57 @@ function setDailyPlan(taskId, value){
 // "📋 할 일" 탭의 날짜 선택 + 시간 입력 조합용 헬퍼.
 // 날짜를 바꾸면 그 업무가 해당 날짜에 이미 기록된 시간이 있는지 찾아 시간 입력칸에 채워주고,
 // 이후 시간을 입력하면 setDailyActual이 그 날짜(this.dataset.logDate)로 기록한다.
+/* ══════════════════════════════════════
+   📆 기록 날짜 (backfill) — 할 일 목록의 ⏱️ 입력이 기준으로 삼는 날짜.
+   "오늘 14일인데 13일에 한 일을 적고 싶다" → 기록 날짜를 13일로 바꾸면
+   모든 업무의 ⏱️ 칸이 13일 기준 값으로 바뀌고, 입력하면 13일자로 저장된다.
+   렌더링 때마다 초기화되지 않도록 전역 상태로 둔다.
+══════════════════════════════════════ */
+let activeLogDate = TODAY_STR;
+
+function setLogDate(dateStr){
+  if(!dateStr) return;
+  activeLogDate = dateStr;
+  if(currentTab==='today') renderTaskList(filteredTasks());
+  syncLogDateBar();
+}
+function logDateToday(){ setLogDate(TODAY_STR); }
+function logDateShift(delta){
+  const d=new Date((activeLogDate||TODAY_STR)+'T00:00:00');
+  d.setDate(d.getDate()+delta);
+  const ns=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  if(ns>TODAY_STR) return; // 미래 날짜는 기록 대상이 아님
+  setLogDate(ns);
+}
+function syncLogDateBar(){
+  const inp=document.getElementById('logdate-input');
+  const bar=document.getElementById('logdate-bar');
+  const hint=document.getElementById('logdate-hint');
+  const tot=document.getElementById('logdate-total');
+  if(!inp||!bar) return;
+  inp.value=activeLogDate;
+  inp.max=TODAY_STR;
+  const isToday=activeLogDate===TODAY_STR;
+  // 과거 날짜를 보고 있을 때는 눈에 띄게 (실수로 다른 날짜에 기록하는 걸 방지)
+  bar.style.background = isToday ? '#f0fdf4' : '#fff7ed';
+  bar.style.borderColor = isToday ? '#bbf7d0' : '#fdba74';
+  const wd=(()=>{ try{ return ['일','월','화','수','목','금','토'][new Date(activeLogDate+'T00:00:00').getDay()]; }catch(e){ return ''; } })();
+  if(hint){
+    hint.style.color = isToday ? '#059669' : '#c2410c';
+    hint.textContent = isToday
+      ? '오늘 기준으로 ⏱️ 시간이 기록됩니다'
+      : `⚠️ ${fmt(activeLogDate)}(${wd}) 기준으로 소급 기록 중`;
+  }
+  if(tot){
+    const h=weeklyLogs.filter(l=>l.date===activeLogDate).reduce((s,l)=>s+(l.hours||0),0);
+    tot.style.color = isToday ? '#047857' : '#c2410c';
+    tot.textContent = h>0 ? `이 날 합계 ${Math.round(h*100)/100}h` : '이 날 기록 없음';
+  }
+}
+
 function syncActualHoursDate(taskId, dateStr, hoursInputId){
+  activeLogDate = dateStr || activeLogDate;   // 개별 행에서 날짜를 바꾸면 전체 기준도 따라가게
+  syncLogDateBar();
   const t=tasks.find(x=>x.id===taskId); if(!t) return;
   const hoursInput=document.getElementById(hoursInputId);
   if(!hoursInput) return;
@@ -3647,22 +3827,28 @@ function syncActualHoursDate(taskId, dateStr, hoursInputId){
 
 function setDailyActual(taskId, value, dateStr){
   const t=tasks.find(x=>x.id===taskId); if(!t) return;
-  const targetDate = dateStr || homeSelectedDate || TODAY_STR;
+  const targetDate = dateStr || (currentTab==='home' ? homeSelectedDate : activeLogDate) || TODAY_STR;
   const h=parseFloat(value);
 
   // 같은 업무 + 같은 날짜로 이미 기록된 항목들(미팅 제외) 찾기
   const existing=weeklyLogs.filter(l=>l.date===targetDate && l.type!=='meeting' && l.project===t.project && l.task===t.text);
+  // 시간대(startTime)가 지정된 블록은 타임라인에서 직접 관리하므로 여기서 건드리지 않는다.
+  // ⏱️ 입력칸은 "총합"을 보여주므로, 입력값에서 블록 합계를 뺀 나머지만 일반 기록으로 저장한다.
+  const blockLogs=existing.filter(l=>l.startTime && l.endTime);
+  const plainLogs=existing.filter(l=>!(l.startTime && l.endTime));
+  const blockH=blockLogs.reduce((sum,l)=>sum+(l.hours||0),0);
+  const rest=Math.round(((isNaN(h)?0:h)-blockH)*100)/100;
 
-  if(isNaN(h) || h<=0){
-    // 0/빈값 → 그 날짜의 해당 업무 기록을 모두 삭제
-    weeklyLogs=weeklyLogs.filter(l=>!existing.includes(l));
-  } else if(existing.length>0){
-    // 기존 기록이 있으면 첫 항목만 남기고 시간을 갱신, 나머지 중복 항목은 정리
-    const keepId=existing[0].id;
-    weeklyLogs=weeklyLogs.map(l=>l.id===keepId?{...l,hours:h}:l).filter(l=>l.id===keepId || !existing.includes(l));
+  if(rest<=0){
+    // 입력값이 블록 합계 이하 → 일반 기록만 제거 (블록은 유지)
+    weeklyLogs=weeklyLogs.filter(l=>!plainLogs.includes(l));
+  } else if(plainLogs.length>0){
+    // 일반 기록이 있으면 첫 항목만 남기고 시간을 갱신, 나머지 중복 항목은 정리
+    const keepId=plainLogs[0].id;
+    weeklyLogs=weeklyLogs.map(l=>l.id===keepId?{...l,hours:rest}:l).filter(l=>l.id===keepId || !plainLogs.includes(l));
   } else {
     // 기록이 없었으면 새로 추가
-    weeklyLogs.push({id:Date.now(), type:'task', project:t.project, task:t.text, date:targetDate, hours:h, memo:''});
+    weeklyLogs.push({id:Date.now(), type:'task', project:t.project, task:t.text, date:targetDate, hours:rest, memo:''});
   }
   saveToFirebase();
   // 현재 보고 있는 화면에 맞게 다시 그림
@@ -3959,6 +4145,336 @@ function renderHome(){
     }
   }
 
+  renderDayTimeline();
+}
+
+/* ══════════════════════════════════════
+   ⏰ 하루 시간대별 기록 (타임블록)
+   weeklyLogs 항목에 startTime/endTime("HH:MM")을 선택적으로 붙인 것.
+   시간대가 지정된 기록은 타임라인에 블록으로, 없으면 "시간대 미지정"으로 표시.
+   hours는 시간 범위에서 자동 계산되므로 기존 레포트/주간기록에 그대로 반영된다.
+══════════════════════════════════════ */
+const TL_ROW_H = 44;          // 1시간 높이(px)
+const TL_DEFAULT_START = 8;   // 기본 표시 시작 시각
+const TL_DEFAULT_END   = 19;  // 기본 표시 종료 시각
+
+// 주간기록 탭 등에서 시간(h)만 바꿨을 때, 시간대가 지정된 기록이면 종료시각을 맞춰준다
+function syncBlockTimes(l){
+  if(!l.startTime || !l.endTime) return l;
+  const s=tlToMin(l.startTime);
+  if(s==null || !(l.hours>0)) return l;
+  return {...l, endTime: tlToStr(Math.min(24*60, s + Math.round(l.hours*60)))};
+}
+
+function tlToMin(hhmm){
+  if(!hhmm || typeof hhmm!=='string' || hhmm.indexOf(':')<0) return null;
+  const [h,m]=hhmm.split(':').map(Number);
+  if(isNaN(h)||isNaN(m)) return null;
+  return h*60+m;
+}
+function tlToStr(min){
+  min=Math.max(0,Math.min(24*60,Math.round(min)));
+  return `${String(Math.floor(min/60)).padStart(2,'0')}:${String(min%60).padStart(2,'0')}`;
+}
+function tlHours(min){ return Math.round(min/60*100)/100; }
+function tlFmtH(h){ return (Math.round(h*100)/100).toString().replace(/\.00$/,'')+'h'; }
+
+// 선택 날짜의 시간대 지정 기록
+function tlBlocks(date){
+  return weeklyLogs
+    .filter(l=>l.date===date && l.startTime && l.endTime)
+    .map(l=>({...l, _s:tlToMin(l.startTime), _e:tlToMin(l.endTime)}))
+    .filter(l=>l._s!=null && l._e!=null && l._e>l._s)
+    .sort((a,b)=>a._s-b._s || a._e-b._e);
+}
+// 선택 날짜의 시간대 미지정 기록 (시간만 입력된 것)
+function tlUnassigned(date){
+  return weeklyLogs.filter(l=>l.date===date && (!l.startTime||!l.endTime) && (l.hours||0)>0);
+}
+// 블록 색 (프로젝트 색 / 미팅은 보라 / 기타는 회색)
+function tlColor(l){
+  if(l.type==='meeting') return '#a855f7';
+  const pj=projects.find(x=>x.id===l.project);
+  return pj?pj.color:'#64748b';
+}
+function tlProjName(l){
+  if(l.projName) return l.projName;
+  const pj=projects.find(x=>x.id===l.project);
+  return pj?pj.name:'기타';
+}
+
+// 겹치는 블록을 가로로 나눠 배치하기 위한 열 계산
+function tlAssignColumns(blocks){
+  const clusters=[]; let cur=[]; let curEnd=-1;
+  blocks.forEach(b=>{
+    if(cur.length && b._s>=curEnd){ clusters.push(cur); cur=[]; curEnd=-1; }
+    cur.push(b); curEnd=Math.max(curEnd,b._e);
+  });
+  if(cur.length) clusters.push(cur);
+  clusters.forEach(cl=>{
+    const colEnds=[];
+    cl.forEach(b=>{
+      let ci=colEnds.findIndex(e=>e<=b._s);
+      if(ci<0){ ci=colEnds.length; colEnds.push(b._e); } else colEnds[ci]=b._e;
+      b._col=ci;
+    });
+    cl.forEach(b=>b._cols=colEnds.length);
+  });
+  return blocks;
+}
+
+function renderDayTimeline(){
+  const wrap=document.getElementById('tl-timeline');
+  if(!wrap) return;
+  const date=homeSelectedDate||TODAY_STR;
+  const lbl=document.getElementById('tl-date-lbl');
+  if(lbl) lbl.textContent=fmt(date);
+
+  const blocks=tlAssignColumns(tlBlocks(date));
+
+  // 표시 범위: 기본 08~19시, 기록이 벗어나면 자동 확장
+  let h0=TL_DEFAULT_START, h1=TL_DEFAULT_END;
+  blocks.forEach(b=>{
+    h0=Math.min(h0, Math.floor(b._s/60));
+    h1=Math.max(h1, Math.ceil(b._e/60));
+  });
+  h0=Math.max(0,h0); h1=Math.min(24,Math.max(h1,h0+4));
+
+  let gridHtml='';
+  for(let h=h0; h<h1; h++){
+    gridHtml+=`<div class="tl-hour" style="height:${TL_ROW_H}px;">
+      <div class="tl-hour-lbl">${String(h).padStart(2,'0')}:00</div>
+      <div class="tl-hour-cell" onclick="tlCellClick(event,${h})"><div class="tl-half"></div></div>
+    </div>`;
+  }
+
+  const blockHtml=blocks.map(b=>{
+    const top=(b._s - h0*60)/60*TL_ROW_H;
+    const hgt=Math.max(15,(b._e-b._s)/60*TL_ROW_H - 2);
+    const w=100/(b._cols||1);
+    const left=w*(b._col||0);
+    const c=tlColor(b);
+    const dur=tlFmtH(tlHours(b._e-b._s));
+    const short=hgt<30;
+    return `<div class="tl-block" style="top:${top}px;height:${hgt}px;left:calc(${left}% + 2px);width:calc(${w}% - 4px);background:${c}1c;border-left:3px solid ${c};color:#1e293b;"
+        onclick="openTimeBlockModal(${b.id},null)" title="${tlProjName(b)} · ${b.task||''} (${b.startTime}~${b.endTime}, ${dur})${b.memo?' — '+String(b.memo).replace(/"/g,'&quot;'):''}">
+      <b style="color:${c};">${b.type==='meeting'?'🗣️ ':''}${b.task||'(제목 없음)'}</b>
+      ${short?'':`<span class="tl-t">${b.startTime}~${b.endTime} · ${dur} · ${tlProjName(b)}</span>`}
+    </div>`;
+  }).join('');
+
+  // 오늘이면 현재 시각선
+  let nowHtml='';
+  if(date===TODAY_STR){
+    const now=new Date();
+    const nm=now.getHours()*60+now.getMinutes();
+    if(nm>=h0*60 && nm<=h1*60) nowHtml=`<div class="tl-now" style="top:${(nm-h0*60)/60*TL_ROW_H}px;"></div>`;
+  }
+
+  wrap.innerHTML=`<div class="tl-wrap"><div class="tl-grid">${gridHtml}
+    <div class="tl-layer">${blockHtml}</div>${nowHtml}</div></div>`;
+
+  renderTlSummary(date, blocks);
+  renderTlUnassigned(date);
+}
+
+// 프로젝트별 합계 막대
+function renderTlSummary(date, blocks){
+  const el=document.getElementById('tl-summary'); if(!el) return;
+  if(!blocks.length){ el.innerHTML=''; return; }
+  const by=new Map();
+  blocks.forEach(b=>{
+    const key=b.type==='meeting'?'__meeting':(b.project||'__etc');
+    const name=b.type==='meeting'?'미팅':tlProjName(b);
+    const color=tlColor(b);
+    const mins=b._e-b._s;
+    if(!by.has(key)) by.set(key,{name,color,mins:0});
+    by.get(key).mins+=mins;
+  });
+  const arr=[...by.values()].sort((a,b)=>b.mins-a.mins);
+  const total=arr.reduce((s,x)=>s+x.mins,0);
+  // 겹침을 뺀 실제 점유 시간
+  let covered=0, cEnd=-1;
+  blocks.forEach(b=>{ const st=Math.max(b._s,cEnd); if(b._e>st){ covered+=b._e-st; cEnd=Math.max(cEnd,b._e); } });
+
+  el.innerHTML=`
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:0.75rem;margin-bottom:5px;">
+      <span style="font-weight:800;color:var(--primary);">기록 ${tlFmtH(tlHours(total))}</span>
+      <span style="color:var(--muted);">실제 점유 ${tlFmtH(tlHours(covered))}</span>
+      ${total!==covered?`<span style="color:#b45309;background:#fffbeb;border-radius:5px;padding:0 6px;">겹침 ${tlFmtH(tlHours(total-covered))}</span>`:''}
+      <span style="color:var(--muted);margin-left:auto;">블록 ${blocks.length}개</span>
+    </div>
+    <div class="tl-sumbar">${arr.map(x=>`<div style="width:${x.mins/total*100}%;background:${x.color};" title="${x.name} ${tlFmtH(tlHours(x.mins))}"></div>`).join('')}</div>
+    <div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:5px;font-size:0.71rem;color:var(--muted);">
+      ${arr.map(x=>`<span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${x.color};margin-right:3px;"></span>${x.name} ${tlFmtH(tlHours(x.mins))}</span>`).join('')}
+    </div>`;
+}
+
+// 시간대 미지정 기록 → 클릭해서 시간대 배정
+function renderTlUnassigned(date){
+  const el=document.getElementById('tl-unassigned'); if(!el) return;
+  const list=tlUnassigned(date);
+  if(!list.length){ el.innerHTML=''; return; }
+  el.innerHTML=`<div style="font-size:0.73rem;font-weight:700;color:var(--muted);margin-bottom:5px;">🕘 시간대 미지정 (${list.length}건) — 클릭하면 시간대를 지정할 수 있습니다</div>`
+    + list.map(l=>{
+      const c=tlColor(l);
+      return `<div onclick="openTimeBlockModal(${l.id},null)" style="display:flex;align-items:center;gap:7px;padding:5px 9px;border:1px dashed ${c}66;background:${c}0d;border-radius:6px;margin-bottom:4px;font-size:0.78rem;cursor:pointer;">
+        <span style="color:${c};font-weight:700;font-size:0.7rem;flex-shrink:0;">${l.type==='meeting'?'🗣️':'📋'} ${tlProjName(l)}</span>
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.task||''}</span>
+        <span style="flex-shrink:0;font-weight:800;color:var(--primary);">${tlFmtH(l.hours||0)}</span>
+      </div>`;
+    }).join('');
+}
+
+// 빈 칸 클릭 → 그 시각부터 1시간 블록 추가
+function tlCellClick(ev, hour){
+  const rect=ev.currentTarget.getBoundingClientRect();
+  const ratio=rect.height?((ev.clientY-rect.top)/rect.height):0;
+  const min = ratio<0.5 ? 0 : 30;   // 상단 절반=정시, 하단 절반=30분
+  openTimeBlockModal(null, tlToStr(hour*60+min));
+}
+
+/* ── 타임블록 모달 ── */
+let tbEditingId=null;
+let tbKind='task';
+
+function setTbKind(k){
+  tbKind=k;
+  ['task','meeting','etc'].forEach(x=>{
+    const b=document.getElementById('tb-kind-'+x);
+    if(b) b.classList.toggle('active', x===k);
+  });
+  document.getElementById('tb-task-wrap').style.display = k==='task'?'':'none';
+  document.getElementById('tb-free-wrap').style.display = k==='task'?'none':'';
+  const fl=document.getElementById('tb-free-lbl');
+  if(fl) fl.textContent = k==='meeting'?'미팅 제목':'내용';
+  const fi=document.getElementById('tb-free-title');
+  if(fi) fi.placeholder = k==='meeting'?'예: 주간 정례회의':'예: 메일 정리, 자료 조사';
+}
+
+function tbSyncDuration(){
+  const s=tlToMin(document.getElementById('tb-start').value);
+  const e=tlToMin(document.getElementById('tb-end').value);
+  const el=document.getElementById('tb-dur');
+  const warn=document.getElementById('tb-warn');
+  if(s==null||e==null){ el.textContent='0h'; warn.style.display='none'; return; }
+  if(e<=s){ el.textContent='—'; warn.style.display=''; warn.textContent='종료 시간이 시작 시간보다 빠릅니다.'; return; }
+  el.textContent=tlFmtH(tlHours(e-s));
+  // 같은 날짜 다른 블록과 겹치는지 안내 (막지는 않음)
+  const date=homeSelectedDate||TODAY_STR;
+  const ov=tlBlocks(date).filter(b=>b.id!==tbEditingId && b._s<e && b._e>s);
+  if(ov.length){ warn.style.display=''; warn.textContent=`⚠️ ${ov.length}건과 시간이 겹칩니다 (${ov.map(b=>b.task||'').join(', ')}) — 저장은 가능합니다.`; }
+  else warn.style.display='none';
+}
+function tbQuick(mins){
+  const sInp=document.getElementById('tb-start');
+  const s=tlToMin(sInp.value);
+  if(s==null){ sInp.value='09:00'; }
+  const base=tlToMin(sInp.value);
+  document.getElementById('tb-end').value=tlToStr(Math.min(24*60,base+mins));
+  tbSyncDuration();
+}
+
+function openTimeBlockModal(logId, presetStart){
+  const date=homeSelectedDate||TODAY_STR;
+  tbEditingId=logId||null;
+  const log=logId?weeklyLogs.find(l=>l.id===logId):null;
+
+  document.getElementById('tb-title').textContent = log?'⏰ 시간대 기록 수정':'⏰ 시간대 기록 추가';
+  document.getElementById('tb-datelbl').textContent = fmt(date)+' 기준';
+  document.getElementById('tb-delete').style.display = log?'':'none';
+
+  // 업무 select 채우기 — 선택 날짜에 걸쳐 있는 업무 + 이미 시간 기록이 있는 업무
+  const sel=document.getElementById('tb-task');
+  const cands=tasks.filter(t=>{
+    if(t.parked) return false;
+    if(t.start && t.end && t.start<=date && t.end>=date) return true;
+    if(weeklyLogs.some(l=>l.date===date && l.project===t.project && l.task===t.text)) return true;
+    if(t.done && t.actualEnd===date) return true;
+    return false;
+  });
+  const others=tasks.filter(t=>!t.parked && !t.done && !cands.includes(t));
+  const optOf=t=>`<option value="${t.id}">${proj(t.project).name}${t.subProject?' · '+t.subProject:''} — ${t.text}</option>`;
+  sel.innerHTML = (cands.length?`<optgroup label="이 날짜 관련 업무">${cands.map(optOf).join('')}</optgroup>`:'')
+                + (others.length?`<optgroup label="그 외 진행중 업무">${others.map(optOf).join('')}</optgroup>`:'');
+
+  // 프로젝트 select (미팅/기타용)
+  const psel=document.getElementById('tb-free-proj');
+  psel.innerHTML=projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+
+  if(log){
+    if(log.type==='meeting') setTbKind('meeting');
+    else {
+      const matched=tasks.find(t=>t.project===log.project && t.text===log.task);
+      if(matched){ setTbKind('task'); sel.value=String(matched.id); }
+      else { setTbKind('etc'); document.getElementById('tb-free-title').value=log.task||''; }
+    }
+    if(tbKind!=='task'){
+      document.getElementById('tb-free-title').value=log.task||'';
+      if(log.project) psel.value=log.project;
+    }
+    document.getElementById('tb-start').value=log.startTime||presetStart||'09:00';
+    document.getElementById('tb-end').value=log.endTime
+      || tlToStr((tlToMin(log.startTime||presetStart||'09:00'))+Math.round((log.hours||1)*60));
+    document.getElementById('tb-memo').value=log.memo||'';
+  } else {
+    setTbKind('task');
+    document.getElementById('tb-free-title').value='';
+    const st=presetStart||'09:00';
+    document.getElementById('tb-start').value=st;
+    document.getElementById('tb-end').value=tlToStr(tlToMin(st)+60);
+    document.getElementById('tb-memo').value='';
+  }
+  tbSyncDuration();
+  document.getElementById('modal-timeblock').classList.add('open');
+}
+function closeTimeBlockModal(){
+  document.getElementById('modal-timeblock').classList.remove('open');
+  tbEditingId=null;
+}
+
+function saveTimeBlock(){
+  const date=homeSelectedDate||TODAY_STR;
+  const startTime=document.getElementById('tb-start').value;
+  const endTime=document.getElementById('tb-end').value;
+  const s=tlToMin(startTime), e=tlToMin(endTime);
+  if(s==null||e==null){ alert('시작/종료 시간을 입력하세요.'); return; }
+  if(e<=s){ alert('종료 시간이 시작 시간보다 늦어야 합니다.'); return; }
+  const hours=tlHours(e-s);
+  const memo=document.getElementById('tb-memo').value.trim();
+
+  let type, project, projName, taskText;
+  if(tbKind==='task'){
+    const tid=parseInt(document.getElementById('tb-task').value,10);
+    const t=tasks.find(x=>x.id===tid);
+    if(!t){ alert('업무를 선택하세요.'); return; }
+    type='task'; project=t.project; projName=proj(t.project).name; taskText=t.text;
+  } else {
+    taskText=document.getElementById('tb-free-title').value.trim();
+    if(!taskText){ alert(tbKind==='meeting'?'미팅 제목을 입력하세요.':'내용을 입력하세요.'); return; }
+    project=document.getElementById('tb-free-proj').value;
+    projName=(projects.find(p=>p.id===project)||{}).name||'';
+    type = tbKind==='meeting' ? 'meeting' : 'task';
+  }
+
+  if(tbEditingId){
+    weeklyLogs=weeklyLogs.map(l=>l.id===tbEditingId
+      ? {...l, type, project, projName, task:taskText, date, hours, startTime, endTime, memo}
+      : l);
+  } else {
+    weeklyLogs.push({id:Date.now(), type, project, projName, task:taskText, date, hours, startTime, endTime, memo});
+  }
+  if(project) touchProject(project);
+  closeTimeBlockModal();
+  saveAndRender();
+}
+
+function deleteTimeBlock(){
+  if(!tbEditingId) return;
+  if(!confirm('이 시간대 기록을 삭제할까요?')) return;
+  weeklyLogs=weeklyLogs.filter(l=>l.id!==tbEditingId);
+  closeTimeBlockModal();
+  saveAndRender();
 }
 
 // ── 월간 히트맵 (주간/월간기록 기준, 깃허브 스타일) — 화살표로 월 이동 가능
@@ -4263,6 +4779,38 @@ function autoArchiveCompletedTasks(){
 /* ══════════════════════════════════════
    완료 시 자동 주간기록 + 히스토리
 ══════════════════════════════════════ */
+/* 완료 처리 시 입력한 투입시간을 그 날짜 기록으로 확정한다.
+   - 시간대(startTime/endTime)를 지정하면 하루 타임라인에도 블록으로 나타난다.
+   - 기존에 그 날짜로 잡혀있던 같은 업무 기록은 정리해서 중복을 막는다.
+   - 0h면 시간 기록 없이 완료만 처리한다. */
+function setCompletionHours(t, dateStr, hours, timeRange){
+  const same=weeklyLogs.filter(l=>l.type!=='meeting' && l.project===t.project && l.task===t.text && l.date===dateStr);
+  if(!(hours>0)){
+    weeklyLogs=weeklyLogs.filter(l=>!same.includes(l));
+    return;
+  }
+  const base={
+    type:'task', project:t.project, projName:proj(t.project).name,
+    task:t.text, date:dateStr, hours:Math.round(hours*100)/100, memo:'✅ 완료 기록'
+  };
+  if(timeRange){ base.startTime=timeRange.startTime; base.endTime=timeRange.endTime; }
+  if(same.length){
+    // 첫 항목을 갱신하고 나머지 중복은 제거
+    const keepId=same[0].id;
+    weeklyLogs=weeklyLogs
+      .map(l=>{
+        if(l.id!==keepId) return l;
+        const merged={...l, ...base};
+        if(!timeRange){ delete merged.startTime; delete merged.endTime; }
+        delete merged._auto;
+        return merged;
+      })
+      .filter(l=>l.id===keepId || !same.includes(l));
+  } else {
+    weeklyLogs.push({id:Date.now()+Math.random(), ...base});
+  }
+}
+
 function autoAddWeeklyLog(t, completeDate){
   const d=completeDate||TODAY_STR;
   // 이미 같은 업무 기록(같은 날짜)이 있으면 중복 방지
@@ -5940,8 +6488,74 @@ function openCompleteDateModal(id){
   completeDateTaskId=id;
   document.getElementById('complete-date-title').textContent='✅ 완료 처리';
   document.getElementById('complete-date-tasktext').textContent=t.text;
-  document.getElementById('complete-date-input').value=TODAY_STR;
+  // 할 일 탭에서 '기록 날짜'를 지난 날짜로 맞춰뒀다면 완료일도 그 날짜를 기본값으로
+  document.getElementById('complete-date-input').value = (currentTab==='today' ? activeLogDate : TODAY_STR) || TODAY_STR;
+  resetCompleteTimeFields();
+  syncCompleteHours();
   openModal('modal-complete-date');
+}
+
+/* ── 완료 모달의 투입시간/시간대 보조 함수 ── */
+function resetCompleteTimeFields(){
+  const cb=document.getElementById('complete-usetime');
+  if(cb) cb.checked=false;
+  const wrap=document.getElementById('complete-time-wrap');
+  if(wrap) wrap.style.display='none';
+  const st=document.getElementById('complete-start-time');
+  const et=document.getElementById('complete-end-time');
+  if(st) st.value=''; if(et) et.value='';
+}
+function cdQuickDate(deltaDays){
+  const d=new Date(TODAY_STR+'T00:00:00');
+  d.setDate(d.getDate()+deltaDays);
+  document.getElementById('complete-date-input').value=
+    `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  syncCompleteHours();
+}
+function cdSetHours(h){
+  document.getElementById('complete-hours-input').value=h;
+  // 시간대를 쓰는 중이면 종료시각을 시간에 맞춰 조정
+  const cb=document.getElementById('complete-usetime');
+  if(cb && cb.checked){
+    const st=document.getElementById('complete-start-time').value||'09:00';
+    document.getElementById('complete-start-time').value=st;
+    document.getElementById('complete-end-time').value=tlToStr(tlToMin(st)+Math.round(h*60));
+  }
+}
+function cdToggleTime(on){
+  const wrap=document.getElementById('complete-time-wrap');
+  if(wrap) wrap.style.display=on?'flex':'none';
+  if(on){
+    const st=document.getElementById('complete-start-time');
+    const et=document.getElementById('complete-end-time');
+    if(!st.value) st.value='09:00';
+    const h=parseFloat(document.getElementById('complete-hours-input').value)||1;
+    if(!et.value) et.value=tlToStr(tlToMin(st.value)+Math.round(h*60));
+    cdTimeChanged();
+  }
+}
+function cdTimeChanged(){
+  const s=tlToMin(document.getElementById('complete-start-time').value);
+  const e=tlToMin(document.getElementById('complete-end-time').value);
+  if(s==null||e==null||e<=s) return;
+  document.getElementById('complete-hours-input').value=tlHours(e-s);
+}
+// 완료일이 바뀌면 그 날짜에 이미 기록된 시간을 불러와 보여준다
+function syncCompleteHours(){
+  const t=tasks.find(x=>x.id===completeDateTaskId); if(!t) return;
+  const dateVal=document.getElementById('complete-date-input').value;
+  const inp=document.getElementById('complete-hours-input');
+  const note=document.getElementById('complete-hours-note');
+  if(!inp) return;
+  const logged=weeklyLogs
+    .filter(l=>l.date===dateVal && l.type!=='meeting' && l.project===t.project && l.task===t.text)
+    .reduce((s,l)=>s+(l.hours||0),0);
+  inp.value = logged>0 ? Math.round(logged*100)/100 : 1;
+  if(note){
+    note.textContent = logged>0
+      ? `이 날 이미 ${Math.round(logged*100)/100}h 기록됨 — 수정하면 덮어씁니다`
+      : '이 날짜로 새로 기록됩니다';
+  }
 }
 function cancelCompleteDate(){
   completeDateTaskId=null;
@@ -5976,9 +6590,15 @@ function confirmCompleteDate(){
       // 완료일만 변경하는 경우: 기존 기록을 새 날짜로 이동 (중복 생성 방지)
       moveCompletionDate(completedTask, oldDate, dateVal);
     } else {
-      autoAddWeeklyLog(completedTask, dateVal);
       addToHistory(completedTask, dateVal);
     }
+    // 모달에서 입력한 투입 시간을 그 날짜의 기록으로 확정 (자동 1h 대신)
+    const hVal=parseFloat(document.getElementById('complete-hours-input').value);
+    const useTime=!!document.getElementById('complete-usetime')?.checked;
+    const stV=document.getElementById('complete-start-time')?.value||'';
+    const etV=document.getElementById('complete-end-time')?.value||'';
+    setCompletionHours(completedTask, dateVal, isNaN(hVal)?0:hVal,
+      useTime && stV && etV ? {startTime:stV, endTime:etV} : null);
   }
   completeDateTaskId=null;
   pendingStatusOnComplete=null;
@@ -5993,6 +6613,8 @@ function editCompleteDate(id){
   document.getElementById('complete-date-title').textContent='📅 완료일 변경';
   document.getElementById('complete-date-tasktext').textContent=t.text;
   document.getElementById('complete-date-input').value=t.actualEnd||TODAY_STR;
+  resetCompleteTimeFields();
+  syncCompleteHours();
   openModal('modal-complete-date');
 }
 function completeEarly(id){
@@ -6321,7 +6943,7 @@ function saveWeeklyLog(){
       projId='__ext__'+projName;
     }
     if(editingWeeklyId){
-      weeklyLogs=weeklyLogs.map(l=>l.id===editingWeeklyId?{...l,type:'meeting',project:projId,projName,task:title,date,hours,memo}:l);
+      weeklyLogs=weeklyLogs.map(l=>l.id===editingWeeklyId?syncBlockTimes({...l,type:'meeting',project:projId,projName,task:title,date,hours,memo}):l);
     } else {
       weeklyLogs.push({id:Date.now(),type:'meeting',project:projId,projName,task:title,date,hours,memo});
       selectedWeekKey=isoWeekKey(date);
@@ -6344,7 +6966,7 @@ function saveWeeklyLog(){
     : selVal;
   if(!task||!date||isNaN(hours)||hours<=0) return;
   if(editingWeeklyId){
-    weeklyLogs=weeklyLogs.map(l=>l.id===editingWeeklyId?{...l,type:'task',project:projId,projName,task,date,hours,memo}:l);
+    weeklyLogs=weeklyLogs.map(l=>l.id===editingWeeklyId?syncBlockTimes({...l,type:'task',project:projId,projName,task,date,hours,memo}):l);
   } else {
     weeklyLogs.push({id:Date.now(),type:'task',project:projId,projName,task,date,hours,memo});
     selectedWeekKey=isoWeekKey(date);
