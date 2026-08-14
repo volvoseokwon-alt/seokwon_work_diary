@@ -3185,11 +3185,12 @@ function renderTrash(){
       </div>`;
     } else {
       const l=item.data, p=proj(l.project);
+      const isMt=l.type==='meeting';
       return `<div class="trash-item">
-        <span style="font-size:1.2rem">⏱️</span>
+        <span style="font-size:1.2rem">${isMt?'🗣️':'⏱️'}</span>
         <div class="ti-meta">
-          <div class="ti-name">${l.task}</div>
-          <div class="ti-sub"><span style="color:${p.color}">${p.name}</span> · ${l.date} · ${l.hours}h · 삭제일: ${item.deletedAt}</div>
+          <div class="ti-name">${isMt?'📅 ':''}${l.task}</div>
+          <div class="ti-sub"><span style="color:${p.color}">${p.name}</span> · ${isMt?'미팅 · ':''}${l.date}${l.startTime&&l.endTime?` ${l.startTime}~${l.endTime}`:''} · ${l.hours}h · 삭제일: ${item.deletedAt}</div>
         </div>
         <button class="btn-sm" style="background:var(--pri-light);color:var(--primary)" onclick="restoreTrash(${i})">복원</button>
         <button class="btn-sm" style="background:#fee2e2;color:var(--warn)" onclick="permanentDelete(${i})">영구삭제</button>
@@ -4403,6 +4404,7 @@ function renderHome(){
           ${p?`<span style="color:${p.color};font-weight:600;font-size:0.72rem;flex-shrink:0;">${p.name}${subLbl}</span>`:''}
           <span style="flex:1;">${l.task||'(제목 없음)'}</span>
           <button class="btn-sm" style="background:var(--bg);color:var(--muted);flex-shrink:0;padding:2px 8px;" onclick="openEditWeekly(${l.id})">수정</button>
+          <button class="btn-sm" style="background:#fee2e2;color:var(--warn);flex-shrink:0;padding:2px 8px;" onclick="deleteWeekly(${l.id})">삭제</button>
         </div>`;
       }).join('');
     }
@@ -7524,11 +7526,15 @@ function saveWeeklyLog(){
 }
 function deleteWeekly(id){
   const l=weeklyLogs.find(x=>x.id===id); if(!l) return;
+  const label=(l.type==='meeting'?'미팅 ':'')+`"${l.task||''}" (${fmt(l.date)}, ${l.hours}h)`;
+  if(!confirm(`${label} 기록을 삭제할까요?\n휴지통으로 이동하며 복원할 수 있습니다.`)) return;
   trash.push({type:'weekly', data:l, deletedAt:TODAY_STR});
   weeklyLogs=weeklyLogs.filter(x=>x.id!==id);
   updateTrashBadge();
   saveToFirebase();
-  renderWeekly();
+  // 주간 기록 탭뿐 아니라 홈(미팅/시간대 타임라인)에서도 지운 즉시 반영되도록 함께 갱신
+  if(document.getElementById('weekly-log')) renderWeekly();
+  refreshDateViews();
 }
 
 /* ══════════════════════════════════════
