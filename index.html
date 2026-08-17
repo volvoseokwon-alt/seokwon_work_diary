@@ -465,6 +465,7 @@ ZB 교체 둘</textarea>
             <span id="home-today-date" style="font-size:0.78rem;font-weight:700;color:var(--text);min-width:88px;text-align:center;"></span>
             <button class="cal-nav-btn" style="width:24px;height:24px;font-size:0.7rem;" onclick="homeMoveDate(1)">▶</button>
             <button class="btn-sm" style="background:var(--bg);color:var(--muted);font-size:0.7rem;padding:3px 9px;" onclick="homeGoToday()">오늘</button>
+            <button class="btn-sm" id="home-holiday-btn" style="font-size:0.7rem;padding:3px 9px;" onclick="showHolidayPicker(event)" title="이 날짜를 연차·월차 등 휴무일로 지정합니다">🏖️ 휴무</button>
           </div>
         </div>
         <div id="home-today-capacity" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--bg);border-radius:8px;padding:9px 12px;margin-bottom:10px;font-size:0.8rem;"></div>
@@ -1887,6 +1888,17 @@ function getHolidayLabel(dateStr){
   const c=customHolidays.find(h=>h.date===dateStr);
   return c?c.label:null;
 }
+/* 하루 기준 근무시간. 휴무일은 이 시간만큼 "휴무"로 채워진 것으로 본다.
+   반차처럼 절반만 쉬는 경우 customHolidays 항목에 hours를 넣어두면 그 값을 쓴다. */
+const WORKDAY_HOURS = 8;
+function getHolidayHours(dateStr){
+  if(!isHoliday(dateStr)) return 0;
+  const c=customHolidays.find(h=>h.date===dateStr);
+  if(c && typeof c.hours==='number' && c.hours>0) return c.hours;
+  return WORKDAY_HOURS;
+}
+// 사용자가 직접 등록한 휴무일인가 (법정 공휴일은 삭제 불가)
+function isCustomHoliday(dateStr){ return customHolidays.some(h=>h.date===dateStr); }
 // 주어진 기간(startKey~endKey, YYYY-MM-DD) 내 평일(월~금) 중 공휴일이 아닌 날의 수
 function countWorkdays(startKey,endKey){
   let d=new Date(startKey+'T00:00:00');
@@ -2927,10 +2939,18 @@ function renderWeekly(){
         stackHTML+=`<div style="height:100%;width:${pw}%;background:${bg};${isM?'border-top:2px solid #a855f7;':''}" title="${isM?'📅 미팅 ':''}${proj(pid).name} ${ph}h"></div>`;
       });
     }
+    const holLbl=getHolidayLabel(k);
+    const holH=getHolidayHours(k);
+    // 휴무일은 남는 시간을 회색 빗금으로 채워서 "빈 날"과 구분한다
+    const holFillHTML = holLbl
+      ? `<div style="position:absolute;left:0;right:0;bottom:${(h/maxDayH*100).toFixed(1)}%;height:${Math.max(0,Math.min(100,(holH/maxDayH*100)-(h/maxDayH*100))).toFixed(1)}%;background:repeating-linear-gradient(45deg,#e2e8f0 0px,#e2e8f0 4px,#f1f5f9 4px,#f1f5f9 8px);" title="${holLbl} ${holH}h"></div>`
+      : '';
     return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;">
       <div style="font-size:0.7rem;color:${isToday?'var(--primary)':'var(--muted)'};font-weight:${isToday?'700':'400'}">${h>0?h+'h':''}</div>
-      <div style="width:100%;height:70px;background:#f1f5f9;border-radius:5px;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden;border:${isToday?'2px solid var(--primary)':'1px solid var(--border)'};position:relative;" title="${dayNames[i]}: ${h}h">
-        <div style="display:flex;height:${pct}%;width:100%;transition:height .4s;">${stackHTML}</div>
+      <div style="width:100%;height:70px;background:#f1f5f9;border-radius:5px;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden;border:${isToday?'2px solid var(--primary)':'1px solid var(--border)'};position:relative;" title="${dayNames[i]}: ${h}h${holLbl?` · ${holLbl}`:''}">
+        ${holFillHTML}
+        <div style="display:flex;height:${pct}%;width:100%;transition:height .4s;position:relative;z-index:1;">${stackHTML}</div>
+        ${holLbl?`<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:0.58rem;font-weight:800;color:#64748b;pointer-events:none;">${holLbl}</div>`:''}
       </div>
       <div style="font-size:0.72rem;font-weight:${isToday?'700':'400'};color:${isToday?'var(--primary)':'var(--muted)'}">${dayNames[i]}</div>
       <div style="font-size:0.62rem;color:#a0aec0">${k.slice(5).replace('-','/')}</div>
@@ -2944,6 +2964,20 @@ function renderWeekly(){
     const dayLogs=byDay[k].logs;
     const isToday=k===TODAY_STR;
     const isWeekend=i>=5;
+    const holLabel=getHolidayLabel(k);
+    const holHours=getHolidayHours(k);
+
+    // 휴무일(공휴일·연차·월차 등): 빈 칸 대신 휴무 블록으로 채운다
+    if(holLabel && !h){
+      return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid ${isToday?'var(--primary)22':'var(--border)'};">
+        <div style="width:28px;font-size:0.72rem;font-weight:${isToday?700:400};color:${isToday?'var(--primary)':isWeekend?'#ef4444':'var(--text)'};">${dayNames[i]}</div>
+        <div style="font-size:0.68rem;color:var(--muted);width:36px">${k.slice(5).replace('-','/')}</div>
+        <div style="flex:1;height:22px;border-radius:5px;overflow:hidden;display:flex;align-items:center;justify-content:center;border:1px solid #cbd5e1;background:repeating-linear-gradient(45deg,#e2e8f0 0px,#e2e8f0 5px,#f1f5f9 5px,#f1f5f9 10px);" title="${holLabel} ${holHours}h">
+          <span style="font-size:0.68rem;font-weight:800;color:#475569;">🏖️ ${holLabel}</span>
+        </div>
+        <div style="width:36px;font-size:0.74rem;font-weight:700;color:#94a3b8;text-align:right;">${holHours}h</div>
+      </div>`;
+    }
     if(!h && !isToday) return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;opacity:0.4;">
       <div style="width:28px;font-size:0.72rem;font-weight:${isToday?700:400};color:${isWeekend?'#ef4444':'var(--muted)'};">${dayNames[i]}</div>
       <div style="font-size:0.68rem;color:#cbd5e1;width:36px">${k.slice(5).replace('-','/')}</div>
@@ -2964,15 +2998,28 @@ function renderWeekly(){
         <span style="font-size:0.6rem;color:white;font-weight:700;white-space:nowrap;padding:0 3px;">${ph>=1?(isM?'📅':'')+ph+'h':''}</span>
       </div>`;
     }).join('');
+    // 휴무일인데 일부 기록도 있는 경우: 남은 시간을 휴무 빗금으로 채운다
+    const holSeg = (holLabel && holHours>h)
+      ? `<div style="height:100%;width:${((holHours-h)/maxDayHforBar*100).toFixed(1)}%;background:repeating-linear-gradient(45deg,#e2e8f0 0px,#e2e8f0 5px,#f1f5f9 5px,#f1f5f9 10px);display:flex;align-items:center;justify-content:center;" title="${holLabel} ${holHours-h}h"><span style="font-size:0.6rem;font-weight:800;color:#475569;white-space:nowrap;">🏖️</span></div>`
+      : '';
     return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid ${isToday?'var(--primary)22':'var(--border)'};">
       <div style="width:28px;font-size:0.72rem;font-weight:${isToday?700:400};color:${isToday?'var(--primary)':isWeekend?'#ef4444':'var(--text)'};">${dayNames[i]}</div>
       <div style="font-size:0.68rem;color:var(--muted);width:36px">${k.slice(5).replace('-','/')}</div>
-      <div style="flex:1;height:22px;background:#f1f5f9;border-radius:5px;overflow:hidden;display:flex;border:${isToday?'2px solid var(--primary)':'1px solid var(--border)'};">
-        ${segments}
+      <div style="flex:1;height:22px;background:#f1f5f9;border-radius:5px;overflow:hidden;display:flex;border:${isToday?'2px solid var(--primary)':'1px solid var(--border)'};" ${holLabel?`title="${holLabel}"`:''}>
+        ${segments}${holSeg}
       </div>
       <div style="width:36px;font-size:0.78rem;font-weight:700;color:var(--primary);text-align:right;">${h}h</div>
     </div>`;
   }).join('');
+
+  // 이번 주 휴무일 (평일 기준) 집계
+  const weekHolidays=dayKeys
+    .map((k,i)=>({k, i, label:getHolidayLabel(k), hours:getHolidayHours(k)}))
+    .filter(x=>x.label && x.i<5);
+  const holidayH=weekHolidays.reduce((sum,x)=>sum+x.hours,0);
+  const holidaySummary = weekHolidays.length
+    ? `<div style="font-size:0.74rem;color:#047857;margin-top:2px;font-weight:600;" title="${weekHolidays.map(x=>`${fmt(x.k)} ${x.label}`).join(', ')}">🏖️ 휴무 ${weekHolidays.length}일 (${holidayH}h) · ${weekHolidays.map(x=>x.label).join(', ')}</div>`
+    : '';
 
   // 프로젝트별 합계 (기록 있는 것만)
   const projSumHTML=projects.filter(p=>byProj[p.id]>0).map(p=>`
@@ -2990,6 +3037,8 @@ function renderWeekly(){
           <div style="font-size:1rem;font-weight:800;color:var(--primary)">${wLabel}</div>
           <div style="font-size:0.78rem;color:var(--muted);margin-top:2px;">총 <strong style="color:var(--text)">${totalH}시간</strong> · ${logs.length}건</div>
           ${weekMeetingH>0?`<div style="font-size:0.74rem;color:#a855f7;margin-top:2px;font-weight:600;">📅 미팅 ${weekMeetingH}시간 (${weekMeetingCount}건)</div>`:''}
+          ${holidaySummary}
+          <div style="font-size:0.72rem;color:var(--muted);margin-top:3px;">근무일 ${countWorkdays(dayKeys[0], dayKeys[6])}일 기준 ${countWorkdays(dayKeys[0], dayKeys[6])*WORKDAY_HOURS}h</div>
         </div>
         <div style="border-top:1px solid var(--border);padding-top:8px;display:flex;flex-direction:column;gap:5px;">
           ${projSumHTML||'<span style="color:var(--muted);font-size:0.78rem;">기록 없음</span>'}
@@ -3059,6 +3108,7 @@ function renderWeekly(){
         <span class="wlog-day-date">${fmt(dk)}</span>
         <span class="wlog-day-wd">(${wd})</span>
         ${isToday?`<span style="font-size:0.66rem;font-weight:800;color:white;background:var(--primary);border-radius:8px;padding:1px 7px;">오늘</span>`:''}
+        ${getHolidayLabel(dk)?`<span style="font-size:0.66rem;font-weight:800;color:#047857;background:#d1fae5;border-radius:8px;padding:1px 7px;">🏖️ ${getHolidayLabel(dk)}</span>`:''}
         ${bar}
         <span style="margin-left:auto;display:flex;align-items:center;gap:8px;">
           <span style="font-size:0.7rem;color:var(--muted);">${dayLogs.length}건${meetH>0?` · 미팅 ${Math.round(meetH*100)/100}h`:''}</span>
@@ -4388,6 +4438,7 @@ function renderHome(){
     }).join('');
   }
 
+  syncHolidayButton();
   renderRecurringSuggest();
 
   const tmEl=document.getElementById('home-today-meetings');
@@ -5035,6 +5086,91 @@ function renderSearch(){
       ${t.memo?`<div style="margin-top:5px;font-size:0.78rem;color:var(--muted);padding:4px 8px;background:#f8fafc;border-radius:4px;">📝 ${hl(t.memo)}</div>`:''}
     </div>`;
   }).join('');
+}
+
+/* ══════════════════════════════════════
+   🏖️ 휴무 지정 (홈에서 바로)
+   연차·월차·공휴일로 하루가 통째로 빠지는 날을 표시해두면,
+   주간/월간 기록에서 그 날이 "빈 날"이 아니라 휴무(8h)로 채워져 보인다.
+   법정 공휴일은 자동 인식되며 여기서 해제할 수 없다.
+══════════════════════════════════════ */
+const HOLIDAY_PRESETS=[
+  {label:'연차',      hours:8, icon:'🏖️'},
+  {label:'월차',      hours:8, icon:'🏖️'},
+  {label:'반차(오전)', hours:4, icon:'🌤️'},
+  {label:'반차(오후)', hours:4, icon:'🌤️'},
+  {label:'대체휴무',   hours:8, icon:'🔄'},
+  {label:'출장',      hours:8, icon:'✈️'},
+];
+
+function showHolidayPicker(evt){
+  const date=activeLogDate||TODAY_STR;
+  const builtin=!!KR_HOLIDAYS_BUILTIN[date];
+  const custom=customHolidays.find(h=>h.date===date);
+  let html='';
+
+  if(builtin){
+    html=`<div style="font-size:0.8rem;font-weight:800;color:var(--primary);">🇰🇷 ${KR_HOLIDAYS_BUILTIN[date]}</div>
+      <div style="font-size:0.75rem;color:var(--muted);">법정 공휴일로 자동 인식된 날짜입니다. 해제할 수 없습니다.</div>
+      <div style="display:flex;justify-content:flex-end;"><button class="btn-sm" style="background:var(--bg);color:var(--muted);" onclick="closeInlinePopup()">닫기</button></div>`;
+  } else if(custom){
+    html=`<div style="font-size:0.8rem;font-weight:800;color:#047857;">🏖️ ${custom.label}</div>
+      <div style="font-size:0.75rem;color:var(--muted);">${fmt(date)}는 휴무일로 등록되어 있습니다 (${custom.hours||WORKDAY_HOURS}h).</div>
+      <div style="display:flex;gap:6px;justify-content:flex-end;">
+        <button class="btn-sm" style="background:var(--bg);color:var(--muted);" onclick="closeInlinePopup()">닫기</button>
+        <button class="btn-sm" style="background:#fee2e2;color:var(--warn);font-weight:700;" onclick="removeHolidayForDate('${date}')">휴무 해제</button>
+      </div>`;
+  } else {
+    html=`<div style="font-size:0.76rem;font-weight:800;color:var(--muted);">${fmt(date)} 휴무 지정</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;">
+        ${HOLIDAY_PRESETS.map(pr=>`<button class="btn-sm" style="background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;font-weight:700;" onclick="setHolidayForDate('${date}','${pr.label}',${pr.hours})">${pr.icon} ${pr.label}${pr.hours!==WORKDAY_HOURS?` (${pr.hours}h)`:''}</button>`).join('')}
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;border-top:1px dashed var(--border);padding-top:7px;">
+        <input type="text" id="hp-custom" placeholder="직접 입력 (예: 여름휴가)" style="flex:1;padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:0.8rem;">
+        <input type="number" id="hp-hours" value="8" min="1" max="24" step="0.5" style="width:56px;text-align:right;padding:5px;border:1.5px solid var(--border);border-radius:6px;font-size:0.8rem;">
+        <span style="font-size:0.78rem;color:var(--muted);">h</span>
+      </div>
+      <div style="display:flex;gap:6px;justify-content:flex-end;">
+        <button class="btn-sm" style="background:var(--bg);color:var(--muted);" onclick="closeInlinePopup()">취소</button>
+        <button class="btn-sm" style="background:#047857;color:white;font-weight:700;" onclick="setHolidayFromInput('${date}')">지정</button>
+      </div>
+      <div style="font-size:0.7rem;color:var(--muted);">여러 날(여름휴가 등)은 캘린더 탭의 휴무일 관리에서 기간으로 등록할 수 있습니다.</div>`;
+  }
+  const box=openInlinePopup(evt.currentTarget, html, 290);
+  box.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); setHolidayFromInput(date); } });
+}
+function setHolidayForDate(date, label, hours){
+  closeInlinePopup();
+  if(isCustomHoliday(date)) customHolidays=customHolidays.filter(h=>h.date!==date);
+  const entry={date, label};
+  if(hours && hours!==WORKDAY_HOURS) entry.hours=hours; // 8h면 필드 생략 (기존 데이터와 호환)
+  customHolidays.push(entry);
+  saveAndRender();
+  if(typeof renderCalendar==='function' && document.getElementById('cal-body')) renderCalendar();
+}
+function setHolidayFromInput(date){
+  const label=document.getElementById('hp-custom')?.value.trim()||'휴무일';
+  const hours=parseFloat(document.getElementById('hp-hours')?.value)||WORKDAY_HOURS;
+  setHolidayForDate(date, label, hours);
+}
+function removeHolidayForDate(date){
+  closeInlinePopup();
+  customHolidays=customHolidays.filter(h=>h.date!==date);
+  saveAndRender();
+  if(typeof renderCalendar==='function' && document.getElementById('cal-body')) renderCalendar();
+}
+// 홈 상단 휴무 버튼의 모양을 현재 날짜 상태에 맞춘다
+function syncHolidayButton(){
+  const b=document.getElementById('home-holiday-btn'); if(!b) return;
+  const date=activeLogDate||TODAY_STR;
+  const lbl=getHolidayLabel(date);
+  if(lbl){
+    b.textContent=`🏖️ ${lbl}`;
+    b.style.background='#d1fae5'; b.style.color='#047857'; b.style.fontWeight='700';
+  } else {
+    b.textContent='🏖️ 휴무';
+    b.style.background='var(--bg)'; b.style.color='var(--muted)'; b.style.fontWeight='400';
+  }
 }
 
 /* ══════════════════════════════════════
