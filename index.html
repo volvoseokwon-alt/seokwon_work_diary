@@ -132,6 +132,13 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 .prio-group-label{font-size:0.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:4px 2px 2px;margin-top:4px;}
 .p-badge{font-size:0.7rem;padding:2px 6px;border-radius:4px;font-weight:600;}
 .date-badge{font-size:0.7rem;color:var(--muted);background:#f8fafc;padding:2px 6px;border-radius:4px;border:1px solid var(--border);}
+/* 업무명 오른쪽 여백에 뜨는 메모 미리보기 */
+.memo-peek{font-size:0.74rem;color:#92660d;background:#fefce8;border:1px solid #fef08a;border-radius:5px;
+  padding:1px 7px;min-width:0;flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  cursor:pointer;transition:.12s;}
+.memo-peek:hover{background:#fef9c3;border-color:#fde68a;}
+.memo-peek .mp-time{color:#a8a29e;font-weight:600;margin-right:5px;font-variant-numeric:tabular-nums;}
+@media(max-width:900px){.memo-peek{display:none;}}
 .date-badge.editable:hover,.p-badge.editable:hover{outline:1.5px solid var(--primary);outline-offset:1px;filter:brightness(0.97);}
 .date-badge.editable,.p-badge.editable{cursor:pointer;}
 .status-chip{font-size:0.68rem;padding:2px 6px;border-radius:10px;color:white;font-weight:700;}
@@ -2539,7 +2546,10 @@ function renderTaskList(list){
         ${taskAtRisk?`<span class="risk-warn-icon" title="남은 기간 대비 진행 부족! 경과 ${taskElapsed}% / 진행 ${getTaskProgress(t)}%" style="flex-shrink:0;">🚨</span>`:''}
         ${prio?`<span onclick="event.stopPropagation();showPriorityPicker(event, ${t.id})" title="클릭하여 우선순위 변경" style="background:${pc};color:white;font-size:0.7rem;font-weight:800;padding:2px 6px;border-radius:4px;min-width:26px;text-align:center;flex-shrink:0;cursor:pointer;">${prio}</span>`:''}
         <span class="p-badge editable" onclick="event.stopPropagation();showProjectPicker(event, ${t.id})" onmousedown="event.stopPropagation()" title="클릭하여 프로젝트/하위분류 변경" style="background:${p.color}22;color:${p.color};flex-shrink:0;cursor:pointer;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
-        <span class="task-text" ondblclick="event.stopPropagation();startInlineEditTaskText(${t.id}, this)" title="더블클릭하여 수정" style="font-size:0.85rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;${taskAtRisk?'color:#dc2626;font-weight:700;':''}">${t.text}</span>
+        <span class="task-text" ondblclick="event.stopPropagation();startInlineEditTaskText(${t.id}, this)" title="더블클릭하여 수정" style="font-size:0.85rem;flex:0 1 auto;min-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;${taskAtRisk?'color:#dc2626;font-weight:700;':''}">${t.text}</span>
+        ${(()=>{const pk=memoPeekParts(t.memo); if(!pk) return '<span style="flex:1 1 auto;min-width:0;"></span>';
+          return `<span class="memo-peek" onclick="event.stopPropagation();toggleTaskMemo(${t.id})" onmousedown="event.stopPropagation()"
+            title="${escAttr((memoStampLabel(t)?memoStampLabel(t)+'\n':'')+t.memo)}">${pk.time?`<span class="mp-time">${pk.time}</span>`:''}${escAttr(pk.text)}${pk.extra>0?`<span style="color:#a8a29e;font-weight:600;"> +${pk.extra}</span>`:''}</span>`;})()}
         <span onclick="event.stopPropagation();toggleTaskMemo(${t.id})"
           title="${t.memo?(memoStampLabel(t)?memoStampLabel(t)+'\n':'')+t.memo.slice(0,80)+(t.memo.length>80?'...':''):'메모 추가'}"
           style="font-size:0.78rem;cursor:pointer;flex-shrink:0;transition:.15s;display:inline-flex;align-items:center;gap:2px;padding:2px 6px;border-radius:5px;
@@ -3641,6 +3651,22 @@ function fmtMemoStamp(iso, withYear){
   const y = withYear && d.getFullYear()!==TODAY.getFullYear() ? `${d.getFullYear()}. ` : '';
   return `${y}${mm}/${dd}(${wd}) ${hh}:${mi}`;
 }
+/* 목록 한 줄에 보여줄 메모 미리보기.
+   여러 줄이면 마지막으로 적은 줄(가장 최근 내용)을 보여준다.
+   줄머리에 [08/14(금) 15:32] 형태의 시각이 있으면 분리해서 작게 앞에 붙인다. */
+function memoPeekParts(memo){
+  if(!memo) return null;
+  const lines=memo.split('\n').map(x=>x.trim()).filter(Boolean);
+  if(!lines.length) return null;
+  const last=lines[lines.length-1];
+  const m=last.match(/^\[([^\]]{3,40})\]\s*(.*)$/);
+  const time = m ? m[1] : '';
+  let text = m ? m[2] : last;
+  if(!text && lines.length>1) text=lines[lines.length-2]; // 시각만 있는 줄이면 그 앞 줄
+  return { time, text: text||last, extra: lines.length-1 };
+}
+function escAttr(v){ return String(v==null?'':v).replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
 function memoStampLabel(t){
   if(!t || !t.memo || !t.memo.trim() || !t.memoUpdatedAt) return '';
   return `✏️ ${fmtMemoStamp(t.memoUpdatedAt, true)} 작성`;
@@ -3679,7 +3705,7 @@ function saveTaskMemo(id, memo){
   const stampEl=document.getElementById(`task-memo-time-${id}`);
   if(stampEl) stampEl.textContent=memoStampLabel(tasks.find(t=>t.id===id));
   saveToFirebase();
-  // 전체 리렌더 대신 해당 업무의 메모 아이콘만 갱신 (열려있는 패널 유지)
+  // 전체 리렌더 대신 해당 업무의 메모 아이콘/미리보기만 갱신 (열려있는 패널 유지)
   const trimmed=memo.trim();
   const item=document.querySelector(`[data-tid="${id}"]`);
   if(item){
@@ -3689,7 +3715,37 @@ function saveTaskMemo(id, memo){
       icon.title=trimmed?(trimmed.slice(0,40)+(trimmed.length>40?'...':'')):'메모 추가';
       icon.setAttribute('onmouseout', `this.style.opacity='${trimmed?1:0.3}'`);
     }
+    updateMemoPeek(id, item);
   }
+}
+
+// 업무명 옆 메모 미리보기를 현재 메모 내용에 맞춰 갱신
+function updateMemoPeek(id, item){
+  item = item || document.querySelector(`[data-tid="${id}"]`);
+  if(!item) return;
+  const t=tasks.find(x=>x.id===id); if(!t) return;
+  const row=item.firstElementChild;             // 메인 행
+  let peek=item.querySelector('.memo-peek');
+  const pk=memoPeekParts(t.memo);
+  if(!pk){
+    // 메모가 없어졌으면 미리보기를 빈 여백으로 되돌린다
+    if(peek){ peek.className=''; peek.removeAttribute('title'); peek.removeAttribute('onclick');
+      peek.style.cssText='flex:1 1 auto;min-width:0;'; peek.innerHTML=''; }
+    return;
+  }
+  if(!peek){
+    // 여백 span(업무명 바로 다음)을 미리보기로 승격
+    const txt=item.querySelector('.task-text');
+    peek=txt && txt.nextElementSibling;
+    if(!peek || !row) return;
+    peek.style.cssText='';
+    peek.addEventListener('click', e=>{ e.stopPropagation(); toggleTaskMemo(id); });
+  }
+  peek.className='memo-peek';
+  peek.title=(memoStampLabel(t)?memoStampLabel(t)+'\n':'')+t.memo;
+  peek.innerHTML=(pk.time?`<span class="mp-time">${escAttr(pk.time)}</span>`:'')
+    + escAttr(pk.text)
+    + (pk.extra>0?`<span style="color:#a8a29e;font-weight:600;"> +${pk.extra}</span>`:'');
 }
 function toggleMemoBold(id, btn){
   tasks=tasks.map(t=>{
@@ -7158,7 +7214,10 @@ function renderParkingLot(){
         <span style="flex-shrink:0;font-size:0.8rem;">📥</span>
         ${prio?`<span onclick="event.stopPropagation();showPriorityPicker(event, ${t.id})" title="클릭하여 우선순위 변경" style="background:${prioColor(prio)};color:white;font-size:0.7rem;font-weight:800;padding:2px 6px;border-radius:4px;min-width:26px;text-align:center;flex-shrink:0;cursor:pointer;">${prio}</span>`:''}
         <span class="p-badge editable" onclick="event.stopPropagation();showProjectPicker(event, ${t.id})" onmousedown="event.stopPropagation()" title="클릭하여 프로젝트/하위분류 변경" style="background:${p.color}22;color:${p.color};flex-shrink:0;cursor:pointer;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
-        <span class="task-text" ondblclick="event.stopPropagation();startInlineEditTaskText(${t.id}, this)" title="더블클릭하여 수정" style="font-size:0.85rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;">${t.text}</span>
+        <span class="task-text" ondblclick="event.stopPropagation();startInlineEditTaskText(${t.id}, this)" title="더블클릭하여 수정" style="font-size:0.85rem;flex:0 1 auto;min-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;">${t.text}</span>
+        ${(()=>{const pk=memoPeekParts(t.memo); if(!pk) return '<span style="flex:1 1 auto;min-width:0;"></span>';
+          return `<span class="memo-peek" onclick="event.stopPropagation();toggleTaskMemo(${t.id})"
+            title="${escAttr((memoStampLabel(t)?memoStampLabel(t)+'\n':'')+t.memo)}">${pk.time?`<span class="mp-time">${pk.time}</span>`:''}${escAttr(pk.text)}${pk.extra>0?`<span style="color:#a8a29e;font-weight:600;"> +${pk.extra}</span>`:''}</span>`;})()}
         <span onclick="event.stopPropagation();toggleTaskMemo(${t.id})"
           title="${t.memo?(memoStampLabel(t)?memoStampLabel(t)+'\n':'')+t.memo.slice(0,80)+(t.memo.length>80?'...':''):'메모 추가'}"
           style="font-size:0.78rem;cursor:pointer;flex-shrink:0;display:inline-flex;align-items:center;padding:2px 6px;border-radius:5px;
