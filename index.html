@@ -792,6 +792,9 @@ ZB 교체 둘</textarea>
         <label style="display:flex;align-items:center;gap:5px;font-size:0.78rem;color:var(--muted);cursor:pointer;margin-left:6px;">
           <input type="checkbox" id="rm-usetime" onchange="rmToggleTime(this.checked)" style="cursor:pointer;">시간대 지정
         </label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:0.78rem;color:#6d28d9;font-weight:700;cursor:pointer;" title="켜두면 해당 요일이 되는 즉시 기록에 반영됩니다. 끄면 물어봅니다.">
+          <input type="checkbox" id="rm-auto" checked style="cursor:pointer;">⚡ 자동 추가
+        </label>
         <span id="rm-time-wrap" style="display:none;gap:5px;align-items:center;">
           <input type="time" id="rm-start" step="300" value="13:00" onchange="rmTimeChanged()" style="width:auto;">
           <span style="color:var(--muted);">~</span>
@@ -5251,13 +5254,56 @@ function rmSkipDate(rid, dateStr){
   saveAndRender();
 }
 
+/* 오늘 날짜에 해당하는 반복 미팅을 자동으로 기록에 넣는다.
+   - r.auto !== false 인 것만 (기본값 자동)
+   - 오늘 날짜에만 적용한다. 과거/미래 날짜를 넘겨보다가 없던 기록이 생기면 안 되므로,
+     그 날짜들은 여전히 "추가할까요?" 제안으로만 보여준다.
+   - r.lastAuto 에 자동 추가한 날짜를 남겨서, 사용자가 지운 미팅이 다시 살아나지 않게 한다. */
+function autoAddRecurringToday(){
+  const date=TODAY_STR;
+  let added=0;
+  recurringMeetings.forEach(r=>{
+    if(r.auto===false) return;
+    if(r.lastAuto===date) return;                 // 오늘 이미 한 번 처리함
+    if(!rmMatchesDate(r, date)) return;
+    if((r.skips||[]).includes(date)) return;
+    r.lastAuto=date;                               // 지운 뒤 재생성되지 않도록 먼저 표시
+    if(rmAlreadyLogged(r, date)) { added++; return; }
+    const log={id:Date.now()+Math.random(), type:'meeting', project:r.project, projName:r.projName||'',
+      task:r.title, date, hours:r.hours, memo:r.memo||''};
+    if(r.startTime && r.endTime){ log.startTime=r.startTime; log.endTime=r.endTime; }
+    weeklyLogs.push(log);
+    added++;
+  });
+  return added;
+}
+
+// 제안 목록에 있는 반복 미팅을 한 번에 추가
+function rmAddAllForDate(dateStr){
+  const date=dateStr||activeLogDate||TODAY_STR;
+  rmPendingForDate(date).forEach(r=>{
+    const log={id:Date.now()+Math.random(), type:'meeting', project:r.project, projName:r.projName||'',
+      task:r.title, date, hours:r.hours, memo:r.memo||''};
+    if(r.startTime && r.endTime){ log.startTime=r.startTime; log.endTime=r.endTime; }
+    weeklyLogs.push(log);
+  });
+  selectedWeekKey=isoWeekKey(date);
+  saveAndRender();
+}
+
 // 홈: 반복 미팅 제안 영역
 function renderRecurringSuggest(){
   const el=document.getElementById('home-recurring-suggest'); if(!el) return;
   const date=activeLogDate||TODAY_STR;
   const pending=rmPendingForDate(date);
   if(!pending.length){ el.innerHTML=''; return; }
-  el.innerHTML=pending.map(r=>{
+  const isToday=date===TODAY_STR;
+  const header=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
+      <span style="font-size:0.72rem;color:#7c3aed;font-weight:700;">🔁 ${fmt(date)} 반복 미팅 ${pending.length}건</span>
+      ${isToday?`<span style="font-size:0.68rem;color:var(--muted);">자동 추가가 꺼져 있는 항목입니다</span>`:''}
+      <button class="btn-sm" style="margin-left:auto;background:#7c3aed;color:white;font-weight:700;" onclick="rmAddAllForDate('${date}')">+ 모두 추가</button>
+    </div>`;
+  el.innerHTML=header+pending.map(r=>{
     const p=projects.find(x=>x.id===r.project);
     return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;margin-bottom:5px;border:1.5px dashed #c4b5fd;background:#faf5ff;border-radius:8px;font-size:0.82rem;">
       <span style="font-size:0.7rem;font-weight:800;color:#7c3aed;background:#ede9fe;border-radius:6px;padding:2px 7px;flex-shrink:0;">🔁 ${rmCycleLabel(r)}</span>
@@ -5317,7 +5363,8 @@ function addRecurringMeeting(){
     id:Date.now(), title, project,
     projName:(projects.find(p=>p.id===project)||{}).name||'',
     cycle, hours, memo:document.getElementById('rm-memo').value.trim(),
-    active:true, skips:[]
+    active:true, skips:[],
+    auto: document.getElementById('rm-auto')?.checked !== false
   };
   if(cycle==='monthly'){
     r.monthDay=parseInt(document.getElementById('rm-monthday').value,10)||1;
@@ -5330,6 +5377,7 @@ function addRecurringMeeting(){
     r.endTime=document.getElementById('rm-end').value;
   }
   recurringMeetings.push(r);
+  autoAddRecurringToday();   // 오늘이 해당 요일이면 곧바로 기록에 반영
   document.getElementById('rm-title').value='';
   document.getElementById('rm-memo').value='';
   renderRecurringList();
@@ -5342,6 +5390,20 @@ function rmNextWeekdayFrom(dateStr, weekday){
   d.setDate(d.getDate()+diff);
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
+// 자동 추가 ↔ 확인 후 추가 전환
+function toggleRecurringAuto(id){
+  recurringMeetings=recurringMeetings.map(r=>{
+    if(r.id!==id) return r;
+    const nextAuto = r.auto===false;   // 꺼져 있으면 켠다
+    const u={...r, auto:nextAuto};
+    if(nextAuto) delete u.lastAuto;    // 켜는 즉시 오늘부터 다시 반영되도록
+    return u;
+  });
+  if(autoAddRecurringToday()>0){ renderRecurringList(); saveAndRender(); return; }
+  renderRecurringList();
+  saveAndRender();
+}
+
 function toggleRecurringActive(id){
   recurringMeetings=recurringMeetings.map(r=>r.id===id?{...r, active:r.active===false}:r);
   renderRecurringList();
@@ -5369,6 +5431,7 @@ function renderRecurringList(){
       ${p?`<span style="color:${p.color};font-weight:600;font-size:0.72rem;flex-shrink:0;">${p.name}</span>`:''}
       <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.title}</span>
       <span style="font-size:0.74rem;font-weight:700;color:var(--muted);flex-shrink:0;">${rmTimeLabel(r)}</span>
+      <button class="btn-sm" style="flex-shrink:0;background:${r.auto===false?'var(--bg)':'#ede9fe'};color:${r.auto===false?'var(--muted)':'#6d28d9'};font-weight:700;" onclick="toggleRecurringAuto(${r.id})" title="${r.auto===false?'해당 요일에 물어봅니다':'해당 요일이 되면 자동으로 기록에 들어갑니다'}">${r.auto===false?'❓ 확인 후':'⚡ 자동'}</button>
       <button class="btn-sm" style="background:var(--bg);color:var(--muted);flex-shrink:0;" onclick="toggleRecurringActive(${r.id})">${off?'켜기':'끄기'}</button>
       <button class="btn-sm" style="background:#fee2e2;color:var(--warn);flex-shrink:0;" onclick="deleteRecurringMeeting(${r.id})">삭제</button>
     </div>`;
@@ -5404,7 +5467,7 @@ function wMaybeAddRecurring(title, projId, date, hours, memo){
       (cycle==='monthly' ? r.monthDay===d.getDate() : r.weekday===d.getDay()))) return;
   const r={id:Date.now()+1, title, project:projId,
     projName:(projects.find(p=>p.id===projId)||{}).name||'',
-    cycle, hours, memo:memo||'', active:true, skips:[]};
+    cycle, hours, memo:memo||'', active:true, skips:[], auto:true, lastAuto:date};
   if(cycle==='monthly') r.monthDay=d.getDate();
   else { r.weekday=d.getDay(); if(cycle==='biweekly') r.anchorDate=date; }
   recurringMeetings.push(r);
@@ -6889,6 +6952,10 @@ function calcScore(){
 ══════════════════════════════════════ */
 function render(){
   if(!activeLogDate) activeLogDate = TODAY_STR; // 홈/할 일이 공유하는 작업 날짜
+  // 오늘자 반복 미팅 자동 반영.
+  // 중복/부활 방지는 각 항목의 lastAuto가 담당하므로 매 렌더에서 호출해도 안전하고,
+  // Firebase 데이터가 늦게 도착해도 그 다음 렌더에서 반영된다.
+  if(autoAddRecurringToday()>0) saveToFirebase();
   checkAlerts();
   renderSidebar();
   calcScore();
