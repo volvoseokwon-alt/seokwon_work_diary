@@ -132,6 +132,22 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 .prio-group-label{font-size:0.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:4px 2px 2px;margin-top:4px;}
 .p-badge{font-size:0.7rem;padding:2px 6px;border-radius:4px;font-weight:600;}
 .date-badge{font-size:0.7rem;color:var(--muted);background:#f8fafc;padding:2px 6px;border-radius:4px;border:1px solid var(--border);}
+/* 오늘 시간 배분 그래프 */
+.alloc-wrap{background:var(--bg);border-radius:8px;padding:10px 12px 9px;}
+.alloc-row{display:flex;align-items:center;gap:8px;margin-bottom:5px;}
+.alloc-lbl{width:34px;flex-shrink:0;font-size:0.68rem;font-weight:800;color:var(--muted);text-align:right;}
+.alloc-track{flex:1;position:relative;background:#e9edf3;border-radius:5px;overflow:hidden;display:flex;}
+.alloc-seg{height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;transition:width .35s;}
+.alloc-seg span{font-size:0.6rem;font-weight:800;color:#fff;white-space:nowrap;padding:0 3px;text-shadow:0 1px 2px rgba(0,0,0,.25);}
+.alloc-total{width:44px;flex-shrink:0;font-size:0.74rem;font-weight:800;text-align:right;}
+.alloc-ticks{position:absolute;inset:0;pointer-events:none;}
+.alloc-tick{position:absolute;top:0;bottom:0;width:1px;background:rgba(255,255,255,.55);}
+.alloc-tick.major{background:rgba(100,116,139,.35);}
+.alloc-axis{display:flex;margin-left:42px;margin-right:52px;position:relative;height:12px;}
+.alloc-axis span{position:absolute;transform:translateX(-50%);font-size:0.6rem;color:#94a3b8;font-variant-numeric:tabular-nums;}
+.alloc-legend{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:6px;margin-left:42px;font-size:0.7rem;color:var(--muted);}
+.alloc-legend b{color:var(--text);font-weight:700;}
+
 /* 업무명 오른쪽 여백에 뜨는 메모 미리보기 */
 .memo-peek{font-size:0.74rem;color:#92660d;background:#fefce8;border:1px solid #fef08a;border-radius:5px;
   padding:1px 7px;min-width:0;flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
@@ -481,7 +497,8 @@ ZB 교체 둘</textarea>
             <button class="btn-sm" id="home-holiday-btn" style="font-size:0.7rem;padding:3px 9px;" onclick="showHolidayPicker(event)" title="이 날짜를 연차·월차 등 휴무일로 지정합니다">🏖️ 휴무</button>
           </div>
         </div>
-        <div id="home-today-capacity" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--bg);border-radius:8px;padding:9px 12px;margin-bottom:10px;font-size:0.8rem;"></div>
+        <div id="home-today-capacity" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--bg);border-radius:8px;padding:9px 12px;margin-bottom:8px;font-size:0.8rem;"></div>
+        <div id="home-today-allocation" style="margin-bottom:10px;"></div>
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
           <span style="font-size:0.76rem;font-weight:700;color:var(--muted);">✅ 할 일</span>
           <span style="font-size:0.68rem;color:var(--muted);background:var(--bg);padding:1px 7px;border-radius:8px;">A1 우선순위</span>
@@ -2553,7 +2570,7 @@ function renderTaskList(list){
         ${prio?`<span onclick="event.stopPropagation();showPriorityPicker(event, ${t.id})" title="클릭하여 우선순위 변경" style="background:${pc};color:white;font-size:0.7rem;font-weight:800;padding:2px 6px;border-radius:4px;min-width:26px;text-align:center;flex-shrink:0;cursor:pointer;">${prio}</span>`:''}
         <span class="p-badge editable" onclick="event.stopPropagation();showProjectPicker(event, ${t.id})" onmousedown="event.stopPropagation()" title="클릭하여 프로젝트/하위분류 변경" style="background:${p.color}22;color:${p.color};flex-shrink:0;cursor:pointer;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
         <span class="task-text" ondblclick="event.stopPropagation();startInlineEditTaskText(${t.id}, this)" title="더블클릭하여 수정" style="font-size:0.85rem;flex:0 1 auto;min-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;${taskAtRisk?'color:#dc2626;font-weight:700;':''}">${t.text}</span>
-        ${memoPeekHTML(t)}
+        ${memoPeekHTML(t,'')}
         <span class="date-badge editable" onclick="event.stopPropagation();showDatePicker(event, ${t.id})" onmousedown="event.stopPropagation()" title="클릭하여 기간 변경" style="flex-shrink:0;">📅 ${fmt(t.start)} ~ ${fmt(t.end)} <span style="opacity:0.5;">✎</span></span>
         ${!t.done?`<select class="status-select" draggable="false" onmousedown="event.stopPropagation()" style="color:${stInfo.color};border-color:${stInfo.color}22;background:${stInfo.color}11;flex-shrink:0;"
             onchange="setTaskStatus(${t.id},this.value)">
@@ -2576,23 +2593,7 @@ function renderTaskList(list){
         </div>
       </div>
       <!-- 메모 펼침 패널 (기본 숨김) -->
-      <div id="task-memo-${t.id}" style="display:none;margin-top:8px;padding:10px;background:#f8fafc;border-radius:6px;border-left:3px solid var(--primary);">
-        <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap;">
-          <span style="font-size:0.73rem;color:var(--muted);">서식:</span>
-          <button class="btn-sm" data-tid="${t.id}" style="background:${t.memoStyle?.bold?'var(--primary)':'var(--bg)'};color:${t.memoStyle?.bold?'white':'var(--muted)'};border:1px solid var(--border);font-weight:700;padding:2px 8px;"
-            onclick="toggleMemoBold(${t.id},this)"><b>B</b></button>
-          <span style="font-size:0.73rem;color:var(--muted);">색상:</span>
-          ${['#1e293b','#ef4444','#f59e0b','#10b981','#0284c7','#7c3aed','#64748b'].map(c=>
-            `<span onclick="setMemoColor(${t.id},'${c}')" style="width:16px;height:16px;border-radius:50%;background:${c};cursor:pointer;display:inline-block;border:2px solid ${(t.memoStyle?.color||'#1e293b')===c?'#000':'transparent'};flex-shrink:0;"></span>`
-          ).join('')}
-          <button class="btn-sm" onclick="insertMemoTimestamp(${t.id})" title="지금 시각을 메모에 삽입합니다" style="background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;font-weight:700;padding:2px 8px;">🕒 시각</button>
-          <button onclick="closeTaskMemo(${t.id})" style="margin-left:auto;background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.8rem;">✕ 닫기</button>
-        </div>
-        <textarea id="task-memo-ta-${t.id}" placeholder="진행 메모 (예: 80%인 이유, 남은 작업...)"
-          style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:0.82rem;resize:vertical;min-height:60px;font-family:inherit;background:white;color:${t.memoStyle?.color||'#1e293b'};font-weight:${t.memoStyle?.bold?'700':'400'};"
-          onblur="saveTaskMemo(${t.id},this.value)">${t.memo||''}</textarea>
-        <div id="task-memo-time-${t.id}" style="margin-top:4px;font-size:0.7rem;color:var(--muted);text-align:right;">${memoStampLabel(t)}</div>
-      </div>`;
+      ${memoPanelHTML(t, '')}`;
     // task drag events
     item.addEventListener('dragstart', e=>taskDragStart(e, t.id, prio));
     item.addEventListener('dragover',  e=>taskDragOver(e, prio));
@@ -3613,19 +3614,45 @@ function restoreHistory(i){
 /* ══════════════════════════════════════
    TASK STATUS
 ══════════════════════════════════════ */
-function toggleTaskMemo(id){
-  const el=document.getElementById(`task-memo-${id}`);
+function toggleTaskMemo(id, ns){
+  ns=ns||'';
+  const el=document.getElementById(`task-memo-${ns}${id}`);
   if(!el) return;
   const isOpen=el.style.display!=='none';
   el.style.display=isOpen?'none':'block';
   if(!isOpen){
-    const ta=document.getElementById(`task-memo-ta-${id}`);
+    const ta=document.getElementById(`task-memo-ta-${ns}${id}`);
     if(ta) setTimeout(()=>ta.focus(),50);
   }
 }
-function closeTaskMemo(id){
-  const el=document.getElementById(`task-memo-${id}`);
+function closeTaskMemo(id, ns){
+  const el=document.getElementById(`task-memo-${(ns||'')}${id}`);
   if(el) el.style.display='none';
+}
+
+/* 메모 펼침 패널 HTML — 할 일 목록 / 홈 / 보류함이 같은 것을 쓴다.
+   ns는 화면별 id 접두사('' = 할 일 목록, 'h' = 홈, 'p' = 보류함). */
+function memoPanelHTML(t, ns, placeholder){
+  ns=ns||'';
+  const cur=t.memoStyle?.color||'#1e293b';
+  return `<div id="task-memo-${ns}${t.id}" style="display:none;margin-top:8px;padding:10px;background:#f8fafc;border-radius:6px;border-left:3px solid var(--primary);">
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap;">
+      <span style="font-size:0.73rem;color:var(--muted);">서식:</span>
+      <button class="btn-sm" data-tid="${t.id}" style="background:${t.memoStyle?.bold?'var(--primary)':'var(--bg)'};color:${t.memoStyle?.bold?'white':'var(--muted)'};border:1px solid var(--border);font-weight:700;padding:2px 8px;"
+        onclick="event.stopPropagation();toggleMemoBold(${t.id},this,'${ns}')"><b>B</b></button>
+      <span style="font-size:0.73rem;color:var(--muted);">색상:</span>
+      ${['#1e293b','#ef4444','#f59e0b','#10b981','#0284c7','#7c3aed','#64748b'].map(c=>
+        `<span onclick="event.stopPropagation();setMemoColor(${t.id},'${c}','${ns}')" style="width:16px;height:16px;border-radius:50%;background:${c};cursor:pointer;display:inline-block;border:2px solid ${cur===c?'#000':'transparent'};flex-shrink:0;"></span>`
+      ).join('')}
+      <button class="btn-sm" onclick="event.stopPropagation();insertMemoTimestamp(${t.id},'${ns}')" title="지금 시각을 메모에 삽입합니다" style="background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;font-weight:700;padding:2px 8px;">🕒 시각</button>
+      <button onclick="event.stopPropagation();closeTaskMemo(${t.id},'${ns}')" style="margin-left:auto;background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.8rem;">✕ 닫기</button>
+    </div>
+    <textarea id="task-memo-ta-${ns}${t.id}" placeholder="${placeholder||'진행 메모 (예: 80%인 이유, 남은 작업...)'}"
+      onmousedown="event.stopPropagation()" ondblclick="event.stopPropagation()"
+      style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:0.82rem;resize:vertical;min-height:60px;font-family:inherit;background:white;color:${cur};font-weight:${t.memoStyle?.bold?'700':'400'};"
+      onblur="saveTaskMemo(${t.id},this.value,'${ns}')">${t.memo||''}</textarea>
+    <div id="task-memo-time-${ns}${t.id}" style="margin-top:4px;font-size:0.7rem;color:var(--muted);text-align:right;">${memoStampLabel(t)}</div>
+  </div>`;
 }
 function updateActualHours(id, val){
   const h=parseFloat(val);
@@ -3673,9 +3700,9 @@ function escAttr(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/
 /* 업무명 오른쪽 여백에 들어가는 메모 미리보기.
    메모가 있으면 내용을, 없으면 마우스를 올렸을 때만 "메모 추가" 힌트를 보여준다.
    (별도의 📝 아이콘 없이 이 영역이 메모를 여는 버튼 역할까지 겸한다) */
-function memoPeekHTML(t){
+function memoPeekHTML(t, ns){
   const pk=memoPeekParts(t.memo);
-  const open=`onclick="event.stopPropagation();toggleTaskMemo(${t.id})" onmousedown="event.stopPropagation()"`;
+  const open=`onclick="event.stopPropagation();toggleTaskMemo(${t.id},'${ns||''}')" onmousedown="event.stopPropagation()"`;
   if(!pk){
     return `<span class="memo-peek empty" ${open} title="클릭하여 메모 추가"><span class="mp-add">＋ 메모</span></span>`;
   }
@@ -3691,8 +3718,8 @@ function memoStampLabel(t){
   return `✏️ ${fmtMemoStamp(t.memoUpdatedAt, true)} 작성`;
 }
 // 커서 위치에 "[08/14(금) 15:32] "를 넣는다 (새 줄이면 줄머리에)
-function insertMemoTimestamp(id){
-  const ta=document.getElementById(`task-memo-ta-${id}`);
+function insertMemoTimestamp(id, ns){
+  const ta=document.getElementById(`task-memo-ta-${(ns||'')}${id}`);
   if(!ta) return;
   const stamp=`[${fmtMemoStamp(new Date().toISOString())}] `;
   const start=ta.selectionStart ?? ta.value.length;
@@ -3708,7 +3735,8 @@ function insertMemoTimestamp(id){
   ta.setSelectionRange(pos,pos);
 }
 
-function saveTaskMemo(id, memo){
+function saveTaskMemo(id, memo, ns){
+  ns=ns||'';
   const trimmedNew=memo.trim();
   tasks=tasks.map(t=>{
     if(t.id!==id) return t;
@@ -3721,11 +3749,12 @@ function saveTaskMemo(id, memo){
     return u;
   });
   // 패널에 표시된 작성 시각을 즉시 갱신
-  const stampEl=document.getElementById(`task-memo-time-${id}`);
+  const stampEl=document.getElementById(`task-memo-time-${ns}${id}`);
   if(stampEl) stampEl.textContent=memoStampLabel(tasks.find(t=>t.id===id));
   saveToFirebase();
   // 전체 리렌더 대신 해당 업무의 미리보기만 갱신 (열려있는 패널 유지)
-  updateMemoPeek(id);
+  const panel=document.getElementById(`task-memo-${ns}${id}`);
+  updateMemoPeek(id, panel?panel.parentElement:null);
 }
 
 // 업무명 옆 메모 미리보기를 현재 메모 내용에 맞춰 갱신
@@ -3748,7 +3777,8 @@ function updateMemoPeek(id, item){
     + escAttr(pk.text)
     + (pk.extra>0?`<span style="color:#a8a29e;font-weight:600;"> +${pk.extra}</span>`:'');
 }
-function toggleMemoBold(id, btn){
+function toggleMemoBold(id, btn, ns){
+  ns=ns||'';
   tasks=tasks.map(t=>{
     if(t.id!==id) return t;
     const bold=!(t.memoStyle?.bold);
@@ -3756,18 +3786,19 @@ function toggleMemoBold(id, btn){
   });
   saveToFirebase();
   // 즉시 반영
-  const ta=document.getElementById(`task-memo-ta-${id}`);
+  const ta=document.getElementById(`task-memo-ta-${ns}${id}`);
   if(ta) ta.style.fontWeight=btn.style.background==='var(--primary)'?'400':'700';
   btn.style.background=btn.style.background==='var(--primary)'?'var(--bg)':'var(--primary)';
   btn.style.color=btn.style.color==='white'?'var(--muted)':'white';
 }
-function setMemoColor(id, color){
+function setMemoColor(id, color, ns){
+  ns=ns||'';
   tasks=tasks.map(t=>t.id!==id?t:{...t, memoStyle:{...(t.memoStyle||{}), color}});
   saveToFirebase();
-  const ta=document.getElementById(`task-memo-ta-${id}`);
+  const ta=document.getElementById(`task-memo-ta-${ns}${id}`);
   if(ta) ta.style.color=color;
   // 색상 점 선택 표시 갱신
-  const memoEl=document.getElementById(`task-memo-${id}`);
+  const memoEl=document.getElementById(`task-memo-${ns}${id}`);
   if(memoEl){
     memoEl.querySelectorAll('span[onclick^="setMemoColor"]').forEach(s=>{
       s.style.borderColor=s.style.background===color?'var(--text)':'transparent';
@@ -4308,6 +4339,120 @@ function setDailyActual(taskId, value, dateStr){
   refreshDateViews();
 }
 
+/* ══════════════════════════════════════
+   📊 오늘 시간 배분 그래프
+   숫자로만 보던 "실제 5.5h(업무 4h+미팅 1.5h)"를 8시간 기준 막대로 보여준다.
+   위: 실제 기록 / 아래: 계획(예상) — 같은 눈금이라 위아래를 바로 비교할 수 있다.
+══════════════════════════════════════ */
+function renderTodayAllocation(){
+  const el=document.getElementById('home-today-allocation');
+  if(!el) return;
+  const date=activeLogDate||TODAY_STR;
+  const dayLogs=weeklyLogs.filter(l=>l.date===date);
+  const plansForDate=dailyPlans[date]||{};
+
+  // 실제: 프로젝트별 업무시간 + 미팅
+  const actByProj=new Map();
+  let actMeeting=0;
+  dayLogs.forEach(l=>{
+    const h=l.hours||0;
+    if(l.type==='meeting'){ actMeeting+=h; return; }
+    actByProj.set(l.project, (actByProj.get(l.project)||0)+h);
+  });
+  const actTask=[...actByProj.values()].reduce((a,b)=>a+b,0);
+  const actTotal=Math.round((actTask+actMeeting)*100)/100;
+
+  // 계획: 업무별 계획시간을 프로젝트로 묶음 + 미팅(실제 등록된 미팅을 계획으로 간주)
+  const planByProj=new Map();
+  Object.entries(plansForDate).forEach(([tid,h])=>{
+    const t=tasks.find(x=>String(x.id)===String(tid));
+    const v=parseFloat(h)||0;
+    if(!t||v<=0) return;
+    planByProj.set(t.project,(planByProj.get(t.project)||0)+v);
+  });
+  const planTask=[...planByProj.values()].reduce((a,b)=>a+b,0);
+  const planTotal=Math.round((planTask+actMeeting)*100)/100;
+
+  if(actTotal===0 && planTotal===0){
+    el.innerHTML=`<div class="alloc-wrap" style="text-align:center;color:var(--muted);font-size:0.78rem;padding:12px;">
+      아직 ${fmt(date)} 기록이 없습니다 — ⏱️ 칸에 시간을 넣으면 여기에 배분 그래프가 그려집니다.</div>`;
+    return;
+  }
+
+  // 눈금 기준: 기본 8h, 초과하면 그만큼 늘림 (0.5h 단위 올림)
+  const budget=WORKDAY_HOURS;
+  const scale=Math.max(budget, Math.ceil(Math.max(actTotal,planTotal)*2)/2);
+  const pctOf=h=>(h/scale*100);
+
+  const segHTML=(pairs, meetingH, showLabels)=>{
+    let out='';
+    pairs.forEach(([pid,h])=>{
+      if(h<=0) return;
+      const c=proj(pid).color;
+      const w=pctOf(h);
+      out+=`<div class="alloc-seg" style="width:${w.toFixed(2)}%;background:${c};" title="${proj(pid).name} ${Math.round(h*100)/100}h">`
+        + `${showLabels&&w>7?`<span>${Math.round(h*100)/100}h</span>`:''}</div>`;
+    });
+    if(meetingH>0){
+      const w=pctOf(meetingH);
+      out+=`<div class="alloc-seg" style="width:${w.toFixed(2)}%;background:repeating-linear-gradient(45deg,#a855f7 0px,#a855f7 5px,#c084fc 5px,#c084fc 10px);" title="미팅 ${Math.round(meetingH*100)/100}h">`
+        + `${showLabels&&w>7?`<span>🗣️${Math.round(meetingH*100)/100}h</span>`:''}</div>`;
+    }
+    return out;
+  };
+
+  // 세로 눈금선 (1시간 간격, 짝수 시간은 진하게)
+  let ticks='';
+  for(let hh=1; hh<scale; hh++){
+    ticks+=`<div class="alloc-tick${hh%2===0?' major':''}" style="left:${pctOf(hh).toFixed(2)}%;"></div>`;
+  }
+  // 8h 기준선
+  const budgetLine = scale>budget
+    ? `<div style="position:absolute;top:-2px;bottom:-2px;left:${pctOf(budget).toFixed(2)}%;width:2px;background:#ef4444;" title="기준 근무시간 ${budget}h"></div>`
+    : '';
+
+  const actPairs=[...actByProj.entries()].sort((a,b)=>b[1]-a[1]);
+  const planPairs=[...planByProj.entries()].sort((a,b)=>b[1]-a[1]);
+  const remain=Math.round((budget-actTotal)*100)/100;
+
+  // 가로축 라벨
+  let axis='';
+  const step=scale>12?4:2;
+  for(let hh=0; hh<=scale; hh+=step) axis+=`<span style="left:${pctOf(hh).toFixed(2)}%;">${hh}h</span>`;
+
+  // 범례
+  const legend=actPairs.map(([pid,h])=>
+    `<span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${proj(pid).color};margin-right:4px;vertical-align:-1px;"></span>${proj(pid).name} <b>${Math.round(h*100)/100}h</b> <span style="opacity:.7;">${Math.round(h/actTotal*100)}%</span></span>`
+  ).join('')
+  + (actMeeting>0?`<span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:repeating-linear-gradient(45deg,#a855f7 0px,#a855f7 3px,#c084fc 3px,#c084fc 6px);margin-right:4px;vertical-align:-1px;"></span>미팅 <b>${Math.round(actMeeting*100)/100}h</b> <span style="opacity:.7;">${Math.round(actMeeting/actTotal*100)}%</span></span>`:'');
+
+  el.innerHTML=`<div class="alloc-wrap">
+    <div class="alloc-row">
+      <span class="alloc-lbl" style="color:#047857;">실제</span>
+      <div class="alloc-track" style="height:22px;">
+        ${segHTML(actPairs, actMeeting, true)}
+        <div class="alloc-ticks">${ticks}${budgetLine}</div>
+      </div>
+      <span class="alloc-total" style="color:${actTotal>budget?'#dc2626':'#047857'};">${actTotal}h</span>
+    </div>
+    ${planTask>0?`<div class="alloc-row" style="margin-bottom:2px;">
+      <span class="alloc-lbl">예상</span>
+      <div class="alloc-track" style="height:11px;opacity:0.55;">
+        ${segHTML(planPairs, actMeeting, false)}
+        <div class="alloc-ticks">${ticks}</div>
+      </div>
+      <span class="alloc-total" style="color:var(--muted);font-weight:700;">${planTotal}h</span>
+    </div>`:''}
+    <div class="alloc-axis">${axis}</div>
+    <div class="alloc-legend">
+      ${legend}
+      ${remain>0?`<span style="margin-left:auto;color:#64748b;">남은 시간 <b>${remain}h</b> / ${budget}h</span>`
+                :(actTotal>budget?`<span style="margin-left:auto;color:#dc2626;font-weight:700;">기준 ${budget}h 초과 +${Math.round((actTotal-budget)*100)/100}h</span>`
+                :`<span style="margin-left:auto;color:#047857;font-weight:700;">${budget}h 채움</span>`)}
+    </div>
+  </div>`;
+}
+
 // 홈 "할 일 & 미팅" 카드의 날짜를 하루씩 이동 (◀▶ 버튼)
 function homeMoveDate(delta){
   if(!activeLogDate) activeLogDate=TODAY_STR;
@@ -4354,7 +4499,7 @@ function renderHome(){
       <span style="background:${col};color:white;border-radius:5px;padding:1px 7px;font-weight:700;font-size:0.72rem;white-space:nowrap;">${lbl}</span>
       <span style="color:${p.color};font-weight:600;font-size:0.72rem;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
       <span style="flex:1">${t.text}</span>
-      ${t.memo?`<span title="${t.memo.replace(/"/g,'&quot;')}" style="font-size:0.7rem;color:#92660d;background:#fef9c3;border:1px solid #fde68a;font-weight:600;padding:1px 7px;border-radius:5px;flex-shrink:0;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:default;">📝 ${t.memo}</span>`:''}
+      ${(()=>{const pk=memoPeekParts(t.memo); return pk?`<span title="${escAttr((memoStampLabel(t)?memoStampLabel(t)+'\n':'')+t.memo)}" style="font-size:0.7rem;color:#92660d;background:#fefce8;border:1px solid #fef08a;font-weight:600;padding:1px 7px;border-radius:5px;flex-shrink:0;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:default;">${pk.time?`<span style="color:#a8a29e;margin-right:4px;">${escAttr(pk.time)}</span>`:''}${escAttr(pk.text)}</span>`:'';})()}
     </div>`;
   }).join('');
 
@@ -4374,7 +4519,7 @@ function renderHome(){
     return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:0.82rem;">
       <span style="color:${p.color};font-weight:600;font-size:0.72rem;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
       <span style="flex:1">${t.text}</span>
-      ${t.memo?`<span title="${t.memo.replace(/"/g,'&quot;')}" style="font-size:0.7rem;color:#92660d;background:#fef9c3;border:1px solid #fde68a;font-weight:600;padding:1px 7px;border-radius:5px;flex-shrink:0;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:default;">📝 ${t.memo}</span>`:''}
+      ${(()=>{const pk=memoPeekParts(t.memo); return pk?`<span title="${escAttr((memoStampLabel(t)?memoStampLabel(t)+'\n':'')+t.memo)}" style="font-size:0.7rem;color:#92660d;background:#fefce8;border:1px solid #fef08a;font-weight:600;padding:1px 7px;border-radius:5px;flex-shrink:0;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:default;">${pk.time?`<span style="color:#a8a29e;margin-right:4px;">${escAttr(pk.time)}</span>`:''}${escAttr(pk.text)}</span>`:'';})()}
       <span style="font-size:0.72rem;color:${hc};font-weight:700;white-space:nowrap;">${statusTxt}</span>
     </div>`;
   }).join('');
@@ -4466,19 +4611,20 @@ function renderHome(){
       const pc=t.done?'#94a3b8':prioColor(t.priority||'');
       const planVal=plansForDate[t.id]!=null?plansForDate[t.id]:'';
       const actualForTask=weeklyLogs.filter(l=>l.date===activeLogDate && l.type!=='meeting' && l.project===t.project && l.task===t.text).reduce((s,l)=>s+(l.hours||0),0);
-      return `<div draggable="true"
+      return `<div class="task-item" draggable="true"
         ondragstart="taskDragStart(event, ${t.id}, 'A1')"
         ondragover="taskDragOver(event, 'A1')"
         ondragleave="this.classList.remove('drag-over')"
         ondrop="taskDrop(event, ${t.id}, 'A1')"
         ondragend="this.classList.remove('dragging')"
-        style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--border);font-size:0.84rem;${t.done?'opacity:0.55;':''}">
+        style="display:flex;flex-direction:column;align-items:stretch;gap:0;padding:7px 4px;border-bottom:1px solid var(--border);border-radius:0;background:transparent;border-left:none;font-size:0.84rem;${t.done?'opacity:0.55;':''}">
+        <div style="display:flex;align-items:center;gap:8px;width:100%;">
         <span style="cursor:grab;color:var(--muted);flex-shrink:0;font-size:0.8rem;user-select:none;" title="드래그해서 순서 변경">⠿</span>
         <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask(${t.id})" style="flex-shrink:0;">
         ${t.priority?`<span style="background:${pc};color:white;font-size:0.68rem;font-weight:800;padding:1px 6px;border-radius:4px;flex-shrink:0;">${t.priority}</span>`:''}
         <span style="color:${p.color};font-weight:600;font-size:0.72rem;flex-shrink:0;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
-        <span style="flex:1;${t.done?'text-decoration:line-through;':''}">${t.text}</span>
-        ${t.memo?`<span title="${t.memo.replace(/"/g,'&quot;')}" style="font-size:0.7rem;color:#92660d;background:#fef9c3;border:1px solid #fde68a;font-weight:600;padding:1px 7px;border-radius:5px;flex-shrink:0;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:default;">📝 ${t.memo}</span>`:''}
+        <span class="task-text" ondblclick="event.stopPropagation();startInlineEditTaskText(${t.id}, this)" title="더블클릭하여 수정" style="flex:0 1 auto;min-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;${t.done?'text-decoration:line-through;':''}">${t.text}</span>
+        ${memoPeekHTML(t,'h')}
         <select class="status-select" draggable="false" onmousedown="event.stopPropagation()" style="color:${stInfo.color};border-color:${stInfo.color}22;background:${stInfo.color}11;flex-shrink:0;font-size:0.68rem;"
             onchange="setTaskStatus(${t.id},this.value)">
           ${st==='overdue'?`<option value="overdue" selected>🔴 기한초과</option>`:''}
@@ -4494,10 +4640,13 @@ function renderHome(){
             style="width:38px;border:none;background:transparent;font-size:0.78rem;font-weight:700;color:#10b981;text-align:right;"
             onchange="setDailyActual(${t.id}, this.value)">h
         </span>
+        </div>
+        ${memoPanelHTML(t, 'h')}
       </div>`;
     }).join('');
   }
 
+  renderTodayAllocation();
   syncHolidayButton();
   renderRecurringSuggest();
 
@@ -4536,12 +4685,13 @@ function renderHome(){
         const st=getTaskStatus(t); const stInfo=TASK_STATUS[st]||TASK_STATUS['not_started'];
         const pc=t.done?'#94a3b8':prioColor(t.priority||'');
         const actualForTask=weeklyLogs.filter(l=>l.date===activeLogDate && l.type!=='meeting' && l.project===t.project && l.task===t.text).reduce((s,l)=>s+(l.hours||0),0);
-        return `<div style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--border);font-size:0.84rem;${t.done?'opacity:0.65;':''}">
+        return `<div class="task-item" style="display:flex;flex-direction:column;align-items:stretch;gap:0;padding:7px 4px;border-bottom:1px solid var(--border);border-radius:0;background:transparent;border-left:none;font-size:0.84rem;${t.done?'opacity:0.65;':''}">
+          <div style="display:flex;align-items:center;gap:8px;width:100%;">
           <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask(${t.id})" style="flex-shrink:0;" title="${t.done?'체크 해제하면 미완료로 되돌립니다':'완료 처리'}">
           ${t.priority?`<span style="background:${pc};color:white;font-size:0.68rem;font-weight:800;padding:1px 6px;border-radius:4px;flex-shrink:0;">${t.priority}</span>`:''}
           <span style="color:${p.color};font-weight:600;font-size:0.72rem;flex-shrink:0;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
-          <span style="flex:1;${t.done?'text-decoration:line-through;':''}">${t.text}</span>
-          ${t.memo?`<span title="${t.memo.replace(/"/g,'&quot;')}" style="font-size:0.7rem;color:#92660d;background:#fef9c3;border:1px solid #fde68a;font-weight:600;padding:1px 7px;border-radius:5px;flex-shrink:0;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:default;">📝 ${t.memo}</span>`:''}
+          <span class="task-text" ondblclick="event.stopPropagation();startInlineEditTaskText(${t.id}, this)" title="더블클릭하여 수정" style="flex:0 1 auto;min-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;${t.done?'text-decoration:line-through;':''}">${t.text}</span>
+          ${memoPeekHTML(t,'d')}
           ${t.done
             ? `<span class="status-chip" onclick="editCompleteDate(${t.id})" title="클릭하여 완료일 변경 (현재: ${fmt(t.actualEnd)})" style="background:${stInfo.color};font-size:0.68rem;flex-shrink:0;display:flex;align-items:center;gap:4px;cursor:pointer;">${stInfo.icon} ${stInfo.label}</span>`
             : `<select class="status-select" draggable="false" onmousedown="event.stopPropagation()" style="color:${stInfo.color};border-color:${stInfo.color}22;background:${stInfo.color}11;flex-shrink:0;font-size:0.68rem;"
@@ -4555,6 +4705,8 @@ function renderHome(){
               style="width:38px;border:none;background:transparent;font-size:0.78rem;font-weight:700;color:#10b981;text-align:right;"
               onchange="setDailyActual(${t.id}, this.value)">h
           </span>
+          </div>
+          ${memoPanelHTML(t, 'd')}
         </div>`;
       }).join('');
     }
@@ -4584,7 +4736,7 @@ function renderHome(){
           <span style="background:${pc};color:white;font-size:0.68rem;font-weight:800;padding:1px 6px;border-radius:4px;flex-shrink:0;">${t.priority}</span>
           <span style="color:${p.color};font-weight:600;font-size:0.72rem;flex-shrink:0;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
           <span style="flex:1;">${t.text}</span>
-          ${t.memo?`<span title="${t.memo.replace(/"/g,'&quot;')}" style="font-size:0.7rem;color:#92660d;background:#fef9c3;border:1px solid #fde68a;font-weight:600;padding:1px 7px;border-radius:5px;flex-shrink:0;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:default;">📝 ${t.memo}</span>`:''}
+          ${(()=>{const pk=memoPeekParts(t.memo); return pk?`<span title="${escAttr((memoStampLabel(t)?memoStampLabel(t)+'\n':'')+t.memo)}" style="font-size:0.7rem;color:#92660d;background:#fefce8;border:1px solid #fef08a;font-weight:600;padding:1px 7px;border-radius:5px;flex-shrink:0;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:default;">${pk.time?`<span style="color:#a8a29e;margin-right:4px;">${escAttr(pk.time)}</span>`:''}${escAttr(pk.text)}</span>`:'';})()}
           <select class="status-select" draggable="false" onmousedown="event.stopPropagation()" style="color:${stInfo.color};border-color:${stInfo.color}22;background:${stInfo.color}11;flex-shrink:0;font-size:0.68rem;"
               onchange="setTaskStatus(${t.id},this.value)">
             ${st==='overdue'?`<option value="overdue" selected>🔴 기한초과</option>`:''}
@@ -7216,22 +7368,14 @@ function renderParkingLot(){
         ${prio?`<span onclick="event.stopPropagation();showPriorityPicker(event, ${t.id})" title="클릭하여 우선순위 변경" style="background:${prioColor(prio)};color:white;font-size:0.7rem;font-weight:800;padding:2px 6px;border-radius:4px;min-width:26px;text-align:center;flex-shrink:0;cursor:pointer;">${prio}</span>`:''}
         <span class="p-badge editable" onclick="event.stopPropagation();showProjectPicker(event, ${t.id})" onmousedown="event.stopPropagation()" title="클릭하여 프로젝트/하위분류 변경" style="background:${p.color}22;color:${p.color};flex-shrink:0;cursor:pointer;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
         <span class="task-text" ondblclick="event.stopPropagation();startInlineEditTaskText(${t.id}, this)" title="더블클릭하여 수정" style="font-size:0.85rem;flex:0 1 auto;min-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;">${t.text}</span>
-        ${memoPeekHTML(t)}
+        ${memoPeekHTML(t,'p')}
         <span class="date-badge" style="flex-shrink:0;background:#f5f3ff;color:#7c3aed;border-color:#ddd6fe;">날짜 미정</span>
         <div style="display:flex;gap:5px;flex-shrink:0;">
           <button class="btn-sm" style="background:#ede9fe;color:#6d28d9;font-weight:700;" onclick="event.stopPropagation();showDatePicker(event, ${t.id})" title="시작/종료일을 정해서 일정(타임라인)으로 올립니다">📅 일정 지정</button>
           <button class="btn-sm" style="background:#fee2e2;color:var(--warn)" onclick="deleteTask(${t.id})">삭제</button>
         </div>
       </div>
-      <div id="task-memo-${t.id}" style="display:none;margin-top:8px;padding:10px;background:#f8fafc;border-radius:6px;border-left:3px solid var(--primary);">
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">
-          <button class="btn-sm" onclick="insertMemoTimestamp(${t.id})" title="지금 시각을 메모에 삽입합니다" style="background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;font-weight:700;padding:2px 8px;">🕒 시각</button>
-          <span id="task-memo-time-${t.id}" style="margin-left:auto;font-size:0.7rem;color:var(--muted);">${memoStampLabel(t)}</span>
-        </div>
-        <textarea id="task-memo-ta-${t.id}" placeholder="메모 (예: 왜 보류중인지, 언제쯤 다시 볼지...)"
-          style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:0.82rem;resize:vertical;min-height:60px;font-family:inherit;background:white;color:${t.memoStyle?.color||'#1e293b'};font-weight:${t.memoStyle?.bold?'700':'400'};"
-          onblur="saveTaskMemo(${t.id},this.value)">${t.memo||''}</textarea>
-      </div>`;
+      ${memoPanelHTML(t, 'p', '메모 (예: 왜 보류중인지, 언제쯤 다시 볼지...)')}`;
     item.style.flexDirection='column';
     item.style.alignItems='stretch';
     item.style.gap='0';
