@@ -845,9 +845,9 @@ ZB 교체 둘</textarea>
           <input type="checkbox" id="rm-auto" checked style="cursor:pointer;">⚡ 자동 추가
         </label>
         <span id="rm-time-wrap" style="display:none;gap:5px;align-items:center;">
-          <input type="time" id="rm-start" step="300" value="13:00" onchange="rmTimeChanged()" style="width:auto;">
+          <input type="time" id="rm-start" step="1800" value="13:00" onchange="snapTimeInput(this);rmTimeChanged()" style="width:auto;">
           <span style="color:var(--muted);">~</span>
-          <input type="time" id="rm-end" step="300" value="14:00" onchange="rmTimeChanged()" style="width:auto;">
+          <input type="time" id="rm-end" step="1800" value="14:00" onchange="snapTimeInput(this);rmTimeChanged()" style="width:auto;">
         </span>
       </div>
       <input type="text" id="rm-memo" placeholder="메모 (선택)">
@@ -1048,11 +1048,11 @@ ZB 교체 둘</textarea>
     <div style="display:flex;gap:8px;align-items:flex-end;">
       <div style="flex:1;">
         <label style="font-size:0.76rem;font-weight:700;color:var(--muted);">시작</label>
-        <input type="time" id="tb-start" step="300" onchange="tbSyncDuration()">
+        <input type="time" id="tb-start" step="1800" onchange="snapTimeInput(this);tbSyncDuration()">
       </div>
       <div style="flex:1;">
         <label style="font-size:0.76rem;font-weight:700;color:var(--muted);">종료</label>
-        <input type="time" id="tb-end" step="300" onchange="tbSyncDuration()">
+        <input type="time" id="tb-end" step="1800" onchange="snapTimeInput(this);tbSyncDuration()">
       </div>
       <div style="flex-shrink:0;padding-bottom:9px;font-size:0.8rem;font-weight:800;color:var(--primary);min-width:46px;text-align:right;" id="tb-dur">0h</div>
     </div>
@@ -1108,8 +1108,8 @@ ZB 교체 둘</textarea>
         시간대도 지정 (하루 타임라인에 표시)
       </label>
       <div id="complete-time-wrap" style="display:none;gap:8px;margin-top:6px;">
-        <div style="flex:1;"><label style="font-size:0.72rem;color:var(--muted);">시작</label><input type="time" id="complete-start-time" step="300" onchange="cdTimeChanged()"></div>
-        <div style="flex:1;"><label style="font-size:0.72rem;color:var(--muted);">종료</label><input type="time" id="complete-end-time" step="300" onchange="cdTimeChanged()"></div>
+        <div style="flex:1;"><label style="font-size:0.72rem;color:var(--muted);">시작</label><input type="time" id="complete-start-time" step="1800" onchange="snapTimeInput(this);cdTimeChanged()"></div>
+        <div style="flex:1;"><label style="font-size:0.72rem;color:var(--muted);">종료</label><input type="time" id="complete-end-time" step="1800" onchange="snapTimeInput(this);cdTimeChanged()"></div>
       </div>
     </div>
 
@@ -4299,6 +4299,7 @@ function setDailyPlan(taskId, value){
 }
 // 계획 시작 시각을 저장 (시간이 비어 있으면 1시간을 기본으로 잡아준다)
 function setDailyPlanStart(taskId, value){
+  value=snapTime(value);
   const cur=getPlan(activeLogDate, taskId);
   const h=cur.h>0?cur.h:(value?1:0);
   setPlan(activeLogDate, taskId, h, value);
@@ -4699,9 +4700,9 @@ function renderHome(){
         </select>
         <span style="display:flex;align-items:center;gap:2px;flex-shrink:0;background:${planObj.start?'#eef2ff':'var(--bg)'};border-radius:6px;padding:2px 6px;"
           title="오늘 계획 — 시작 시각(선택)과 소요 시간(h)${planEndLbl?`\n계획: ${planObj.start}~${planEndLbl}`:''}">
-          📝<input type="time" step="300" value="${planObj.start}" title="계획 시작 시각 (비워두면 시간만 계획)"
+          📝<input type="time" step="1800" value="${planObj.start}" title="계획 시작 시각 (비워두면 시간만 계획)"
             style="width:62px;border:none;background:transparent;font-size:0.7rem;font-weight:700;color:${planObj.start?'#4f46e5':'#cbd5e1'};padding:0;"
-            onchange="setDailyPlanStart(${t.id}, this.value)">
+            onchange="snapTimeInput(this);setDailyPlanStart(${t.id}, this.value)">
           <input type="number" min="0" step="0.5" value="${planVal}" placeholder="0"
             style="width:34px;border:none;background:transparent;font-size:0.78rem;font-weight:700;color:var(--primary);text-align:right;"
             onchange="setDailyPlan(${t.id}, this.value)">h
@@ -4846,6 +4847,24 @@ function tlToMin(hhmm){
   if(isNaN(h)||isNaN(m)) return null;
   return h*60+m;
 }
+/* 시각을 30분 단위로 맞춘다 (가까운 쪽으로 반올림).
+   브라우저 시간 선택기는 step으로 30분 단위만 보여주지만,
+   직접 타이핑하거나 예전 데이터가 들어오는 경우를 대비해 값도 맞춰준다. */
+const TIME_STEP_MIN = 30;
+function snapTime(hhmm){
+  const m=tlToMin(hhmm);
+  if(m==null) return hhmm||'';
+  // 23:30이 상한 (time 입력이 24:00을 받지 못함)
+  return tlToStr(Math.min(23*60+30, Math.round(m/TIME_STEP_MIN)*TIME_STEP_MIN));
+}
+// input 요소의 값을 30분 단위로 맞추고, 바뀌었으면 true
+function snapTimeInput(el){
+  if(!el || !el.value) return false;
+  const v=snapTime(el.value);
+  if(v!==el.value){ el.value=v; return true; }
+  return false;
+}
+
 function tlToStr(min){
   min=Math.max(0,Math.min(24*60,Math.round(min)));
   return `${String(Math.floor(min/60)).padStart(2,'0')}:${String(min%60).padStart(2,'0')}`;
@@ -5140,8 +5159,8 @@ function closeTimeBlockModal(){
 
 function saveTimeBlock(){
   const date=activeLogDate||TODAY_STR;
-  const startTime=document.getElementById('tb-start').value;
-  const endTime=document.getElementById('tb-end').value;
+  const startTime=snapTime(document.getElementById('tb-start').value);
+  const endTime=snapTime(document.getElementById('tb-end').value);
   const s=tlToMin(startTime), e=tlToMin(endTime);
   if(s==null||e==null){ alert('시작/종료 시간을 입력하세요.'); return; }
   if(e<=s){ alert('종료 시간이 시작 시간보다 늦어야 합니다.'); return; }
@@ -5685,8 +5704,8 @@ function addRecurringMeeting(){
     if(cycle==='biweekly') r.anchorDate=rmNextWeekdayFrom(activeLogDate||TODAY_STR, r.weekday);
   }
   if(useTime){
-    r.startTime=document.getElementById('rm-start').value;
-    r.endTime=document.getElementById('rm-end').value;
+    r.startTime=snapTime(document.getElementById('rm-start').value);
+    r.endTime=snapTime(document.getElementById('rm-end').value);
   }
   recurringMeetings.push(r);
   autoAddRecurringToday();   // 오늘이 해당 요일이면 곧바로 기록에 반영
@@ -7755,8 +7774,8 @@ function confirmCompleteDate(){
     // 모달에서 입력한 투입 시간을 그 날짜의 기록으로 확정 (자동 1h 대신)
     const hVal=parseFloat(document.getElementById('complete-hours-input').value);
     const useTime=!!document.getElementById('complete-usetime')?.checked;
-    const stV=document.getElementById('complete-start-time')?.value||'';
-    const etV=document.getElementById('complete-end-time')?.value||'';
+    const stV=snapTime(document.getElementById('complete-start-time')?.value||'');
+    const etV=snapTime(document.getElementById('complete-end-time')?.value||'');
     setCompletionHours(completedTask, dateVal, isNaN(hVal)?0:hVal,
       useTime && stV && etV ? {startTime:stV, endTime:etV} : null);
   }
