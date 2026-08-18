@@ -525,7 +525,7 @@ ZB 교체 둘</textarea>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:9px;">
           <span style="font-size:0.85rem;font-weight:700;color:var(--muted);">⏰ 시간대별 기록</span>
           <span id="tl-date-lbl" style="font-size:0.72rem;color:var(--muted);background:var(--bg);padding:1px 8px;border-radius:8px;"></span>
-          <span style="font-size:0.68rem;color:var(--muted);">빈 칸을 클릭하면 그 시각부터 추가됩니다</span>
+          <span style="font-size:0.68rem;color:var(--muted);">빈 칸을 클릭하면 그 시각부터 추가됩니다 · 점선은 📝 계획</span>
           <button class="btn-primary" style="margin-left:auto;font-size:0.74rem;padding:4px 10px;" onclick="openTimeBlockModal(null,null)">+ 블록 추가</button>
         </div>
         <div id="tl-summary" style="margin-bottom:9px;"></div>
@@ -770,6 +770,25 @@ ZB 교체 둘</textarea>
       <input type="number" id="w-hours" placeholder="시간" min="0.5" max="24" step="0.5" oninput="wRecurSyncLabel()" style="width:80px;padding:7px;border:1.5px solid var(--border);border-radius:6px;">
     </div>
     <input type="text" id="w-memo" placeholder="메모 (선택)">
+    <!-- 이미 반복 등록된 미팅을 수정할 때 -->
+    <div id="w-recur-linked" style="display:none;border-top:1px dashed var(--border);padding-top:9px;">
+      <div style="background:#faf5ff;border:1.5px solid #ddd6fe;border-radius:8px;padding:9px 11px;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-size:0.78rem;font-weight:800;color:#7c3aed;">🔁 반복 등록됨</span>
+          <span id="w-recur-linked-label" style="font-size:0.78rem;color:var(--muted);font-weight:600;"></span>
+          <button type="button" class="btn-sm" id="w-recur-auto-btn" style="margin-left:auto;font-weight:700;" onclick="wRecurLinkedToggleAuto()"></button>
+        </div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:0.77rem;color:var(--muted);margin-top:7px;cursor:pointer;">
+          <input type="checkbox" id="w-recur-apply" checked style="cursor:pointer;">
+          여기서 바꾼 시간·제목을 반복 설정에도 반영
+        </label>
+        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
+          <button type="button" class="btn-sm" style="background:#fee2e2;color:var(--warn);font-weight:700;" onclick="wRecurUnlink()">🔁 반복 해제</button>
+          <span style="font-size:0.7rem;color:var(--muted);align-self:center;">해제해도 이미 기록된 미팅들은 그대로 남습니다</span>
+        </div>
+      </div>
+    </div>
+
     <div id="w-recur-wrap" style="display:none;border-top:1px dashed var(--border);padding-top:9px;">
       <label style="display:flex;align-items:center;gap:6px;font-size:0.8rem;font-weight:700;color:#7c3aed;cursor:pointer;">
         <input type="checkbox" id="w-recur" onchange="wRecurToggle(this.checked)" style="cursor:pointer;">
@@ -983,6 +1002,8 @@ ZB 교체 둘</textarea>
 .tl-layer{position:absolute;left:52px;right:0;top:0;bottom:0;pointer-events:none;}
 .tl-block{position:absolute;border-radius:6px;padding:3px 7px;font-size:0.72rem;line-height:1.25;overflow:hidden;cursor:pointer;pointer-events:auto;box-shadow:0 1px 3px rgba(0,0,0,.09);transition:.1s;}
 .tl-block:hover{filter:brightness(.96);box-shadow:0 2px 7px rgba(0,0,0,.16);}
+.tl-plan{box-shadow:none;opacity:.85;}
+.tl-plan:hover{opacity:1;box-shadow:0 1px 4px rgba(0,0,0,.1);}
 .tl-block b{display:block;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .tl-block .tl-t{font-size:0.64rem;opacity:.8;font-variant-numeric:tabular-nums;}
 .tl-now{position:absolute;left:52px;right:0;height:0;border-top:2px solid #ef4444;z-index:5;pointer-events:none;}
@@ -1956,7 +1977,11 @@ let repeatTasks = [];     // {id, text, project, priority, cycle:'weekly'|'biwee
     anchorDate:'YYYY-MM-DD'(격주 기준일), active:true, skips:['YYYY-MM-DD']} */
 let recurringMeetings = [];
 let calMemos = {};        // {'2026-06-17': {text:'...', color:'#4f46e5'}}
-let dailyPlans = {};       // {'2026-06-23': {taskId: 계획시간(h), ...}} - 홈에서 "오늘 계획"으로 입력한 업무별 예상 투입시간
+/* {'2026-06-23': {taskId: 2 | {h:2, start:'13:00'}, ...}}
+   홈에서 "오늘 계획"으로 입력한 업무별 예상 투입시간.
+   숫자만 있으면 시간만 계획한 것이고, {h, start} 형태면 시작 시각까지 정한 것.
+   예전 데이터(숫자)와 섞여 있어도 되도록 읽을 때 getPlan()으로 정규화한다. */
+let dailyPlans = {};
 let taskTags = {};        // {taskId: ['#회의','#문서']}
 let quickLinks = [];      // {id, title, url, group, icon}
 let currentFilter = 'all';
@@ -3614,6 +3639,19 @@ function restoreHistory(i){
 /* ══════════════════════════════════════
    TASK STATUS
 ══════════════════════════════════════ */
+/* 메모칸 높이를 내용에 맞게 조절한다.
+   내용이 짧으면 작게, 길면 다 보일 때까지 늘린다.
+   화면을 다 덮지 않도록 최대 높이(뷰포트의 60%)를 넘으면 그때부터 스크롤. */
+function autoGrowMemo(ta){
+  if(!ta) return;
+  const maxH=Math.max(160, Math.round((window.innerHeight||800)*0.6));
+  ta.style.height='auto';
+  const need=ta.scrollHeight;
+  const h=Math.min(need, maxH);
+  ta.style.height=h+'px';
+  ta.style.overflowY = need>maxH ? 'auto' : 'hidden';
+}
+
 function toggleTaskMemo(id, ns){
   ns=ns||'';
   const el=document.getElementById(`task-memo-${ns}${id}`);
@@ -3622,7 +3660,10 @@ function toggleTaskMemo(id, ns){
   el.style.display=isOpen?'none':'block';
   if(!isOpen){
     const ta=document.getElementById(`task-memo-ta-${ns}${id}`);
-    if(ta) setTimeout(()=>ta.focus(),50);
+    if(ta){
+      autoGrowMemo(ta);            // 펼치는 순간 내용이 다 보이도록 높이 맞춤
+      setTimeout(()=>{ autoGrowMemo(ta); ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); },30);
+    }
   }
 }
 function closeTaskMemo(id, ns){
@@ -3649,7 +3690,8 @@ function memoPanelHTML(t, ns, placeholder){
     </div>
     <textarea id="task-memo-ta-${ns}${t.id}" placeholder="${placeholder||'진행 메모 (예: 80%인 이유, 남은 작업...)'}"
       onmousedown="event.stopPropagation()" ondblclick="event.stopPropagation()"
-      style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:0.82rem;resize:vertical;min-height:60px;font-family:inherit;background:white;color:${cur};font-weight:${t.memoStyle?.bold?'700':'400'};"
+      oninput="autoGrowMemo(this)"
+      style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:0.82rem;resize:vertical;min-height:44px;overflow-y:hidden;font-family:inherit;line-height:1.5;background:white;color:${cur};font-weight:${t.memoStyle?.bold?'700':'400'};"
       onblur="saveTaskMemo(${t.id},this.value,'${ns}')">${t.memo||''}</textarea>
     <div id="task-memo-time-${ns}${t.id}" style="margin-top:4px;font-size:0.7rem;color:var(--muted);text-align:right;">${memoStampLabel(t)}</div>
   </div>`;
@@ -3731,6 +3773,7 @@ function insertMemoTimestamp(id, ns){
   const insert=(needsNewline?'\n':'')+stamp;
   ta.value=before+insert+after;
   const pos=before.length+insert.length;
+  autoGrowMemo(ta);
   ta.focus();
   ta.setSelectionRange(pos,pos);
 }
@@ -4224,19 +4267,41 @@ function hexToRgb(hex){
 /* ══════════════════════════════════════
    홈 대시보드
 ══════════════════════════════════════ */
-// 홈 "할 일 & 미팅" 카드에서 특정 업무의 "오늘 계획 시간" 입력값을 저장
-function setDailyPlan(taskId, value){
-  const h=parseFloat(value);
-  if(!dailyPlans[activeLogDate]) dailyPlans[activeLogDate]={};
-  if(isNaN(h) || h<=0){
-    delete dailyPlans[activeLogDate][taskId];
+/* 계획값 읽기 — 숫자/객체 두 형식을 {h, start}로 통일해서 돌려준다 */
+function getPlan(dateStr, taskId){
+  const day=dailyPlans[dateStr]||{};
+  const v=day[taskId];
+  if(v==null) return {h:0, start:''};
+  if(typeof v==='number') return {h:v, start:''};
+  return {h:parseFloat(v.h)||0, start:v.start||''};
+}
+/* 계획값 쓰기 — h가 0 이하면 항목 자체를 지운다.
+   start만 있고 h가 없으면 기본 1시간으로 잡는다. */
+function setPlan(dateStr, taskId, h, start){
+  if(!dailyPlans[dateStr]) dailyPlans[dateStr]={};
+  const hh=parseFloat(h)||0;
+  if(hh<=0){
+    delete dailyPlans[dateStr][taskId];
+  } else if(start){
+    dailyPlans[dateStr][taskId]={h:hh, start};
   } else {
-    dailyPlans[activeLogDate][taskId]=h;
+    dailyPlans[dateStr][taskId]=hh;   // 시작 시각이 없으면 예전처럼 숫자로 저장
   }
-  // 빈 날짜 객체는 정리
-  if(Object.keys(dailyPlans[activeLogDate]).length===0) delete dailyPlans[activeLogDate];
+  if(Object.keys(dailyPlans[dateStr]).length===0) delete dailyPlans[dateStr];
   saveToFirebase();
   refreshDateViews();
+}
+
+// 홈 "할 일 & 미팅" 카드에서 특정 업무의 "오늘 계획 시간(h)" 입력값을 저장
+function setDailyPlan(taskId, value){
+  const cur=getPlan(activeLogDate, taskId);
+  setPlan(activeLogDate, taskId, value, cur.start);
+}
+// 계획 시작 시각을 저장 (시간이 비어 있으면 1시간을 기본으로 잡아준다)
+function setDailyPlanStart(taskId, value){
+  const cur=getPlan(activeLogDate, taskId);
+  const h=cur.h>0?cur.h:(value?1:0);
+  setPlan(activeLogDate, taskId, h, value);
 }
 
 // 홈 "할 일 & 미팅" 카드에서 특정 업무의 "오늘 실제 투입 시간"을 직접 입력 →
@@ -4364,9 +4429,9 @@ function renderTodayAllocation(){
 
   // 계획: 업무별 계획시간을 프로젝트로 묶음 + 미팅(실제 등록된 미팅을 계획으로 간주)
   const planByProj=new Map();
-  Object.entries(plansForDate).forEach(([tid,h])=>{
+  Object.keys(plansForDate).forEach(tid=>{
     const t=tasks.find(x=>String(x.id)===String(tid));
-    const v=parseFloat(h)||0;
+    const v=getPlan(date, tid).h;
     if(!t||v<=0) return;
     planByProj.set(t.project,(planByProj.get(t.project)||0)+v);
   });
@@ -4557,7 +4622,7 @@ function renderHome(){
 
   // ── 해당 날짜 "계획" 시간 (dailyPlans에 직접 입력해둔 업무별 오늘 예상 투입시간의 합)
   const plansForDate = dailyPlans[activeLogDate] || {};
-  const planHoursSum = selTasks.reduce((s,t)=>s+(parseFloat(plansForDate[t.id])||0),0);
+  const planHoursSum = selTasks.reduce((s,t)=>s+getPlan(activeLogDate, t.id).h,0);
 
   // ── 해당 날짜 "실제" 투입시간 (weeklyLogs에 기록된 모든 시간 — 업무+미팅 합계)
   const actualHoursSum = weeklyLogs.filter(l=>l.date===activeLogDate).reduce((s,l)=>s+(l.hours||0),0);
@@ -4609,7 +4674,9 @@ function renderHome(){
       const p=proj(t.project);
       const st=getTaskStatus(t); const stInfo=TASK_STATUS[st]||TASK_STATUS['not_started'];
       const pc=t.done?'#94a3b8':prioColor(t.priority||'');
-      const planVal=plansForDate[t.id]!=null?plansForDate[t.id]:'';
+      const planObj=getPlan(activeLogDate, t.id);
+      const planVal=planObj.h>0?planObj.h:'';
+      const planEndLbl=(planObj.start&&planObj.h>0)?tlToStr(tlToMin(planObj.start)+Math.round(planObj.h*60)):'';
       const actualForTask=weeklyLogs.filter(l=>l.date===activeLogDate && l.type!=='meeting' && l.project===t.project && l.task===t.text).reduce((s,l)=>s+(l.hours||0),0);
       return `<div class="task-item" draggable="true"
         ondragstart="taskDragStart(event, ${t.id}, 'A1')"
@@ -4630,10 +4697,15 @@ function renderHome(){
           ${st==='overdue'?`<option value="overdue" selected>🔴 기한초과</option>`:''}
           ${Object.entries(TASK_STATUS).filter(([k])=>k!=='done'&&k!=='early_done'&&k!=='overdue').map(([k,v])=>`<option value="${k}" ${st===k?'selected':''}>${v.icon} ${v.label}</option>`).join('')}
         </select>
-        <span style="display:flex;align-items:center;gap:3px;flex-shrink:0;background:var(--bg);border-radius:6px;padding:2px 6px;" title="오늘 계획 시간(h)">
-          📝<input type="number" min="0" step="0.5" value="${planVal}" placeholder="0"
-            style="width:38px;border:none;background:transparent;font-size:0.78rem;font-weight:700;color:var(--primary);text-align:right;"
+        <span style="display:flex;align-items:center;gap:2px;flex-shrink:0;background:${planObj.start?'#eef2ff':'var(--bg)'};border-radius:6px;padding:2px 6px;"
+          title="오늘 계획 — 시작 시각(선택)과 소요 시간(h)${planEndLbl?`\n계획: ${planObj.start}~${planEndLbl}`:''}">
+          📝<input type="time" step="300" value="${planObj.start}" title="계획 시작 시각 (비워두면 시간만 계획)"
+            style="width:62px;border:none;background:transparent;font-size:0.7rem;font-weight:700;color:${planObj.start?'#4f46e5':'#cbd5e1'};padding:0;"
+            onchange="setDailyPlanStart(${t.id}, this.value)">
+          <input type="number" min="0" step="0.5" value="${planVal}" placeholder="0"
+            style="width:34px;border:none;background:transparent;font-size:0.78rem;font-weight:700;color:var(--primary);text-align:right;"
             onchange="setDailyPlan(${t.id}, this.value)">h
+          ${planEndLbl?`<span style="font-size:0.62rem;color:#6366f1;font-weight:700;white-space:nowrap;margin-left:2px;">~${planEndLbl}</span>`:''}
         </span>
         <span style="display:flex;align-items:center;gap:3px;flex-shrink:0;background:#f0fdf4;border-radius:6px;padding:2px 6px;" title="오늘 실제 투입 시간(h) — 입력하면 주간/월간 기록에도 반영됩니다">
           ⏱️<input type="number" min="0" step="0.5" value="${actualForTask||''}" placeholder="0"
@@ -4781,6 +4853,22 @@ function tlToStr(min){
 function tlHours(min){ return Math.round(min/60*100)/100; }
 function tlFmtH(h){ return (Math.round(h*100)/100).toString().replace(/\.00$/,'')+'h'; }
 
+// 선택 날짜에 "시작 시각까지 정해둔" 계획 블록
+function tlPlanBlocks(date){
+  const day=dailyPlans[date]||{};
+  return Object.keys(day).map(tid=>{
+    const pl=getPlan(date, tid);
+    if(!pl.start || pl.h<=0) return null;
+    const t=tasks.find(x=>String(x.id)===String(tid));
+    if(!t) return null;
+    const _s=tlToMin(pl.start);
+    if(_s==null) return null;
+    return {_id:t.id, task:t.text, project:t.project, hours:pl.h,
+      startTime:pl.start, endTime:tlToStr(_s+Math.round(pl.h*60)),
+      _s, _e:_s+Math.round(pl.h*60), _plan:true};
+  }).filter(Boolean).sort((a,b)=>a._s-b._s);
+}
+
 // 선택 날짜의 시간대 지정 기록
 function tlBlocks(date){
   return weeklyLogs
@@ -4833,10 +4921,11 @@ function renderDayTimeline(){
   if(lbl) lbl.textContent=fmt(date);
 
   const blocks=tlAssignColumns(tlBlocks(date));
+  const planBlocks=tlPlanBlocks(date);
 
-  // 표시 범위: 기본 08~19시, 기록이 벗어나면 자동 확장
+  // 표시 범위: 기본 08~19시, 기록/계획이 벗어나면 자동 확장
   let h0=TL_DEFAULT_START, h1=TL_DEFAULT_END;
-  blocks.forEach(b=>{
+  [...blocks, ...planBlocks].forEach(b=>{
     h0=Math.min(h0, Math.floor(b._s/60));
     h1=Math.max(h1, Math.ceil(b._e/60));
   });
@@ -4865,6 +4954,19 @@ function renderDayTimeline(){
     </div>`;
   }).join('');
 
+  // 계획 블록 — 실제 기록 뒤쪽에 점선 윤곽으로 깔아둔다 (몇 시부터 몇 시까지 하려 했는지)
+  const planHtml=planBlocks.map(b=>{
+    const top=(b._s - h0*60)/60*TL_ROW_H;
+    const hgt=Math.max(14,(b._e-b._s)/60*TL_ROW_H - 2);
+    const c=(projects.find(x=>x.id===b.project)||{}).color||'#64748b';
+    return `<div class="tl-block tl-plan" style="top:${top}px;height:${hgt}px;left:2px;right:2px;width:auto;background:${c}0d;border:1.5px dashed ${c}88;color:#64748b;"
+        title="계획: ${b.task} ${b.startTime}~${b.endTime} (${tlFmtH(b.hours)})"
+        onclick="openTimeBlockModal(null,'${b.startTime}')">
+      <b style="color:${c}bb;font-weight:700;">📝 ${b.task}</b>
+      ${hgt<30?'':`<span class="tl-t">계획 ${b.startTime}~${b.endTime}</span>`}
+    </div>`;
+  }).join('');
+
   // 오늘이면 현재 시각선
   let nowHtml='';
   if(date===TODAY_STR){
@@ -4874,7 +4976,8 @@ function renderDayTimeline(){
   }
 
   wrap.innerHTML=`<div class="tl-wrap"><div class="tl-grid">${gridHtml}
-    <div class="tl-layer">${blockHtml}</div>${nowHtml}</div></div>`;
+    <div class="tl-layer" style="z-index:0;">${planHtml}</div>
+    <div class="tl-layer" style="z-index:1;">${blockHtml}</div>${nowHtml}</div></div>`;
 
   renderTlSummary(date, blocks);
   renderTlUnassigned(date);
@@ -5665,6 +5768,88 @@ function wRecurSyncLabel(){
     ? `→ 매월 ${d.getDate()}일${hTxt}`
     : `→ ${cycle==='biweekly'?'격주':'매주'} ${RM_WD[d.getDay()]}요일${hTxt}`;
 }
+/* 이 미팅 기록과 연결된 반복 등록 찾기.
+   제목이 같고, 그 날짜가 반복 주기에 맞으면 같은 미팅으로 본다. */
+function findRecurringForLog(l){
+  if(!l || l.type!=='meeting') return null;
+  return recurringMeetings.find(r=>
+    (r.title||'')===(l.task||'') && rmMatchesDate({...r, active:true}, l.date)
+  ) || recurringMeetings.find(r=>(r.title||'')===(l.task||'')) || null;
+}
+
+let wRecurLinkedId=null;   // 수정 중인 미팅과 연결된 반복 등록 id
+
+// 수정 모달에서 반복 등록 영역 상태 세팅
+function wSetupRecurForEdit(l){
+  const linkedBox=document.getElementById('w-recur-linked');
+  const addBox=document.getElementById('w-recur-wrap');
+  const r=findRecurringForLog(l);
+  wRecurLinkedId = r ? r.id : null;
+  if(r){
+    linkedBox.style.display='';
+    addBox.style.display='none';
+    document.getElementById('w-recur-linked-label').textContent=`${rmCycleLabel(r)} · ${rmTimeLabel(r)}`;
+    document.getElementById('w-recur-apply').checked=true;
+    wSyncRecurAutoBtn(r);
+  } else {
+    linkedBox.style.display='none';
+    addBox.style.display='';       // 아직 반복이 아니면 "반복 등록" 옵션을 준다
+    resetWRecur();
+    wRecurSyncLabel();
+  }
+}
+function wSyncRecurAutoBtn(r){
+  const b=document.getElementById('w-recur-auto-btn'); if(!b) return;
+  const off = r.auto===false;
+  b.textContent = off ? '❓ 확인 후' : '⚡ 자동';
+  b.title = off ? '해당 요일에 물어봅니다 — 눌러서 자동으로 전환' : '해당 요일이 되면 자동으로 기록됩니다 — 눌러서 확인 방식으로 전환';
+  b.style.background = off ? 'var(--bg)' : '#ede9fe';
+  b.style.color = off ? 'var(--muted)' : '#6d28d9';
+}
+function wRecurLinkedToggleAuto(){
+  if(!wRecurLinkedId) return;
+  recurringMeetings=recurringMeetings.map(r=>{
+    if(r.id!==wRecurLinkedId) return r;
+    const nextAuto = r.auto===false;
+    const u={...r, auto:nextAuto};
+    if(nextAuto) delete u.lastAuto;
+    return u;
+  });
+  const r=recurringMeetings.find(x=>x.id===wRecurLinkedId);
+  if(r) wSyncRecurAutoBtn(r);
+  saveToFirebase();
+}
+function wRecurUnlink(){
+  if(!wRecurLinkedId) return;
+  const r=recurringMeetings.find(x=>x.id===wRecurLinkedId);
+  if(!confirm(`"${r?r.title:''}" 반복 등록을 해제할까요?\n앞으로 자동/제안이 뜨지 않습니다. 이미 기록된 미팅은 그대로 남습니다.`)) return;
+  recurringMeetings=recurringMeetings.filter(x=>x.id!==wRecurLinkedId);
+  wRecurLinkedId=null;
+  // 해제 후에는 다시 "반복 등록" 옵션을 보여준다
+  document.getElementById('w-recur-linked').style.display='none';
+  document.getElementById('w-recur-wrap').style.display='';
+  resetWRecur();
+  wRecurSyncLabel();
+  saveToFirebase();
+  if(document.getElementById('recurring-list')) renderRecurringList();
+}
+// 수정 저장 시 반복 설정에도 반영
+function wApplyRecurEdit(title, projId, date, hours, memo){
+  if(!wRecurLinkedId) return;
+  if(!document.getElementById('w-recur-apply')?.checked) return;
+  const d=new Date(date+'T00:00:00');
+  recurringMeetings=recurringMeetings.map(r=>{
+    if(r.id!==wRecurLinkedId) return r;
+    const u={...r, title, project:projId,
+      projName:(projects.find(p=>p.id===projId)||{}).name||r.projName||'',
+      hours, memo:memo||''};
+    // 날짜를 옮겼으면 반복 요일/일자도 따라간다
+    if(r.cycle==='monthly') u.monthDay=d.getDate();
+    else u.weekday=d.getDay();
+    return u;
+  });
+}
+
 // 미팅 저장 시 반복 등록도 함께 처리
 function wMaybeAddRecurring(title, projId, date, hours, memo){
   const cb=document.getElementById('w-recur');
@@ -7730,9 +7915,15 @@ function setWeeklyType(type){
     taskSel.style.display='none'; taskInp.style.display='none';
     meetTitleInp.style.display='';
     document.getElementById('w-modal-title').textContent=editingWeeklyId?'✏️ 미팅 기록 수정':'📅 미팅 기록';
-    // 반복 등록은 "새 미팅"일 때만 (수정 중에는 숨김)
+    // 반복 관련 영역: 새 미팅이면 "반복 등록" 옵션,
+    // 수정 중이면 openEditWeekly에서 연결 상태에 맞게 다시 세팅한다.
     const rw=document.getElementById('w-recur-wrap');
-    if(rw) rw.style.display=editingWeeklyId?'none':'';
+    const rl=document.getElementById('w-recur-linked');
+    if(!editingWeeklyId){
+      if(rl) rl.style.display='none';
+      if(rw) rw.style.display='';
+      wRecurLinkedId=null;
+    }
     wRecurSyncLabel();
   } else {
     meetBtn.style.background='white'; meetBtn.style.color='#64748b'; meetBtn.style.borderColor='var(--border)';
@@ -7743,6 +7934,9 @@ function setWeeklyType(type){
     document.getElementById('w-modal-title').textContent=editingWeeklyId?'✏️ 기록 수정':'⏱️ 업무 시간 기록';
     const rw2=document.getElementById('w-recur-wrap');
     if(rw2) rw2.style.display='none';
+    const rl2=document.getElementById('w-recur-linked');
+    if(rl2) rl2.style.display='none';
+    wRecurLinkedId=null;
     syncWTaskList();
   }
 }
@@ -7770,6 +7964,7 @@ function openWeeklyAdd(){
 // 미팅 모달의 반복 등록 옵션 초기화
 function resetWRecur(){
   const cb=document.getElementById('w-recur');
+  wRecurLinkedId=null;
   if(cb) cb.checked=false;
   const o=document.getElementById('w-recur-opts');
   if(o) o.style.display='none';
@@ -7852,6 +8047,7 @@ function openEditWeekly(id){
       pSel.value=l.project;
     }
     setWeeklyType('meeting');
+    wSetupRecurForEdit(l);
     openModal('modal-weekly');
     return;
   }
@@ -7894,6 +8090,8 @@ function saveWeeklyLog(){
     }
     if(editingWeeklyId){
       weeklyLogs=weeklyLogs.map(l=>l.id===editingWeeklyId?syncBlockTimes({...l,type:'meeting',project:projId,projName,task:title,date,hours,memo}):l);
+      wApplyRecurEdit(title, projId, date, hours, memo);        // 연결된 반복 설정 갱신
+      wMaybeAddRecurring(title, projId, date, hours, memo);     // 수정하면서 새로 반복 등록한 경우
     } else {
       weeklyLogs.push({id:Date.now(),type:'meeting',project:projId,projName,task:title,date,hours,memo});
       selectedWeekKey=isoWeekKey(date);
