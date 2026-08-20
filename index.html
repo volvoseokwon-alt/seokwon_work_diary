@@ -9,9 +9,11 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="업무다이어리">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
+<meta name="description" content="업무·미팅·시간 기록을 한곳에서 관리하는 개인 업무 다이어리">
+<meta name="application-name" content="업무 다이어리">
+<meta name="apple-mobile-web-app-title" content="업무 다이어리">
 <style>
 :root {
   --bg:#f4f6f9;--card:#fff;--text:#1e293b;
@@ -365,8 +367,7 @@ if ('serviceWorker' in navigator) {
     </span>
     <button onclick="forceSaveToServer()" title="지금 화면에 보이는 데이터를 저장 폴더에 즉시 기록합니다" style="background:#0ea5e9;border:none;color:white;font-size:0.7rem;font-weight:700;padding:4px 9px;border-radius:5px;cursor:pointer;">⬆️ 지금 저장</button>
     <button id="backup-folder-btn" onclick="connectDataFolder()" title="데이터를 저장할 PC 폴더를 연결하세요 (Chrome/Edge PC 전용). OneDrive 안에 두면 다른 PC와 같은 데이터를 쓸 수 있습니다." style="background:#f59e0b;border:none;color:white;font-size:0.7rem;padding:4px 8px;border-radius:5px;cursor:pointer;">📁 저장 폴더 연결</button>
-    <button onclick="downloadFullBackup()" title="전체 데이터를 파일로 다운로드 (만약을 위한 백업)" style="background:rgba(255,255,255,0.15);border:none;color:white;font-size:0.7rem;padding:4px 8px;border-radius:5px;cursor:pointer;">📥 백업</button>
-    <button onclick="document.getElementById('restore-file-input').click()" title="백업 파일에서 복원" style="background:rgba(255,255,255,0.15);border:none;color:white;font-size:0.7rem;padding:4px 8px;border-radius:5px;cursor:pointer;">📤 복원</button>
+    <button onclick="document.getElementById('restore-file-input').click()" title="저장 폴더의 백업_날짜.json 등 백업 파일에서 되돌립니다" style="background:rgba(255,255,255,0.15);border:none;color:white;font-size:0.7rem;padding:4px 8px;border-radius:5px;cursor:pointer;">📤 복원</button>
     <input type="file" id="restore-file-input" accept=".json" style="display:none;" onchange="restoreFromFile(this.files[0])">
     <span class="week-badge" id="hdr-week">W?</span>
   </div>
@@ -1542,26 +1543,6 @@ function updateBackupFolderUI(connected){
     ? `이 폴더의 ${DATA_FILE_NAME} 에 저장됩니다. 클릭하면 다른 폴더로 바꿀 수 있습니다.`
     : '데이터를 저장할 PC 폴더를 연결하세요. 연결 전에는 이 브라우저 안에만 보관됩니다.';
   btn.onclick = connectDataFolder;
-}
-
-function downloadFullBackup(){
-  const payload = {
-    projects, tasks, weeklyLogs, trash, completedProjects,
-    repeatTasks, recurringMeetings, calMemos, taskTags, quickLinks, customHolidays, dailyPlans,
-    sidebarNote: document.getElementById('sidebar-note')?.value || '',
-    _backupAt: new Date().toISOString(),
-    _exportedFrom: 'manual_download'
-  };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  const dateStr = `${TODAY.getFullYear()}${String(TODAY.getMonth()+1).padStart(2,'0')}${String(TODAY.getDate()).padStart(2,'0')}`;
-  a.href = url;
-  a.download = `업무다이어리_백업_${dateStr}.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
 }
 
 function restoreFromFile(file){
