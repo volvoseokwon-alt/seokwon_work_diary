@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>석원이의 업무 다이어리 · V2</title>
+<title>석원이의 업무 다이어리 · V3</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#4f46e5">
 <meta name="mobile-web-app-capable" content="yes">
@@ -361,6 +361,130 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 @media(max-width:1100px){.daily-memo-grid{grid-template-columns:minmax(0,1fr);}.daily-memo-composer{position:static;}#daily-memo-editor{min-height:200px;}.daily-memo-heading h2{font-size:1.25rem;}}
 @media(max-width:600px){body:has(#tab-notes:not([style*="display: none"]):not([style*="display:none"])) #sidebar{display:none;}body:has(#tab-notes:not([style*="display: none"]):not([style*="display:none"])) main{min-width:0;padding:12px;} .daily-memo-heading{align-items:start;}.daily-memo-heading .btn-cancel{font-size:.75rem;padding:6px 9px;}.daily-memo-stats{gap:5px;font-size:.69rem;}.daily-memo-stats span{padding:6px 8px;}.daily-memo-stats b{margin-left:4px;}.daily-memo-entry-time{width:100%;margin-left:0;}.daily-memo-tools label:first-child{flex-basis:100%;}}
 
+/* V3: 월별 완료 히스토리 */
+.history-v3{max-width:1500px;margin:3px auto 0;min-width:0;}
+.hist-top{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:15px;}
+.hist-eyebrow{font-size:.71rem;color:var(--primary);font-weight:750;letter-spacing:.04em;margin-bottom:5px;}
+.hist-top h2{font-size:1.35rem;letter-spacing:-.04em;line-height:1.35;}
+.hist-top p{font-size:.79rem;color:var(--muted);margin-top:5px;}
+.hist-period-controls{display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+.hist-month-picker{display:flex;align-items:center;border:1px solid var(--border);border-radius:9px;background:white;overflow:hidden;}
+.hist-month-picker button{border:none;background:white;color:var(--muted);font-size:1.3rem;padding:5px 12px;cursor:pointer;}
+.hist-month-picker button:hover{background:var(--pri-light);color:var(--primary);}
+.hist-month-picker input{min-width:146px;width:154px;padding:8px 4px;border:none;background:transparent;color:var(--text);font-weight:700;font-size:.93rem;text-align:center;}
+.hist-quiet-btn{background:white;border:1px solid var(--border);border-radius:7px;padding:8px 10px;cursor:pointer;color:var(--muted);font-size:.75rem;white-space:nowrap;}
+.hist-quiet-btn:hover,.hist-quiet-btn.is-active{border-color:#a5b4fc;background:var(--pri-light);color:var(--primary);}
+.hist-scope{display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:.8rem;margin-bottom:10px;}
+.hist-scope strong{font-weight:750;color:var(--text);}
+.hist-scope span{color:var(--muted);font-size:.72rem;}
+.hist-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px;}
+.hist-kpi{background:white;border:1px solid var(--border);border-radius:10px;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.hist-kpi.primary{background:linear-gradient(112deg,#4f46e5,#635bdf);border-color:#4f46e5;color:white;}
+.hist-kpi-label{display:block;font-size:.75rem;color:var(--muted);font-weight:600;}
+.hist-kpi-number{display:block;font-size:1.9rem;font-weight:800;line-height:1.15;font-variant-numeric:tabular-nums;margin-top:7px;letter-spacing:-.04em;}
+.hist-kpi-number small{font-size:.78rem;font-weight:500;letter-spacing:0;margin-left:5px;}
+.hist-kpi-note{display:block;font-size:.68rem;color:var(--muted);margin-top:6px;line-height:1.5;}
+.hist-kpi.primary .hist-kpi-label,.hist-kpi.primary .hist-kpi-note{color:#e0e7ff;}
+.hist-kpi-symbol{width:37px;height:37px;border-radius:11px;background:var(--pri-light);color:var(--primary);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;}
+.hist-kpi.primary .hist-kpi-symbol{background:#ffffff22;color:white;}
+.hist-visuals{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,1fr);gap:14px;margin-bottom:16px;}
+.hist-visuals .card{padding:15px 17px;gap:10px;}
+.hist-card-title{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.hist-card-title h3{font-size:.82rem;font-weight:750;}
+.hist-card-title>span{font-size:.69rem;color:var(--muted);}
+.hist-month-chart{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:5px;align-items:end;margin-top:5px;}
+.hist-month-bar{padding:0 2px;border:0;background:transparent;border-radius:6px;cursor:pointer;min-width:0;color:var(--muted);}
+.hist-month-bar:hover{background:#f8fafc;}
+.hist-month-bar:focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
+.hist-month-value{display:block;font-size:.69rem;height:22px;line-height:20px;font-weight:650;}
+.hist-month-track{height:87px;display:flex;align-items:flex-end;justify-content:center;border-bottom:1px solid #e2e8f0;}
+.hist-month-fill{display:block;width:75%;max-width:30px;border-radius:5px 5px 0 0;background:#c7d2fe;}
+.hist-month-bar.selected .hist-month-fill{background:linear-gradient(0deg,#4f46e5,#818cf8);}
+.hist-month-bar.selected{color:var(--primary);font-weight:800;}
+.hist-month-bar.empty .hist-month-value{color:#94a3b8;font-weight:400;}
+.hist-month-bar.empty .hist-month-fill{height:2px!important;background:#e2e8f0;}
+.hist-month-label{display:block;font-size:.68rem;padding:7px 0 3px;}
+.hist-chart-foot{display:flex;justify-content:space-between;gap:8px;font-size:.65rem;line-height:1.4;color:var(--muted);margin-top:auto;}
+.hist-project-chart{display:flex;flex-direction:column;gap:4px;max-height:150px;overflow-y:auto;scrollbar-width:thin;padding-right:2px;}
+.hist-project-bar{display:grid;grid-template-columns:minmax(80px,1fr) minmax(55px,.8fr) 34px;gap:10px;align-items:center;padding:6px 7px;border:1px solid transparent;border-radius:6px;background:white;cursor:pointer;text-align:left;min-width:0;}
+.hist-project-bar:hover,.hist-project-bar.selected{background:#f8faff;border-color:#c7d2fe;}
+.hist-project-name{display:flex;align-items:center;gap:6px;min-width:0;font-size:.73rem;color:var(--text);}
+.hist-project-name span:last-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hist-dot{display:inline-block;width:7px;height:7px;min-width:7px;border-radius:50%;background:var(--hist-color,#4f46e5);}
+.hist-project-track{height:7px;background:#f1f5f9;border-radius:10px;overflow:hidden;}
+.hist-project-fill{display:block;height:100%;background:var(--hist-color,#4f46e5);border-radius:10px;}
+.hist-project-value{font-size:.72rem;text-align:right;font-weight:750;color:var(--text);}
+.hist-chart-empty{font-size:.77rem;line-height:1.8;color:var(--muted);padding:22px 5px;}
+.hist-records{padding:16px 18px;gap:11px;}
+.hist-record-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+.hist-record-head h3{font-size:.91rem;display:flex;align-items:center;gap:8px;}
+.hist-record-head p{font-size:.71rem;color:var(--muted);margin-top:5px;}
+.hist-total-pill{font-size:.7rem;background:var(--pri-light);color:var(--primary);padding:2px 7px;border-radius:10px;font-weight:700;}
+.hist-mode-switch{display:flex;border:1px solid var(--border);border-radius:7px;overflow:hidden;flex-shrink:0;}
+.history-v3 .hist-mode-btn{padding:7px 13px;font-size:.75rem;}
+.hist-filters{display:flex;align-items:end;gap:8px;flex-wrap:wrap;background:#f8fafc;border:1px solid #edf1f6;border-radius:8px;padding:10px;}
+.hist-filters label{display:flex;flex-direction:column;gap:5px;flex:1;min-width:130px;}
+.hist-filters label>span{font-size:.66rem;color:var(--muted);font-weight:650;}
+.hist-filters .hist-search-label{flex:2;min-width:190px;}
+.hist-filters .hist-sort-label{flex:.65;}
+.hist-filters input,.hist-filters select{border:1px solid var(--border);border-radius:6px;background:white;padding:8px;color:var(--text);font-size:.76rem;width:100%;min-width:0;}
+.hist-list-tools{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:.68rem;color:var(--muted);}
+.hist-list-tools>div{display:flex;align-items:center;flex-wrap:wrap;gap:4px;}
+.hist-text-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.69rem;padding:4px 6px;border-radius:4px;}
+.hist-text-btn:hover{background:var(--pri-light);color:var(--primary);}
+.hist-tool-divider{height:12px;width:1px;background:var(--border);margin:0 4px;}
+.hist-group{border:1px solid var(--border);border-radius:9px;background:white;overflow:hidden;margin-bottom:9px;}
+.hist-group[open]{border-color:#c7d2fe;}
+.hist-group>summary{display:flex;align-items:center;gap:11px;list-style:none;cursor:pointer;padding:12px 14px;user-select:none;}
+.hist-group>summary::-webkit-details-marker{display:none;}
+.hist-group>summary:hover{background:#fafbff;}
+.hist-group[open]>summary{background:#fafbff;border-bottom:1px solid #e8edf5;}
+.hist-date-tile{width:40px;min-width:40px;height:44px;border-radius:8px;background:var(--pri-light);color:var(--primary);display:flex;align-items:center;justify-content:center;flex-direction:column;line-height:1.1;}
+.hist-date-tile b{font-size:1.04rem;font-weight:800;}
+.hist-date-tile small{font-size:.61rem;margin-top:3px;}
+.hist-proj-tile{background:#f1f5f9;color:var(--hist-color,#4f46e5);font-size:1.2rem;font-weight:700;}
+.hist-group-heading{flex:1;min-width:0;}
+.hist-group-title{display:block;font-size:.83rem;font-weight:750;color:var(--text);overflow-wrap:anywhere;}
+.hist-group-meta{display:block;font-size:.66rem;color:var(--muted);margin-top:3px;}
+.hist-group-preview{display:block;color:#64748b;font-size:.72rem;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+.hist-group[open] .hist-group-preview{display:none;}
+.hist-group-count{font-size:.75rem;font-weight:750;color:#047857;background:#ecfdf5;border-radius:7px;padding:5px 9px;white-space:nowrap;}
+.hist-chevron{color:#94a3b8;font-size:1.1rem;transition:transform .15s;}
+.hist-group[open] .hist-chevron{transform:rotate(90deg);}
+.hist-task{display:flex;align-items:flex-start;gap:9px;padding:11px 16px;border-bottom:1px solid #f1f5f9;}
+.hist-task:last-child{border-bottom:0;}
+.hist-task-check{width:17px;height:17px;min-width:17px;border-radius:50%;background:#ecfdf5;color:#059669;display:flex;align-items:center;justify-content:center;font-size:.63rem;font-weight:800;margin-top:2px;}
+.hist-task-body{flex:1;min-width:0;}
+.hist-task-tags{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-bottom:4px;font-size:.64rem;color:var(--muted);}
+.hist-task-project{display:inline-flex;align-items:center;gap:4px;}
+.hist-priority{font-size:.62rem;font-weight:750;}
+.hist-task-title{font-size:.83rem;font-weight:600;line-height:1.6;overflow-wrap:anywhere;}
+.hist-task-subproject{background:#f1f5f9;border-radius:4px;padding:1px 5px;}
+.hist-task-memo{margin-top:6px;}
+.hist-task-memo summary{font-size:.69rem;color:var(--muted);cursor:pointer;line-height:1.7;}
+.hist-task-memo summary span{display:inline-block;max-width:75%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom;margin-left:7px;color:#94a3b8;}
+.hist-memo-body{font-size:.76rem;white-space:pre-wrap;line-height:1.75;overflow-wrap:anywhere;background:#f8fafc;border-left:2px solid #c7d2fe;border-radius:0 5px 5px 0;padding:9px 11px;margin-top:5px;}
+.hist-memo-stamp{display:block;font-size:.66rem;color:#94a3b8;font-weight:400;margin-top:4px;}
+.history-v3 mark{background:#fef08a;color:inherit;border-radius:2px;}
+.hist-empty{padding:38px 18px;text-align:center;border:1px dashed #cbd5e1;border-radius:9px;color:var(--muted);font-size:.8rem;line-height:1.9;}
+.hist-empty strong{display:block;font-size:.95rem;color:var(--text);margin-bottom:5px;}
+.hist-empty-actions{display:flex;gap:7px;justify-content:center;margin-top:13px;}
+.hist-management{margin:15px 2px 20px;font-size:.74rem;color:var(--muted);}
+.hist-management>summary{cursor:pointer;padding:6px 0;font-weight:650;}
+.hist-management>summary span{font-size:.66rem;font-weight:400;margin-left:8px;}
+.hist-management>p{font-size:.68rem;margin:6px 0 9px;line-height:1.7;}
+.hist-archive-row{display:flex;gap:10px;align-items:center;justify-content:space-between;background:white;border:1px solid var(--border);padding:10px 12px;border-radius:7px;margin-bottom:6px;}
+.hist-archive-row>div:first-child{min-width:0;}
+.hist-archive-row strong{font-size:.74rem;display:block;color:var(--text);overflow-wrap:anywhere;}
+.hist-archive-row small{font-size:.65rem;color:var(--muted);display:block;margin-top:4px;}
+.hist-archive-actions{display:flex;gap:6px;flex-shrink:0;}
+.hist-archive-actions button{font-size:.66rem;border:1px solid var(--border);border-radius:5px;padding:5px 7px;background:white;color:var(--muted);cursor:pointer;}
+.hist-archive-actions .restore{color:var(--primary);background:var(--pri-light);}
+.history-v3 input:focus-visible,.history-v3 select:focus-visible,.history-v3 button:focus-visible,.history-v3 summary:focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
+main:has(#tab-history:not([style*="display: none"]):not([style*="display:none"])){min-width:0;}
+@media(max-width:1000px){.hist-visuals{grid-template-columns:minmax(0,1fr);}.hist-kpi{padding:14px 12px;gap:6px;}.hist-kpi-symbol{display:none;}.hist-kpi-number{font-size:1.7rem;}.hist-project-chart{max-height:180px;}.hist-month-track{height:82px;}}
+@media(max-width:600px){body:has(#tab-history:not([style*="display: none"]):not([style*="display:none"])) #sidebar{display:none;}body:has(#tab-history:not([style*="display: none"]):not([style*="display:none"])) main{padding:12px;}.hist-kpis{gap:6px;}.hist-kpi{padding:12px 9px;}.hist-kpi-label{font-size:.64rem;}.hist-kpi-number{font-size:1.5rem;}.hist-kpi-note{font-size:.59rem;}.hist-top h2{font-size:1.22rem;}.hist-top{gap:12px;}.hist-period-controls{gap:5px;}.hist-month-picker input{min-width:124px;width:130px;font-size:.86rem;}.hist-month-picker button{padding:4px 9px;}.hist-records{padding:13px 10px;}.hist-filters .hist-search-label{flex-basis:100%;}.hist-group>summary{padding:10px;gap:8px;}.hist-group-count{font-size:.67rem;padding:4px 6px;}.hist-task{padding:11px;}.hist-group-meta{font-size:.63rem;}.hist-month-chart{gap:2px;}.hist-archive-row{flex-wrap:wrap;}}
+
 </style>
 <script>
 if ('serviceWorker' in navigator) {
@@ -401,7 +525,7 @@ if ('serviceWorker' in navigator) {
     <img src="data:image/png;base64,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" alt="Wonder Diary" style="width:32px;height:32px;border-radius:8px;flex-shrink:0;">
     <span style="display:flex;flex-direction:column;line-height:1.1;">
       <span style="font-size:1.05rem;font-weight:800;letter-spacing:0.01em;">Wonder Diary</span>
-      <span style="font-size:0.62rem;font-weight:400;color:rgba(255,255,255,0.65);">developed by seokwon · V2</span>
+      <span style="font-size:0.62rem;font-weight:400;color:rgba(255,255,255,0.65);">developed by seokwon · V3</span>
     </span>
   </h1>
   <div style="display:flex;align-items:center;justify-content:center;gap:24px;flex:1;flex-wrap:wrap;min-width:0;">
@@ -821,38 +945,60 @@ ZB 교체 둘</textarea>
       </div>
     </div>
 
-    <!-- 완료 히스토리 -->
+    <!-- V3: 월별 완료 히스토리 -->
     <div id="tab-history" style="display:none;">
-      <div class="card">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-          <strong>📂 완료 히스토리</strong>
-          <div style="display:flex;gap:0;margin-left:6px;border:1.5px solid var(--border);border-radius:7px;overflow:hidden;">
-            <button id="hist-mode-date" class="hist-mode-btn" onclick="setHistoryViewMode('date')">📅 날짜별</button>
-            <button id="hist-mode-project" class="hist-mode-btn" onclick="setHistoryViewMode('project')">📁 프로젝트별</button>
+      <div class="history-v3">
+        <div class="hist-top">
+          <div><div class="hist-eyebrow">월간 리뷰</div><h2>완료 히스토리</h2><p>완료한 일을 월별로 한눈에 확인하세요.</p></div>
+          <div class="hist-period-controls">
+            <div class="hist-month-picker">
+              <button type="button" aria-label="이전 달" onclick="moveHistoryMonth(-1)">‹</button>
+              <input type="month" id="hist-month" aria-label="조회할 월" onchange="selectHistoryMonth(this.value)">
+              <button type="button" aria-label="다음 달" onclick="moveHistoryMonth(1)">›</button>
+            </div>
+            <button type="button" class="hist-quiet-btn" onclick="selectHistoryMonth(dailyMemoDateKey().slice(0,7))">이번 달</button>
+            <button type="button" id="hist-all-period" class="hist-quiet-btn" onclick="showAllHistory()" aria-pressed="false">전체 기간</button>
           </div>
         </div>
-
-        <!-- 프로젝트별 뷰 전용 필터 -->
-        <div id="hist-proj-controls" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;padding:9px 11px;background:var(--bg);border-radius:8px;">
-          <label style="font-size:0.76rem;color:var(--muted);font-weight:700;">기간</label>
-          <select id="hist-range" onchange="renderHistory()" style="padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:0.78rem;background:white;">
-            <option value="all">전체</option>
-            <option value="this_month">이번 달</option>
-            <option value="last_3m">최근 3개월</option>
-            <option value="this_year">올해</option>
-          </select>
-          <label style="font-size:0.76rem;color:var(--muted);font-weight:700;margin-left:4px;">프로젝트</label>
-          <select id="hist-project" onchange="renderHistory()" style="padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:0.78rem;background:white;min-width:130px;"></select>
-          <label style="font-size:0.76rem;color:var(--muted);font-weight:700;margin-left:4px;">정렬</label>
-          <select id="hist-sort" onchange="renderHistory()" style="padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:0.78rem;background:white;">
-            <option value="asc">시간 순 (오래된 → 최근)</option>
-            <option value="desc">최근 → 오래된</option>
-          </select>
-          <button class="btn-sm" style="margin-left:auto;background:var(--pri-light);color:var(--primary);font-weight:700;" onclick="copyHistoryByProject()" title="지금 보이는 목록을 텍스트로 복사 (보고용)">📋 텍스트 복사</button>
-          <button class="btn-sm" style="background:#ecfdf5;color:#047857;font-weight:700;" onclick="downloadHistoryCsv()" title="지금 보이는 목록을 CSV로 저장">⬇️ CSV</button>
+        <div class="hist-scope"><strong id="hist-period-label"></strong><span id="hist-filter-description"></span></div>
+        <div class="hist-kpis" id="hist-stats" aria-label="선택 기간 완료 요약"></div>
+        <div class="hist-visuals">
+          <section class="card hist-chart-card" aria-label="월별 완료 업무 그래프">
+            <div class="hist-card-title"><h3>월별 완료 추이</h3><span id="hist-chart-year"></span></div>
+            <div id="hist-month-chart" class="hist-month-chart"></div>
+            <div class="hist-chart-foot"><span>막대를 누르면 해당 월로 이동합니다.</span><span id="hist-year-total"></span></div>
+          </section>
+          <section class="card hist-project-chart-card" aria-label="프로젝트별 완료 현황">
+            <div class="hist-card-title"><h3>프로젝트별 완료 현황</h3><span id="hist-project-chart-caption"></span></div>
+            <div id="hist-project-chart" class="hist-project-chart"></div>
+            <div class="hist-chart-foot"><span>프로젝트를 누르면 해당 업무만 볼 수 있어요.</span></div>
+          </section>
         </div>
-
-        <div id="history-list"></div>
+        <section class="card hist-records" aria-label="완료 업무 상세 기록">
+          <div class="hist-record-head">
+            <div><h3>완료 업무 목록 <span id="hist-list-total" class="hist-total-pill"></span></h3><p>날짜나 프로젝트를 펼쳐 상세 기록을 확인하세요.</p></div>
+            <div class="hist-mode-switch" aria-label="업무 묶음 방식">
+              <button type="button" id="hist-mode-date" class="hist-mode-btn" onclick="setHistoryViewMode('date')" aria-pressed="true">날짜별</button>
+              <button type="button" id="hist-mode-project" class="hist-mode-btn" onclick="setHistoryViewMode('project')" aria-pressed="false">프로젝트별</button>
+            </div>
+          </div>
+          <div class="hist-filters" id="hist-proj-controls">
+            <label class="hist-search-label"><span>검색</span><input type="search" id="hist-search" placeholder="업무명, 메모, 프로젝트 검색" oninput="changeHistoryFilters()"></label>
+            <label><span>프로젝트</span><select id="hist-project" onchange="changeHistoryFilters()"><option value="all">전체 프로젝트</option></select></label>
+            <label class="hist-sort-label"><span>날짜 정렬</span><select id="hist-sort" onchange="changeHistoryFilters()"><option value="desc">최근 날짜순</option><option value="asc">오래된 날짜순</option></select></label>
+            <button type="button" class="hist-quiet-btn" onclick="resetHistoryFilters()">필터 초기화</button>
+          </div>
+          <div class="hist-list-tools">
+            <span id="hist-result-caption" role="status" aria-live="polite"></span>
+            <div><button type="button" class="hist-text-btn" onclick="histExpandAll(true)">모두 펼치기</button><button type="button" class="hist-text-btn" onclick="histExpandAll(false)">모두 접기</button><span class="hist-tool-divider"></span><button type="button" class="hist-text-btn" onclick="copyHistoryByProject()">텍스트 복사</button><button type="button" class="hist-text-btn" onclick="downloadHistoryCsv()">↓ CSV</button></div>
+          </div>
+          <div id="history-list"></div>
+        </section>
+        <details class="hist-management" id="hist-management">
+          <summary>보관 기록 관리 <span>프로젝트 복원 · 보관 기록 삭제</span></summary>
+          <p>복원·삭제는 보관 묶음 전체에 적용됩니다. 다른 달의 업무가 함께 들어 있을 수 있습니다.</p>
+          <div id="hist-management-list"></div>
+        </details>
       </div>
     </div>
 
@@ -3577,293 +3723,254 @@ function emptyTrash(){
 }
 
 /* ══════════════════════════════════════
-   완료 히스토리 — 프로젝트별 / 시간순 보기
-   완료 업무는 두 군데에 있다:
-     1) completedProjects[].tasks  (주간 자동보관 + 완료 자동기록 + 프로젝트 완료 아카이브)
-     2) tasks 중 done===true       (아직 보관 전인 이번 주 완료분)
-   두 곳을 합쳐 id 기준 중복 제거 후 완료일 순으로 정렬한다.
+   V3 · 완료 히스토리: 월별 집계 → 시각 요약 → 상세 기록
+   원본 데이터는 수정하지 않고 업무별 완료일로 묶어 보여준다.
 ══════════════════════════════════════ */
-let historyViewMode = 'date';        // 'date' | 'project'
-let histOpenProjects = null;         // Set<projId> — 펼쳐진 프로젝트 (null이면 전부 펼침)
+let historyViewMode='date';
+let historySelectedMonth=null;
+let historyPeriodMode='month';
+let historyOpenGroups=new Map();
 
-function setHistoryViewMode(mode){
-  historyViewMode = mode;
-  renderHistory();
+function histDate(value){
+  const date=typeof value==='string'?value.slice(0,10):'';
+  return validDailyMemoDate(date)?date:'';
 }
-
-// 모든 완료 업무를 평탄한 배열로 수집
+function histColor(value){return typeof value==='string'&&/^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(value)?value:'#64748b';}
+function histMonthLabel(value){return `${value.slice(0,4)}년 ${Number(value.slice(5,7))}월`;}
+function histShiftMonth(value,delta){
+  const dt=new Date(value+'-15T12:00:00');dt.setMonth(dt.getMonth()+delta);
+  return dailyMemoDateKey(dt).slice(0,7);
+}
+function histPeriodLabel(){return historyPeriodMode==='all'?'전체 기간':histMonthLabel(historySelectedMonth);}
 function collectCompletedTasks(){
-  const out=[]; const seen=new Set();
-  const push=(t, projInfo, date, note)=>{
-    if(!date) return;
-    const key=t.id!=null?('id:'+t.id):('k:'+projInfo.id+'|'+t.text+'|'+date);
-    if(seen.has(key)) return;
-    seen.add(key);
-    out.push({
-      id:t.id, text:t.text||'', date,
-      projId:projInfo.id, projName:projInfo.name, projColor:projInfo.color,
-      priority:t.priority||'', subProject:t.subProject||'',
-      memo:t.memo||'', memoStyle:t.memoStyle||null, memoUpdatedAt:t.memoUpdatedAt||null,
-      note:note||''
-    });
+  const map=new Map();
+  const push=(task,info,date,note,rank,archiveIndex)=>{
+    if(!task || typeof task!=='object') return;
+    const projId=String(info.id??task.project??'__unknown__');
+    const text=String(task.text??'');
+    const key=task.id!=null?'id:'+String(task.id):'task:'+JSON.stringify([projId,text,date]);
+    const item={key,id:task.id,text,date,projId,projName:String(info.name||'기타'),projColor:histColor(info.color),
+      priority:String(task.priority||''),subProject:String(task.subProject||''),memo:String(task.memo||''),
+      memoStyle:task.memoStyle||null,memoUpdatedAt:task.memoUpdatedAt||null,note:note||'',rank,archiveIndices:[]};
+    const old=map.get(key);
+    const refs=[...(old?.archiveIndices||[])];
+    if(archiveIndex!=null&&!refs.includes(archiveIndex)) refs.push(archiveIndex);
+    // 실제 업무의 현재 완료일을 우선한다. 보관본 중에서는 업무별 날짜가 있는 기록을 우선한다.
+    if(!old||rank>old.rank||(rank===old.rank&&date>old.date)){item.archiveIndices=refs;map.set(key,item);}
+    else old.archiveIndices=refs;
   };
-  // 1) 아카이브된 히스토리
-  completedProjects.forEach(cp=>{
-    const pi=cp.project||{id:'?',name:'기타',color:'#888'};
-    (cp.tasks||[]).forEach(t=>push(t, pi, t._completedAt||cp.completedAt, cp._archiveNote));
+  completedProjects.forEach((cp,index)=>{
+    if(!cp) return;
+    const info=cp.project||{};
+    (cp.tasks||[]).forEach(task=>{
+      const ownDate=histDate(task._completedAt)||histDate(task.actualEnd);
+      push(task,info,ownDate||histDate(cp.completedAt),cp._archiveNote,ownDate?2:1,index);
+    });
   });
-  // 2) 아직 목록에 남아있는 완료 업무
-  tasks.forEach(t=>{
-    if(!t.done || !t.actualEnd) return;
-    const pi=proj(t.project);
-    push(t, {id:t.project, name:pi.name, color:pi.color}, t.actualEnd, '진행 목록에 있음');
+  tasks.forEach(task=>{
+    if(!task.done) return;
+    const info=proj(task.project);
+    push(task,{id:task.project,name:info.name,color:info.color},histDate(task.actualEnd)||histDate(task._completedAt),'완료 업무',3,null);
   });
-  return out;
+  return [...map.values()];
 }
-
-// 기간 필터 시작일(YYYY-MM-DD) — 'all'이면 null
-function histRangeStart(){
-  const v=document.getElementById('hist-range')?.value||'all';
-  const y=TODAY.getFullYear(), m=TODAY.getMonth();
-  const f=dt=>`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
-  if(v==='this_month') return f(new Date(y,m,1));
-  if(v==='last_3m')    return f(new Date(y,m-2,1));
-  if(v==='this_year')  return f(new Date(y,0,1));
-  return null;
+function ensureHistoryMonth(items){
+  if(historySelectedMonth) return;
+  const today=dailyMemoDateKey().slice(0,7);
+  const months=items.map(x=>x.date.slice(0,7)).filter(Boolean).sort();
+  historySelectedMonth=months.includes(today)?today:(months.at(-1)||today);
 }
-
-// 현재 필터/정렬이 적용된 목록 (복사·CSV도 이걸 그대로 씀)
+function historyQuery(){return (document.getElementById('hist-search')?.value||'').trim();}
+function histFilterItems(items,ignorePeriod=false,ignoreProject=false){
+  const query=historyQuery().toLocaleLowerCase();
+  const project=document.getElementById('hist-project')?.value||'all';
+  return items.filter(item=>(ignorePeriod||historyPeriodMode==='all'||item.date.startsWith(historySelectedMonth))
+    &&(ignoreProject||project==='all'||item.projId===project)
+    &&(!query||[item.text,item.memo,item.projName,item.subProject,item.date].join(' ').toLocaleLowerCase().includes(query)));
+}
+function histSortItems(items){
+  const asc=(document.getElementById('hist-sort')?.value||'desc')==='asc';
+  return [...items].sort((a,b)=>{
+    if(!a.date&&b.date) return 1;if(a.date&&!b.date) return -1;
+    return (asc?a.date.localeCompare(b.date):b.date.localeCompare(a.date))||a.projName.localeCompare(b.projName,'ko');
+  });
+}
+function histProjectGroups(items){
+  const groups=new Map();
+  histSortItems(items).forEach(item=>{
+    if(!groups.has(item.projId)) groups.set(item.projId,{id:item.projId,name:item.projName,color:item.projColor,items:[]});
+    groups.get(item.projId).items.push(item);
+  });
+  return [...groups.values()].map(group=>{
+    const dates=group.items.map(x=>x.date).filter(Boolean).sort();
+    return {...group,first:dates[0]||'',last:dates.at(-1)||''};
+  }).sort((a,b)=>b.items.length-a.items.length||a.name.localeCompare(b.name,'ko'));
+}
+// 화면·텍스트 복사·CSV가 동일한 월과 필터를 사용한다.
 function getHistoryProjectView(){
-  const startKey=histRangeStart();
-  const pFilter=document.getElementById('hist-project')?.value||'all';
-  const asc=(document.getElementById('hist-sort')?.value||'asc')==='asc';
-
-  let items=collectCompletedTasks();
-  if(startKey) items=items.filter(x=>x.date>=startKey);
-  if(pFilter!=='all') items=items.filter(x=>x.projId===pFilter);
-
-  // 프로젝트별 묶기
-  const byProj=new Map();
-  items.forEach(x=>{
-    if(!byProj.has(x.projId)) byProj.set(x.projId,{id:x.projId,name:x.projName,color:x.projColor,items:[]});
-    byProj.get(x.projId).items.push(x);
-  });
-  const groups=[...byProj.values()];
-  groups.forEach(g=>{
-    g.items.sort((a,b)=>asc?a.date.localeCompare(b.date):b.date.localeCompare(a.date));
-    g.first=g.items.reduce((m,x)=>!m||x.date<m?x.date:m,null);
-    g.last =g.items.reduce((m,x)=>!m||x.date>m?x.date:m,null);
-  });
-  // 프로젝트 순서: 완료 건수 많은 순 → 이름순
-  groups.sort((a,b)=>(b.items.length-a.items.length)||a.name.localeCompare(b.name,'ko'));
-  return {groups, total:items.length, asc};
+  const all=collectCompletedTasks();ensureHistoryMonth(all);
+  const items=histFilterItems(all);
+  return {groups:histProjectGroups(items),total:items.length,asc:document.getElementById('hist-sort')?.value==='asc'};
 }
-
-// 프로젝트 필터 select 채우기 (완료 기록이 있는 프로젝트만)
-function syncHistProjectSelect(){
-  const sel=document.getElementById('hist-project'); if(!sel) return;
-  const prev=sel.value;
-  const seen=new Map();
-  collectCompletedTasks().forEach(x=>{ if(!seen.has(x.projId)) seen.set(x.projId,x.projName); });
-  const opts=[...seen.entries()].sort((a,b)=>a[1].localeCompare(b[1],'ko'));
-  sel.innerHTML=`<option value="all">전체 (${opts.length}개)</option>`
-    + opts.map(([id,name])=>`<option value="${id}">${name}</option>`).join('');
-  if(prev && [...seen.keys()].includes(prev)) sel.value=prev;
+function syncHistProjectSelect(items=collectCompletedTasks()){
+  const sel=document.getElementById('hist-project');if(!sel) return;
+  const previous=sel.value||'all';
+  const names=new Map(items.map(x=>[x.projId,x.projName]));
+  sel.innerHTML='<option value="all">전체 프로젝트</option>'+[...names].sort((a,b)=>a[1].localeCompare(b[1],'ko')).map(([id,name])=>`<option value="${escAttr(id)}">${escAttr(name)}</option>`).join('');
+  sel.value=names.has(previous)?previous:'all';
 }
-
-function toggleHistProject(pid){
-  if(histOpenProjects===null){
-    // 전부 펼침 상태 → 클릭한 것만 접는다
-    const {groups}=getHistoryProjectView();
-    histOpenProjects=new Set(groups.map(g=>g.id));
-  }
-  if(histOpenProjects.has(pid)) histOpenProjects.delete(pid); else histOpenProjects.add(pid);
-  renderHistory();
+function selectHistoryMonth(value){
+  if(!validDailyMemoDate(value+'-01')){document.getElementById('hist-month').value=historySelectedMonth||'';return;}
+  historySelectedMonth=value;historyPeriodMode='month';historyOpenGroups.clear();renderHistory();
+}
+function moveHistoryMonth(delta){ensureHistoryMonth(collectCompletedTasks());selectHistoryMonth(histShiftMonth(historySelectedMonth,delta));}
+function showAllHistory(){historyPeriodMode='all';historyOpenGroups.clear();renderHistory();}
+function setHistoryViewMode(mode){historyViewMode=mode==='project'?'project':'date';renderHistory();}
+function changeHistoryFilters(){historyOpenGroups.clear();renderHistory();}
+function resetHistoryFilters(){
+  document.getElementById('hist-search').value='';document.getElementById('hist-project').value='all';
+  document.getElementById('hist-sort').value='desc';changeHistoryFilters();
+}
+function histSelectProject(id){
+  const sel=document.getElementById('hist-project');sel.value=sel.value===id?'all':id;changeHistoryFilters();
+}
+function histDetailsGroups(items){
+  if(historyViewMode==='project') return histProjectGroups(items).map(group=>({...group,key:'project:'+group.id}));
+  const groups=new Map();
+  histSortItems(items).forEach(item=>{
+    const date=item.date||'';if(!groups.has(date))groups.set(date,{key:'date:'+date,date,items:[]});
+    groups.get(date).items.push(item);
+  });
+  return [...groups.values()];
 }
 function histExpandAll(open){
-  const {groups}=getHistoryProjectView();
-  histOpenProjects = open ? new Set(groups.map(g=>g.id)) : new Set();
-  renderHistory();
+  const all=collectCompletedTasks();ensureHistoryMonth(all);
+  histDetailsGroups(histFilterItems(all)).forEach(group=>historyOpenGroups.set(group.key,open));renderHistory();
 }
-
-function renderHistoryByProject(){
+function rememberHistoryGroup(details){if(details.isConnected) historyOpenGroups.set(details.dataset.groupKey,details.open);}
+function histHighlight(text){return dailyMemoHighlight(text,historyQuery());}
+function renderHistoryStats(all,items){
+  const groups=histProjectGroups(items);
+  const dates=new Map();items.forEach(item=>{if(item.date)dates.set(item.date,(dates.get(item.date)||0)+1);});
+  const peak=[...dates].sort((a,b)=>b[1]-a[1]||b[0].localeCompare(a[0]))[0];
+  const unknown=items.filter(x=>!x.date).length;
+  let completeNote='전체 기간 합계';
+  if(historyPeriodMode==='month'){
+    const previous=histShiftMonth(historySelectedMonth,-1);
+    const count=histFilterItems(all,true).filter(item=>item.date.startsWith(previous)).length;
+    completeNote=`전월 전체 ${count.toLocaleString()}건`;
+  }else if(unknown) completeNote=`날짜 미지정 ${unknown}건 포함`;
+  document.getElementById('hist-stats').innerHTML=[
+    {label:'완료 업무',number:items.length,unit:'건',note:completeNote,icon:'✓',primary:true},
+    {label:'기록된 프로젝트',number:groups.length,unit:'개',note:groups.length?'최다 완료 · '+groups[0].name:'완료 업무가 있는 프로젝트',icon:'▦'},
+    {label:'업무를 완료한 날',number:dates.size,unit:'일',note:peak?`${fmt(peak[0])}에 가장 많이 완료 · ${peak[1]}건`:'완료 날짜가 있는 기록 기준',icon:'◷'}
+  ].map(card=>`<div class="hist-kpi${card.primary?' primary':''}"><div><span class="hist-kpi-label">${card.label}</span><strong class="hist-kpi-number">${card.number.toLocaleString()}<small>${card.unit}</small></strong><span class="hist-kpi-note">${escAttr(card.note)}</span></div><span class="hist-kpi-symbol" aria-hidden="true">${card.icon}</span></div>`).join('');
+}
+function renderHistoryCharts(all){
+  const year=historySelectedMonth.slice(0,4);
+  const matching=histFilterItems(all,true);
+  const counts=Array.from({length:12},(_,month)=>matching.filter(item=>item.date.startsWith(`${year}-${String(month+1).padStart(2,'0')}`)).length);
+  const max=Math.max(1,...counts);
+  document.getElementById('hist-chart-year').textContent=year+'년 · 완료 업무 수';
+  document.getElementById('hist-year-total').textContent=`연간 ${counts.reduce((a,b)=>a+b,0).toLocaleString()}건`;
+  document.getElementById('hist-month-chart').innerHTML=counts.map((count,index)=>{
+    const month=`${year}-${String(index+1).padStart(2,'0')}`;
+    const selected=historyPeriodMode==='month'&&month===historySelectedMonth;
+    return `<button type="button" class="hist-month-bar${selected?' selected':''}${!count?' empty':''}" data-month="${month}" aria-pressed="${selected}" aria-label="${histMonthLabel(month)}, 완료 업무 ${count}건" onclick="selectHistoryMonth(this.dataset.month)"><span class="hist-month-value">${count}</span><span class="hist-month-track"><span class="hist-month-fill" style="height:${count/max*100}%"></span></span><span class="hist-month-label">${index+1}월</span></button>`;
+  }).join('');
+  // 프로젝트 막대는 기간 내 전체 프로젝트를 보여줘 다른 프로젝트로 바로 전환할 수 있다.
+  const periodItems=histFilterItems(all,false,true),groups=histProjectGroups(periodItems);
+  const selectedProject=document.getElementById('hist-project').value;
+  document.getElementById('hist-project-chart-caption').textContent=`기간 내 전체 ${groups.length}개`;
+  document.getElementById('hist-project-chart').innerHTML=groups.length?groups.map(group=>`<button type="button" class="hist-project-bar${selectedProject===group.id?' selected':''}" style="--hist-color:${group.color}" data-project="${escAttr(group.id)}" onclick="histSelectProject(this.dataset.project)" aria-pressed="${selectedProject===group.id}" title="${escAttr(group.name)} · ${group.items.length}건 (${Math.round(group.items.length/periodItems.length*100)}%)"><span class="hist-project-name"><span class="hist-dot"></span><span>${escAttr(group.name)}</span></span><span class="hist-project-track"><span class="hist-project-fill" style="width:${group.items.length/periodItems.length*100}%"></span></span><span class="hist-project-value">${group.items.length}건</span></button>`).join(''):'<div class="hist-chart-empty">이 기간의 완료 기록이 없습니다.<br>다른 월이나 전체 기간을 선택해보세요.</div>';
+}
+function histTaskRow(item){
+  const memo=item.memo.trim();
+  const memoOpen=historyQuery()&&memo.toLocaleLowerCase().includes(historyQuery().toLocaleLowerCase());
+  const stamp=item.memoUpdatedAt&&!Number.isNaN(new Date(item.memoUpdatedAt).getTime())?fmtMemoStamp(item.memoUpdatedAt,true):'';
+  return `<article class="hist-task"><span class="hist-task-check" aria-hidden="true">✓</span><div class="hist-task-body"><div class="hist-task-tags"><span class="hist-task-project" style="--hist-color:${item.projColor}"><span class="hist-dot"></span>${histHighlight(item.projName)}</span>${historyViewMode==='project'?`<time datetime="${item.date}">${item.date||'날짜 미지정'}</time>`:''}${item.priority?`<span class="hist-priority" style="color:${histColor(prioColor(item.priority))}">${escAttr(item.priority)}</span>`:''}${item.subProject?`<span class="hist-task-subproject">${histHighlight(item.subProject)}</span>`:''}</div><div class="hist-task-title">${histHighlight(item.text||'제목 없는 업무')}</div>${memo?`<details class="hist-task-memo"${memoOpen?' open':''}><summary>메모 보기<span>${escAttr(memo.split('\n')[0].slice(0,80))}</span></summary><div class="hist-memo-body" style="color:${histColor(item.memoStyle?.color||'#64748b')};font-weight:${item.memoStyle?.bold?'700':'400'}">${histHighlight(item.memo)}${stamp?`<span class="hist-memo-stamp">${escAttr(stamp)} 작성</span>`:''}</div></details>`:''}</div></article>`;
+}
+function renderHistoryDetails(all,items){
+  const groups=histDetailsGroups(items);
+  document.getElementById('hist-list-total').textContent=items.length+'건';
+  document.getElementById('hist-result-caption').textContent=`${histPeriodLabel()} · 업무별 완료일 기준${historyQuery()?' · 검색 적용':''}`;
   const el=document.getElementById('history-list');
-  syncHistProjectSelect();
-  const {groups,total,asc}=getHistoryProjectView();
-
-  if(!total){
-    el.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted);font-size:0.85rem;">해당 기간에 완료한 업무가 없습니다.</div>';
+  if(!items.length){
+    const available=histFilterItems(all,true).map(item=>item.date.slice(0,7)).filter(Boolean).sort().at(-1);
+    const filtered=historyQuery()||document.getElementById('hist-project').value!=='all';
+    el.innerHTML=`<div class="hist-empty"><strong>${filtered?'조건에 맞는 완료 업무가 없습니다.':histPeriodLabel()+'의 완료 기록이 없습니다.'}</strong>${filtered?'검색어나 프로젝트 필터를 바꿔보세요.':'업무를 완료하면 이곳에 기록이 쌓입니다.'}<div class="hist-empty-actions">${filtered?'<button type="button" class="hist-quiet-btn" onclick="resetHistoryFilters()">필터 초기화</button>':''}${available&&available!==historySelectedMonth?`<button type="button" class="hist-quiet-btn" data-month="${available}" onclick="selectHistoryMonth(this.dataset.month)">최근 기록 · ${histMonthLabel(available)}</button>`:''}${all.length&&historyPeriodMode!=='all'?'<button type="button" class="hist-quiet-btn" onclick="showAllHistory()">전체 기간 보기</button>':''}</div></div>`;
     return;
   }
-  const isOpen=pid=>histOpenProjects===null || histOpenProjects.has(pid);
-
-  const head=`<div style="display:flex;align-items:center;gap:8px;margin:12px 0 9px;">
-      <span style="font-size:0.8rem;font-weight:800;color:var(--primary);">총 ${total}건 완료 · 프로젝트 ${groups.length}개</span>
-      <button class="btn-sm" style="margin-left:auto;background:var(--bg);color:var(--muted);" onclick="histExpandAll(true)">모두 펼치기</button>
-      <button class="btn-sm" style="background:var(--bg);color:var(--muted);" onclick="histExpandAll(false)">모두 접기</button>
-    </div>`;
-
-  el.innerHTML = head + groups.map(g=>{
-    const open=isOpen(g.id);
-    const period = g.first===g.last ? fmt(g.first) : `${fmt(g.first)} ~ ${fmt(g.last)}`;
-    let lastMonth=null;
-    const rows = open ? g.items.map(x=>{
-      const ym=x.date.slice(0,7);
-      let monthHdr='';
-      if(ym!==lastMonth){
-        lastMonth=ym;
-        const cnt=g.items.filter(y=>y.date.slice(0,7)===ym).length;
-        monthHdr=`<div class="hp-month">${ym.replace('-','년 ')}월 · ${cnt}건</div>`;
-      }
-      const wd=(()=>{ try{ const dt=new Date(x.date+'T00:00:00'); return ['일','월','화','수','목','금','토'][dt.getDay()]; }catch(e){return '';} })();
-      const pc=prioColor(x.priority||'');
-      return monthHdr + `<div class="hp-row">
-        <span class="hp-date" title="${x.date}(${wd})">${fmt(x.date)}<span style="font-weight:400;color:#94a3b8;">(${wd})</span></span>
-        ${x.priority?`<span style="flex-shrink:0;color:${pc};font-weight:800;font-size:0.68rem;margin-top:2px;">${x.priority}</span>`:''}
-        <div style="flex:1;min-width:0;">
-          <div>${x.subProject?`<span style="font-size:0.7rem;color:${g.color};background:${g.color}18;padding:1px 6px;border-radius:4px;margin-right:5px;font-weight:700;">${x.subProject}</span>`:''}✓ ${x.text}</div>
-          ${x.memo&&x.memo.trim()?`<div style="margin-top:3px;font-size:0.74rem;color:${x.memoStyle&&x.memoStyle.color||'#64748b'};font-weight:${x.memoStyle&&x.memoStyle.bold?'700':'400'};background:#f8fafc;border-left:2px solid #cbd5e1;padding:3px 7px;border-radius:0 4px 4px 0;white-space:pre-wrap;">📝 ${x.memo}${x.memoUpdatedAt?`<span style="display:block;margin-top:2px;font-size:0.68rem;color:#94a3b8;font-weight:400;">✏️ ${fmtMemoStamp(x.memoUpdatedAt,true)} 작성</span>`:''}</div>`:''}
-        </div>
-      </div>`;
-    }).join('') : '';
-
-    return `<div class="hp-card">
-      <div class="hp-head" onclick="toggleHistProject('${g.id}')">
-        <span style="width:10px;height:10px;border-radius:50%;background:${g.color};flex-shrink:0;"></span>
-        <span style="font-size:0.87rem;font-weight:800;">${g.name}</span>
-        <span style="font-size:0.72rem;font-weight:800;background:${g.color}1f;color:${g.color};padding:1px 8px;border-radius:10px;">${g.items.length}건</span>
-        <span style="font-size:0.73rem;color:var(--muted);">${period}</span>
-        <span style="margin-left:auto;font-size:0.72rem;color:var(--muted);">${open?'▼':'▶'}</span>
-      </div>
-      ${rows}
-    </div>`;
+  el.innerHTML=groups.map((group,index)=>{
+    const open=historyOpenGroups.has(group.key)?historyOpenGroups.get(group.key):index===0;
+    let tile,title,meta;
+    if(historyViewMode==='date'){
+      const date=group.date,weekday=date?'일월화수목금토'[new Date(date+'T12:00:00').getDay()]:'';
+      tile=`<span class="hist-date-tile"><b>${date?date.slice(8):'—'}</b><small>${weekday||'미지정'}</small></span>`;
+      title=date?dailyMemoDateLabel(date):'날짜 미지정';
+      meta=`프로젝트 ${new Set(group.items.map(item=>item.projId)).size}개`;
+    }else{
+      tile=`<span class="hist-date-tile hist-proj-tile" style="--hist-color:${group.color}" aria-hidden="true">${escAttr(group.name.slice(0,1))}</span>`;
+      title=group.name;
+      meta=group.first?(group.first===group.last?group.first:`${group.first} ~ ${group.last}`):'날짜 미지정';
+    }
+    const preview=group.items.slice(0,2).map(item=>item.text).join(' · ');
+    return `<details class="hist-group" data-group-key="${escAttr(group.key)}" ontoggle="rememberHistoryGroup(this)"${open?' open':''}><summary>${tile}<span class="hist-group-heading"><span class="hist-group-title">${escAttr(title)}</span><span class="hist-group-meta">${escAttr(meta)}</span><span class="hist-group-preview">${escAttr(preview)}</span></span><span class="hist-group-count">${group.items.length}건 완료</span><span class="hist-chevron" aria-hidden="true">›</span></summary><div class="hist-group-body">${group.items.map(histTaskRow).join('')}</div></details>`;
   }).join('');
 }
-
-// 지금 보이는 목록을 보고용 텍스트로 복사
-function copyHistoryByProject(){
-  const {groups,total}=getHistoryProjectView();
-  if(!total){ alert('복사할 내용이 없습니다.'); return; }
-  const rangeLbl=document.getElementById('hist-range')?.selectedOptions[0]?.text||'전체';
-  let txt=`■ 완료 업무 (${rangeLbl}) — 총 ${total}건\n`;
-  groups.forEach(g=>{
-    txt+=`\n[${g.name}] ${g.items.length}건\n`;
-    g.items.forEach(x=>{
-      txt+=`  - ${x.date}  ${x.subProject?'('+x.subProject+') ':''}${x.text}\n`;
-    });
+function renderHistoryManagement(items){
+  const refs=new Map();
+  items.forEach(item=>item.archiveIndices.forEach(index=>refs.set(index,(refs.get(index)||0)+1)));
+  // 업무가 없는 완료 프로젝트도 관리 화면에서는 복원할 수 있게 남긴다.
+  completedProjects.forEach((cp,index)=>{
+    if((cp.tasks||[]).length) return;
+    const date=histDate(cp.completedAt),pi=cp.project||{};
+    const fake={date,projId:String(pi.id||'__unknown__'),projName:String(pi.name||'기타'),text:'',memo:'',subProject:''};
+    if(histFilterItems([fake]).length) refs.set(index,0);
   });
-  const done=()=>alert('클립보드에 복사했습니다.');
-  if(navigator.clipboard?.writeText){ navigator.clipboard.writeText(txt).then(done).catch(()=>fallbackCopy(txt,done)); }
-  else fallbackCopy(txt,done);
+  const el=document.getElementById('hist-management-list');
+  el.innerHTML=[...refs].map(([index,count])=>{
+    const cp=completedProjects[index],pi=cp.project||{},total=(cp.tasks||[]).length;
+    const dates=(cp.tasks||[]).map(task=>histDate(task._completedAt)||histDate(task.actualEnd)||histDate(cp.completedAt)).filter(Boolean).sort();
+    const first=dates[0]||histDate(cp.completedAt),last=dates.at(-1)||first;
+    const period=first?(first===last?first:`${first} ~ ${last}`):'날짜 미지정';
+    return `<div class="hist-archive-row"><div><strong>${escAttr(pi.name||'기타')}</strong><small>${period} · 선택 조건 ${count}건 포함 / 보관 전체 ${total}건</small></div><div class="hist-archive-actions">${cp._type!=='task_done'?`<button type="button" class="restore" onclick="restoreHistory(${index})">프로젝트 복원</button>`:''}<button type="button" onclick="deleteHistory(${index})">보관 묶음 삭제</button></div></div>`;
+  }).join('')||'<div class="hist-chart-empty">선택한 조건에 해당하는 보관 기록이 없습니다.</div>';
 }
-function fallbackCopy(txt, cb){
-  const ta=document.createElement('textarea');
-  ta.value=txt; ta.style.position='fixed'; ta.style.opacity='0';
-  document.body.appendChild(ta); ta.select();
-  try{ document.execCommand('copy'); cb&&cb(); }catch(e){ alert('복사 실패 — 수동으로 복사해주세요.'); }
-  document.body.removeChild(ta);
-}
-
-// 지금 보이는 목록을 CSV로 저장 (엑셀에서 열 수 있게 BOM 포함)
-function downloadHistoryCsv(){
-  const {groups,total}=getHistoryProjectView();
-  if(!total){ alert('저장할 내용이 없습니다.'); return; }
-  const esc=v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`;
-  let csv='완료일,프로젝트,하위분류,우선순위,업무명,메모\n';
-  groups.forEach(g=>g.items.forEach(x=>{
-    csv+=[x.date,g.name,x.subProject,x.priority,x.text,(x.memo||'').replace(/\r?\n/g,' ')].map(esc).join(',')+'\n';
-  }));
-  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download=`완료업무_${TODAY_STR}.csv`;
-  document.body.appendChild(a); a.click();
-  setTimeout(()=>{ URL.revokeObjectURL(a.href); document.body.removeChild(a); },0);
-}
-
 function renderHistory(){
-  // 모드 버튼 / 필터바 상태 동기화
-  const bd=document.getElementById('hist-mode-date'), bp=document.getElementById('hist-mode-project');
-  if(bd&&bp){
-    bd.classList.toggle('active', historyViewMode==='date');
-    bp.classList.toggle('active', historyViewMode==='project');
-  }
-  const ctl=document.getElementById('hist-proj-controls');
-  if(ctl) ctl.style.display = historyViewMode==='project' ? 'flex' : 'none';
-  if(historyViewMode==='project') return renderHistoryByProject();
-
-  const el=document.getElementById('history-list');
-  if(!completedProjects.length){
-    el.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted);font-size:0.85rem;">히스토리가 없습니다.<br><span style="font-size:0.75rem;">업무를 완료하면 자동으로 기록됩니다.</span></div>';
-    return;
-  }
-  // 최신순 정렬
-  const sorted=[...completedProjects].sort((a,b)=>(b.completedAt||'').localeCompare(a.completedAt||''));
-
-  // 날짜별로 그룹화
-  const byDate={};
-  sorted.forEach(cp=>{
-    const dateKey=cp.completedAt||'날짜 미지정';
-    if(!byDate[dateKey]) byDate[dateKey]=[];
-    byDate[dateKey].push(cp);
-  });
-  const dateKeys=Object.keys(byDate).sort((a,b)=>b.localeCompare(a));
-
-  const todayD2=TODAY_STR;
-  const yesterdayD=(()=>{ const y=new Date(TODAY); y.setDate(y.getDate()-1); return `${y.getFullYear()}-${String(y.getMonth()+1).padStart(2,'0')}-${String(y.getDate()).padStart(2,'0')}`; })();
-
-  el.innerHTML=dateKeys.map(dateKey=>{
-    const items=byDate[dateKey];
-    const dateLabel = dateKey===todayD2?'오늘':dateKey===yesterdayD?'어제':fmt(dateKey);
-    const weekdayStr=(()=>{ try{ const dt=new Date(dateKey+'T00:00:00'); const days=['일','월','화','수','목','금','토']; return days[dt.getDay()]; }catch(e){return '';} })();
-
-    const itemsHtml=items.map(cp=>{
-      const realIdx=completedProjects.indexOf(cp);
-      const p=cp.project;
-      const archNote=cp._archiveNote||'';
-      const isTaskDone=cp._type==='task_done';
-      const totalTasks=cp.tasks.length;
-      const wLabel=cp._weekKey?'W'+cp._weekKey.split('-W')[1]+' ':'';
-      const badge=isTaskDone
-        ? '<span style="font-size:0.7rem;background:#dbeafe;color:#1d4ed8;padding:2px 7px;border-radius:10px;font-weight:600;">✅ '+wLabel+'완료</span>'
-        : '<span style="font-size:0.7rem;background:#dcfce7;color:#15803d;padding:2px 7px;border-radius:10px;font-weight:600;">📁 프로젝트 완료</span>';
-
-      const taskRows=cp.tasks.map((t,ti)=>{
-        const pc=prioColor(t.priority||'');
-        const memoId=`hist-memo-${realIdx}-${ti}`;
-        const hasMemo=!!(t.memo && t.memo.trim());
-        return `<div style="display:flex;align-items:flex-start;gap:6px;padding:4px 0;border-top:1px solid #f1f5f9;">
-            <span style="flex-shrink:0;margin-top:1px;">${t.priority?`<span style="color:${pc};font-weight:700;font-size:0.68rem;">${t.priority}</span>`:''}</span>
-            <div style="flex:1;min-width:0;">
-              <div style="font-size:0.82rem;">✓ ${t.text}</div>
-              ${hasMemo?`<div id="${memoId}" style="margin-top:3px;font-size:0.74rem;color:${t.memoStyle&&t.memoStyle.color||'#64748b'};font-weight:${t.memoStyle&&t.memoStyle.bold?'700':'400'};background:#f8fafc;border-left:2px solid #cbd5e1;padding:3px 7px;border-radius:0 4px 4px 0;white-space:pre-wrap;">📝 ${t.memo}${memoStampLabel(t)?`<span style="display:block;margin-top:2px;font-size:0.68rem;color:#94a3b8;font-weight:400;">${memoStampLabel(t)}</span>`:''}</div>`:''}
-            </div>
-            ${hasMemo?`<button onclick="toggleHistMemo('${memoId}',this)" style="flex-shrink:0;background:none;border:none;cursor:pointer;font-size:0.78rem;color:var(--muted);padding:2px;" title="메모 숨기기/보이기">🗒️</button>`:''}
-          </div>`;
-      }).join('');
-
-      return `<div class="history-item" style="margin-bottom:8px;">
-        <div class="hi-head">
-          <span style="width:9px;height:9px;border-radius:50%;background:${p.color};display:inline-block;flex-shrink:0;"></span>
-          <span class="hi-name">${p.name}</span>
-          ${badge}
-          ${!isTaskDone?`<button class="btn-sm" style="background:var(--pri-light);color:var(--primary);margin-left:4px;" onclick="restoreHistory(${realIdx})">복원</button>`:''}
-          <button class="btn-sm" style="background:#fee2e2;color:var(--warn);margin-left:4px;" onclick="deleteHistory(${realIdx})">삭제</button>
-        </div>
-        <div style="font-size:0.74rem;color:var(--muted);margin-top:3px;">업무 ${totalTasks}개${archNote?` · <span style="color:#94a3b8;">${archNote}</span>`:''}</div>
-        ${taskRows?`<div style="margin-top:4px;">${taskRows}</div>`:''}
-      </div>`;
-    }).join('');
-
-    return `<div style="margin-bottom:18px;">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:5px;border-bottom:2px solid var(--primary);">
-        <span style="font-size:0.95rem;font-weight:800;color:var(--primary);">📅 ${dateLabel}</span>
-        ${weekdayStr?`<span style="font-size:0.78rem;color:var(--muted);">(${weekdayStr}요일 · ${dateKey})</span>`:''}
-        <span style="margin-left:auto;font-size:0.72rem;color:var(--muted);background:var(--bg);padding:2px 8px;border-radius:10px;">${items.length}건 완료</span>
-      </div>
-      ${itemsHtml}
-    </div>`;
-  }).join('');
+  const all=collectCompletedTasks();ensureHistoryMonth(all);syncHistProjectSelect(all);
+  const items=histFilterItems(all);
+  document.getElementById('hist-month').value=historySelectedMonth;
+  document.getElementById('hist-period-label').textContent=histPeriodLabel();
+  const filter=[];
+  if(document.getElementById('hist-project').value!=='all') filter.push(document.getElementById('hist-project').selectedOptions[0].textContent);
+  if(historyQuery()) filter.push('검색: '+historyQuery());
+  document.getElementById('hist-filter-description').textContent=filter.join(' · ');
+  const allButton=document.getElementById('hist-all-period');allButton.classList.toggle('is-active',historyPeriodMode==='all');allButton.setAttribute('aria-pressed',String(historyPeriodMode==='all'));
+  ['date','project'].forEach(mode=>{const el=document.getElementById('hist-mode-'+mode);el.classList.toggle('active',historyViewMode===mode);el.setAttribute('aria-pressed',String(historyViewMode===mode));});
+  renderHistoryStats(all,items);renderHistoryCharts(all);renderHistoryDetails(all,items);renderHistoryManagement(items);
+}
+function renderHistoryByProject(){setHistoryViewMode('project');}
+function copyHistoryByProject(){
+  const {groups,total}=getHistoryProjectView();if(!total){alert('복사할 내용이 없습니다.');return;}
+  let text=`■ 완료 업무 (${histPeriodLabel()}) — 총 ${total}건\n`;
+  if(historyQuery())text+=`검색: ${historyQuery()}\n`;
+  groups.forEach(group=>{text+=`\n[${group.name}] ${group.items.length}건\n`;group.items.forEach(item=>{text+=`  - ${item.date||'날짜 미지정'}  ${item.subProject?'('+item.subProject+') ':''}${item.text}\n`;});});
+  const done=()=>alert('클립보드에 복사했습니다.');
+  if(navigator.clipboard?.writeText)navigator.clipboard.writeText(text).then(done).catch(()=>fallbackCopy(text,done));
+  else fallbackCopy(text,done);
+}
+function fallbackCopy(text,callback){
+  const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();
+  try{document.execCommand('copy');callback&&callback();}catch(e){alert('복사 실패 — 수동으로 복사해주세요.');}document.body.removeChild(ta);
+}
+function downloadHistoryCsv(){
+  const {groups,total}=getHistoryProjectView();if(!total){alert('저장할 내용이 없습니다.');return;}
+  const escape=value=>`"${String(value??'').replace(/"/g,'""')}"`;
+  let csv='완료일,프로젝트,하위분류,우선순위,업무명,메모\n';
+  groups.forEach(group=>group.items.forEach(item=>{csv+=[item.date,group.name,item.subProject,item.priority,item.text,item.memo.replace(/\r?\n/g,' ')].map(escape).join(',')+'\n';}));
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),link=document.createElement('a');
+  link.href=url;link.download=`완료업무_${historyPeriodMode==='all'?'전체':historySelectedMonth}.csv`;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 
 function toggleHistMemo(id, btn){
