@@ -77,8 +77,7 @@ aside{width:200px;background:var(--card);border-right:1px solid var(--border);pa
 .gantt-risk.blink{animation:riskPulse 1.6s ease-in-out infinite;}
 .dday-badge{display:inline-flex;align-items:center;justify-content:center;background:var(--dday-bg);color:var(--dday-fg);font-size:0.66rem;font-weight:800;line-height:1;padding:3px 6px;border-radius:5px;white-space:nowrap;}
 .dday-badge.pulse{animation:riskPulse 1.6s ease-in-out infinite;}
-.blink-toggle{flex-shrink:0;border:1px solid var(--alert-line);background:var(--card);color:var(--alert-text);font-size:0.66rem;font-weight:700;line-height:1;padding:3px 6px;border-radius:5px;cursor:pointer;font-family:inherit;}
-.blink-toggle:hover{background:var(--alert-soft);}
+.dday-badge.can-toggle{cursor:pointer;}
 aside h3{font-size:0.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:8px 0 4px;padding:0 4px;}
 .project-item{padding:8px 10px;border-radius:7px;cursor:pointer;font-size:0.85rem;color:var(--muted);transition:.15s;display:flex;align-items:center;gap:7px;position:relative;}
 .project-item:hover{background:var(--bg);color:var(--text);}
@@ -684,9 +683,9 @@ ZB 교체 둘</textarea>
           <select id="sub-project-select" style="padding:6px 7px;border:1.5px solid var(--border);border-radius:6px;font-size:0.8rem;background:var(--card);min-width:110px;" onchange="onSubProjSelectChange('sub-project-select','sub-project-custom')"></select>
           <input type="text" id="sub-project-custom" placeholder="하위 분류명 입력" style="display:none;padding:6px 8px;border:1.5px solid var(--primary);border-radius:6px;font-size:0.8rem;min-width:110px;">
           <select id="task-priority" style="padding:6px 7px;border:1.5px solid var(--border);border-radius:6px;font-size:0.8rem;background:var(--card);font-weight:700;">
-            <option value="A1" style="color:var(--x-b91c1c)">A1</option><option value="A2" style="color:var(--x-c026d3)">A2</option>
-            <option value="B1" style="color:var(--x-4f46e5)">B1</option><option value="B2" style="color:var(--x-0284c7)" selected>B2</option>
-            <option value="C1" style="color:var(--x-0f766e)">C1</option><option value="C2" style="color:var(--x-64748b)">C2</option>
+            <option value="A1" style="color:var(--x-b91c1c)">Critical</option><option value="A2" style="color:var(--x-c026d3)">Critical·Wait</option>
+            <option value="B1" style="color:var(--x-4f46e5)">High</option><option value="B2" style="color:var(--x-0284c7)" selected>High·Wait</option>
+            <option value="C1" style="color:var(--x-0f766e)">Normal</option><option value="C2" style="color:var(--x-64748b)">Normal·Wait</option>
           </select>
           <div class="date-grp" id="add-date-start-grp"><label>시작</label><input type="date" id="start-date"></div>
           <div class="date-grp" id="add-date-end-grp"><label>종료</label><input type="date" id="end-date"></div>
@@ -748,7 +747,7 @@ ZB 교체 둘</textarea>
         <div id="home-today-allocation" style="margin-bottom:10px;"></div>
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
           <span style="font-size:0.76rem;font-weight:700;color:var(--muted);">✅ 할 일</span>
-          <span style="font-size:0.68rem;color:var(--muted);background:var(--bg);padding:1px 7px;border-radius:8px;">A1 우선순위</span>
+          <span style="font-size:0.68rem;color:var(--muted);background:var(--bg);padding:1px 7px;border-radius:8px;">Critical</span>
         </div>
         <div id="home-today-tasks"></div>
         <div style="display:flex;align-items:center;gap:8px;margin:10px 0 4px;">
@@ -791,7 +790,7 @@ ZB 교체 둘</textarea>
       <div class="card" style="margin-bottom:12px;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
           <span style="font-size:0.85rem;font-weight:700;color:var(--muted);">💡 오늘 하면 어떨까요?</span>
-          <span style="font-size:0.7rem;color:var(--muted);background:var(--bg);padding:2px 8px;border-radius:8px;">A2 우선순위</span>
+          <span style="font-size:0.7rem;color:var(--muted);background:var(--bg);padding:2px 8px;border-radius:8px;">Critical·Wait</span>
         </div>
         <div id="home-suggest-tasks"></div>
       </div>
@@ -2037,7 +2036,7 @@ const HOLIDAYS={
 /* priority: A1>A2>B1>B2>C1>C2 */
 const PRIORITY_ORDER=['A1','A2','B1','B2','C1','C2'];
 const PRIORITY_COLOR={A1:'#b91c1c',A2:'#c026d3',B1:'#4f46e5',B2:'#0284c7',C1:'#0f766e',C2:'#64748b'};
-// 없어진 우선순위 → 같은 등급의 가장 낮은 단계로 옮김. 지난 완료 기록은 글자를 그대로 두고 색만 맞춘다
+// 없어진 우선순위 → 같은 등급의 가장 낮은 단계로 옮김. 지난 완료 기록은 값을 그대로 두고 표시만 맞춘다
 const REMOVED_PRIORITY={A3:'A2',B3:'B2',C3:'C2'};
 function prioColor(p){ return p?PRIORITY_COLOR[REMOVED_PRIORITY[p]||p]||'#94a3b8':'#cbd5e1'; }
 // 정렬 순위: 우선순위가 없으면 맨 뒤
@@ -2070,6 +2069,9 @@ function toggleTheme(){
   updateThemeButton();
   render();
 }
+// 화면 표시 이름. 저장값과 정렬은 A1~C2 그대로 사용
+const PRIORITY_LABEL={A1:'Critical',A2:'Critical·Wait',B1:'High',B2:'High·Wait',C1:'Normal',C2:'Normal·Wait'};
+function prioLabel(p){ return PRIORITY_LABEL[REMOVED_PRIORITY[p]||p]||p||''; }
 function prioRank(p){ const i=PRIORITY_ORDER.indexOf(p); return i<0?PRIORITY_ORDER.length:i; }
 function migrateRemovedPriorities(){
   const fix=t=>{ if(t&&REMOVED_PRIORITY[t.priority]) t.priority=REMOVED_PRIORITY[t.priority]; };
@@ -2536,13 +2538,10 @@ function ddayBadgeHTML(t,extraStyle=''){
   const b=deadlineBadge(t);
   if(!b) return '';
   const sig=deadlineSignal(t);
-  return `<span class="dday-badge${sig&&sig.blinking?' pulse':''}" title="${b.title}" style="--dday-bg:${b.bg};--dday-fg:${b.fg};${extraStyle}">${b.label}</span>`;
-}
-function blinkToggleHTML(t){
-  const sig=deadlineSignal(t);
-  if(!sig) return '';
-  const title=sig.blinking?'이 업무의 깜빡임 정지 (다음 단계가 되거나 마감일을 바꾸면 다시 깜빡임)':'깜빡임 다시 켜기';
-  return `<button type="button" class="blink-toggle" draggable="false" title="${title}" onmousedown="event.stopPropagation()" onclick="event.stopPropagation();toggleTaskBlink(${t.id})">${sig.blinking?'정지':'켜기'}</button>`;
+  if(!sig) return `<span class="dday-badge" title="${b.title}" style="--dday-bg:${b.bg};--dday-fg:${b.fg};${extraStyle}">${b.label}</span>`;
+  // D-2부터는 배지를 눌러 깜빡임을 끄고 켠다. 다음 단계가 되거나 마감일을 바꾸면 다시 깜빡임
+  const hint=sig.blinking?'클릭하면 깜빡임 끄기':'클릭하면 깜빡임 켜기';
+  return `<span class="dday-badge can-toggle${sig.blinking?' pulse':''}" title="${b.title} · ${hint}" style="--dday-bg:${b.bg};--dday-fg:${b.fg};${extraStyle}" onmousedown="event.stopPropagation()" onclick="event.stopPropagation();toggleTaskBlink(${t.id})">${b.label}</span>`;
 }
 function toggleTaskBlink(id){
   tasks=tasks.map(t=>{
@@ -2989,7 +2988,7 @@ function renderGantt(list){
     const showProjLabel=currentFilter==='all';
     row.innerHTML=`<div class="chart-label" title="[${tp.name}${t.subProject?` · ${t.subProject}`:''}] ${t.text}${dlSignal?' — '+dlSignal.title:''}">
         ${ddayBadgeHTML(t,'margin-right:4px;')}
-        ${prio?`<span style="background:${pc};color:white;font-size:0.65rem;font-weight:800;padding:1px 5px;border-radius:3px;margin-right:4px;">${prio}</span>`:''}
+        ${prio?`<span style="background:${pc};color:white;font-size:0.65rem;font-weight:800;padding:1px 5px;border-radius:3px;margin-right:4px;white-space:nowrap;">${prioLabel(prio)}</span>`:''}
         ${showProjLabel?`<span style="color:${readable(tp.color)};font-size:0.65rem;font-weight:700;margin-right:3px;">[${tp.name}${t.subProject?` · ${t.subProject}`:''}]</span>`:''}
         <span style="${dlSignal?'color:var(--alert-text);font-weight:700;':''}">${t.text}</span>
         ${(()=>{
@@ -3102,7 +3101,7 @@ function renderTaskList(list){
       const lbl=document.createElement('div');
       lbl.className='prio-group-label';
       const groupColor=prioColor(prio);
-      lbl.innerHTML=`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${groupColor};margin-right:4px;vertical-align:middle;"></span>${prio[0]==='A'?'긴급':prio[0]==='B'?'중요':'일반'} (${prio[0]})`;
+      lbl.innerHTML=`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${groupColor};margin-right:4px;vertical-align:middle;"></span>${prioLabel(prio)}`;
       el.appendChild(lbl);
       lastPrio=prio;
     }
@@ -3125,8 +3124,7 @@ function renderTaskList(list){
         <span class="drag-handle" title="같은 우선순위 내 순서 변경">⠿</span>
         <input type="checkbox" draggable="false" onmousedown="event.stopPropagation()" ${t.done?'checked':''} onchange="toggleTask(${t.id})">
         ${ddayBadgeHTML(t,'flex-shrink:0;')}
-        ${blinkToggleHTML(t)}
-        ${prio?`<span onclick="event.stopPropagation();showPriorityPicker(event, ${t.id})" title="클릭하여 우선순위 변경" style="background:${pc};color:white;font-size:0.7rem;font-weight:800;padding:2px 6px;border-radius:4px;min-width:26px;text-align:center;flex-shrink:0;cursor:pointer;">${prio}</span>`:''}
+        ${prio?`<span onclick="event.stopPropagation();showPriorityPicker(event, ${t.id})" title="클릭하여 우선순위 변경" style="background:${pc};color:white;font-size:0.7rem;font-weight:800;padding:2px 6px;border-radius:4px;min-width:26px;text-align:center;flex-shrink:0;cursor:pointer;white-space:nowrap;">${prioLabel(prio)}</span>`:''}
         <span class="p-badge editable" onclick="event.stopPropagation();showProjectPicker(event, ${t.id})" onmousedown="event.stopPropagation()" title="클릭하여 프로젝트/하위분류 변경" style="background:${p.color}22;color:${readable(p.color)};flex-shrink:0;cursor:pointer;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
         <span class="task-text" ondblclick="event.stopPropagation();startInlineEditTaskText(${t.id}, this)" title="더블클릭하여 수정" style="font-size:0.85rem;flex:0 1 auto;min-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;${dlSignal?'color:var(--alert-text);font-weight:700;':''}">${t.text}</span>
         ${memoPeekHTML(t,'')}
@@ -4021,7 +4019,7 @@ function histTaskRow(item){
   const memo=item.memo.trim();
   const memoOpen=historyQuery()&&memo.toLocaleLowerCase().includes(historyQuery().toLocaleLowerCase());
   const stamp=item.memoUpdatedAt&&!Number.isNaN(new Date(item.memoUpdatedAt).getTime())?fmtMemoStamp(item.memoUpdatedAt,true):'';
-  return `<article class="hist-task"><span class="hist-task-check" aria-hidden="true">✓</span><div class="hist-task-body"><div class="hist-task-tags"><span class="hist-task-project" style="--hist-color:${item.projColor}"><span class="hist-dot"></span>${histHighlight(item.projName)}</span>${historyViewMode==='project'?`<time datetime="${item.date}">${item.date||'날짜 미지정'}</time>`:''}${item.priority?`<span class="hist-priority" style="color:${readable(histColor(prioColor(item.priority)))}">${escAttr(item.priority)}</span>`:''}${item.subProject?`<span class="hist-task-subproject">${histHighlight(item.subProject)}</span>`:''}</div><div class="hist-task-title">${histHighlight(item.text||'제목 없는 업무')}</div>${memo?`<details class="hist-task-memo"${memoOpen?' open':''}><summary>메모 보기<span>${escAttr(memo.split('\n')[0].slice(0,80))}</span></summary><div class="hist-memo-body" style="color:${readable(histColor(item.memoStyle?.color||'var(--x-64748b)'))};font-weight:${item.memoStyle?.bold?'700':'400'}">${histHighlight(item.memo)}${stamp?`<span class="hist-memo-stamp">${escAttr(stamp)} 작성</span>`:''}</div></details>`:''}</div></article>`;
+  return `<article class="hist-task"><span class="hist-task-check" aria-hidden="true">✓</span><div class="hist-task-body"><div class="hist-task-tags"><span class="hist-task-project" style="--hist-color:${item.projColor}"><span class="hist-dot"></span>${histHighlight(item.projName)}</span>${historyViewMode==='project'?`<time datetime="${item.date}">${item.date||'날짜 미지정'}</time>`:''}${item.priority?`<span class="hist-priority" style="color:${readable(histColor(prioColor(item.priority)))}">${escAttr(prioLabel(item.priority))}</span>`:''}${item.subProject?`<span class="hist-task-subproject">${histHighlight(item.subProject)}</span>`:''}</div><div class="hist-task-title">${histHighlight(item.text||'제목 없는 업무')}</div>${memo?`<details class="hist-task-memo"${memoOpen?' open':''}><summary>메모 보기<span>${escAttr(memo.split('\n')[0].slice(0,80))}</span></summary><div class="hist-memo-body" style="color:${readable(histColor(item.memoStyle?.color||'var(--x-64748b)'))};font-weight:${item.memoStyle?.bold?'700':'400'}">${histHighlight(item.memo)}${stamp?`<span class="hist-memo-stamp">${escAttr(stamp)} 작성</span>`:''}</div></details>`:''}</div></article>`;
 }
 function renderHistoryDetails(all,items){
   const groups=histDetailsGroups(items);
@@ -4101,7 +4099,7 @@ function downloadHistoryCsv(){
   const {groups,total}=getHistoryProjectView();if(!total){alert('저장할 내용이 없습니다.');return;}
   const escape=value=>`"${String(value??'').replace(/"/g,'""')}"`;
   let csv='완료일,프로젝트,하위분류,우선순위,업무명,메모\n';
-  groups.forEach(group=>group.items.forEach(item=>{csv+=[item.date,group.name,item.subProject,item.priority,item.text,item.memo.replace(/\r?\n/g,' ')].map(escape).join(',')+'\n';}));
+  groups.forEach(group=>group.items.forEach(item=>{csv+=[item.date,group.name,item.subProject,prioLabel(item.priority),item.text,item.memo.replace(/\r?\n/g,' ')].map(escape).join(',')+'\n';}));
   const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),link=document.createElement('a');
   link.href=url;link.download=`완료업무_${historyPeriodMode==='all'?'전체':historySelectedMonth}.csv`;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
@@ -4638,7 +4636,7 @@ function startInlineEditTaskText(id, spanEl){
   input.addEventListener('blur', ()=>finish(true));
 }
 
-// 우선순위 배지를 클릭하면 A1~C2 목록을 보여주는 작은 팝업을 띄움
+// 우선순위 배지를 클릭하면 Critical~Normal·Wait 목록을 보여주는 작은 팝업을 띄움
 function showPriorityPicker(evt, taskId){
   closePriorityPicker(); // 기존에 열려있던 다른 팝업 정리
   const rect=evt.currentTarget.getBoundingClientRect();
@@ -4647,8 +4645,8 @@ function showPriorityPicker(evt, taskId){
   picker.style.cssText=`position:fixed;top:${rect.bottom+4}px;left:${rect.left}px;background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 20px rgba(0,0,0,0.15);z-index:9999;padding:4px;display:flex;flex-direction:column;gap:2px;min-width:90px;`;
   picker.innerHTML=PRIORITY_ORDER.map(p=>{
     const color=prioColor(p);
-    return `<div onclick="setTaskPriorityFromPicker(${taskId}, '${p}')" style="display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:5px;cursor:pointer;font-size:0.8rem;font-weight:700;" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background='transparent'">
-      <span style="width:10px;height:10px;border-radius:3px;background:${color};flex-shrink:0;"></span>${p}
+    return `<div onclick="setTaskPriorityFromPicker(${taskId}, '${p}')" style="display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:5px;cursor:pointer;font-size:0.8rem;font-weight:700;white-space:nowrap;" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background='transparent'">
+      <span style="width:10px;height:10px;border-radius:3px;background:${color};flex-shrink:0;"></span>${prioLabel(p)}
     </div>`;
   }).join('');
   document.body.appendChild(picker);
@@ -5421,7 +5419,7 @@ function renderHome(){
 
   const ttEl=document.getElementById('home-today-tasks');
   if(!selTasks.length){
-    ttEl.innerHTML=`<div style="color:var(--muted);font-size:0.85rem;padding:10px 0;text-align:center;">${selIsToday?'오늘':fmt(activeLogDate)} 진행 중인 A1 업무가 없습니다.</div>`;
+    ttEl.innerHTML=`<div style="color:var(--muted);font-size:0.85rem;padding:10px 0;text-align:center;">${selIsToday?'오늘':fmt(activeLogDate)} 진행 중인 Critical 업무가 없습니다.</div>`;
   } else {
     ttEl.innerHTML=selTasks.map(t=>{
       const p=proj(t.project);
@@ -5441,7 +5439,7 @@ function renderHome(){
         <div style="display:flex;align-items:center;gap:8px;width:100%;">
         <span style="cursor:grab;color:var(--muted);flex-shrink:0;font-size:0.8rem;user-select:none;" title="드래그해서 순서 변경">⠿</span>
         <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask(${t.id})" style="flex-shrink:0;">
-        ${t.priority?`<span style="background:${pc};color:white;font-size:0.68rem;font-weight:800;padding:1px 6px;border-radius:4px;flex-shrink:0;">${t.priority}</span>`:''}
+        ${t.priority?`<span style="background:${pc};color:white;font-size:0.68rem;font-weight:800;padding:1px 6px;border-radius:4px;flex-shrink:0;white-space:nowrap;">${prioLabel(t.priority)}</span>`:''}
         <span style="color:${readable(p.color)};font-weight:600;font-size:0.72rem;flex-shrink:0;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
         <span class="task-text" ondblclick="event.stopPropagation();startInlineEditTaskText(${t.id}, this)" title="더블클릭하여 수정" style="flex:0 1 auto;min-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;${t.done?'text-decoration:line-through;':''}">${t.text}</span>
         ${memoPeekHTML(t,'h')}
@@ -5513,7 +5511,7 @@ function renderHome(){
         return `<div class="task-item" style="display:flex;flex-direction:column;align-items:stretch;gap:0;padding:7px 4px;border-bottom:1px solid var(--border);border-radius:0;background:transparent;border-left:none;font-size:0.84rem;${t.done?'opacity:0.65;':''}">
           <div style="display:flex;align-items:center;gap:8px;width:100%;">
           <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask(${t.id})" style="flex-shrink:0;" title="${t.done?'체크 해제하면 미완료로 되돌립니다':'완료 처리'}">
-          ${t.priority?`<span style="background:${pc};color:white;font-size:0.68rem;font-weight:800;padding:1px 6px;border-radius:4px;flex-shrink:0;">${t.priority}</span>`:''}
+          ${t.priority?`<span style="background:${pc};color:white;font-size:0.68rem;font-weight:800;padding:1px 6px;border-radius:4px;flex-shrink:0;white-space:nowrap;">${prioLabel(t.priority)}</span>`:''}
           <span style="color:${readable(p.color)};font-weight:600;font-size:0.72rem;flex-shrink:0;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
           <span class="task-text" ondblclick="event.stopPropagation();startInlineEditTaskText(${t.id}, this)" title="더블클릭하여 수정" style="flex:0 1 auto;min-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;${t.done?'text-decoration:line-through;':''}">${t.text}</span>
           ${memoPeekHTML(t,'d')}
@@ -5537,7 +5535,7 @@ function renderHome(){
     }
   }
 
-  // ── 오늘 하면 어떨까요 (A2 우선순위 중 미완료 업무 추천 — 오늘 시작했거나 진행 가능한 것 위주)
+  // ── 오늘 하면 어떨까요 (Critical·Wait 중 미완료 업무 추천 — 오늘 시작했거나 진행 가능한 것 위주)
   const suggestTasks = ft.filter(t=>{
     if(t.done) return false;
     if(t.priority!=='A2') return false;
@@ -5550,7 +5548,7 @@ function renderHome(){
   const stEl=document.getElementById('home-suggest-tasks');
   if(stEl){
     if(!suggestTasks.length){
-      stEl.innerHTML='<div style="color:var(--muted);font-size:0.85rem;padding:10px 0;text-align:center;">지금 진행 가능한 A2 업무가 없습니다.</div>';
+      stEl.innerHTML='<div style="color:var(--muted);font-size:0.85rem;padding:10px 0;text-align:center;">지금 진행 가능한 Critical·Wait 업무가 없습니다.</div>';
     } else {
       stEl.innerHTML=suggestTasks.map(t=>{
         const p=proj(t.project);
@@ -5558,7 +5556,7 @@ function renderHome(){
         const pc=prioColor(t.priority||'');
         return `<div style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--border);font-size:0.84rem;">
           <input type="checkbox" onchange="toggleTask(${t.id})" style="flex-shrink:0;">
-          <span style="background:${pc};color:white;font-size:0.68rem;font-weight:800;padding:1px 6px;border-radius:4px;flex-shrink:0;">${t.priority}</span>
+          <span style="background:${pc};color:white;font-size:0.68rem;font-weight:800;padding:1px 6px;border-radius:4px;flex-shrink:0;white-space:nowrap;">${prioLabel(t.priority)}</span>
           <span style="color:${readable(p.color)};font-weight:600;font-size:0.72rem;flex-shrink:0;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
           <span style="flex:1;">${t.text}</span>
           ${(()=>{const pk=memoPeekParts(t.memo); return pk?`<span title="${escAttr((memoStampLabel(t)?memoStampLabel(t)+'\n':'')+t.memo)}" style="font-size:0.7rem;color:var(--x-92660d);background:var(--c-fefce8);border:1px solid var(--c-fef08a);font-weight:600;padding:1px 7px;border-radius:5px;flex-shrink:0;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:default;">${pk.time?`<span style="color:#a8a29e;margin-right:4px;">${escAttr(pk.time)}</span>`:''}${escAttr(pk.text)}</span>`:'';})()}
@@ -7700,7 +7698,7 @@ function generateReport(){
     } else if(h<-20){ statusTxt=`⚠️ 진행 ${h}%`; statusCol='#f59e0b'; }
     else { statusTxt=`🔵 진행 ${getTaskProgress(t)}%`; statusCol='#64748b'; }
     return `<div style="display:flex;align-items:center;gap:7px;font-size:0.8rem;padding:5px 0;border-bottom:1px solid var(--c-f1f5f9);">
-      ${t.priority?`<span style="color:${readable(pc)};font-weight:700;font-size:0.68rem;min-width:24px;">${t.priority}</span>`:'<span style="min-width:24px;"></span>'}
+      ${t.priority?`<span style="color:${readable(pc)};font-weight:700;font-size:0.68rem;min-width:24px;white-space:nowrap;">${prioLabel(t.priority)}</span>`:'<span style="min-width:24px;"></span>'}
       <span style="color:${readable(p.color)};font-weight:600;font-size:0.72rem;min-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
       <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${t.text}</span>
       <span style="color:${readable(statusCol)};font-size:0.72rem;font-weight:600;white-space:nowrap;">${statusTxt}</span>
@@ -7858,9 +7856,9 @@ function generateReport(){
       </div>
       ${isPartialPeriod||hasFutureExcluded?`<div style="font-size:0.74rem;color:var(--x-92400e);background:var(--c-fef3c7);border-radius:6px;padding:4px 9px;display:inline-block;margin-top:2px;">ℹ️ 기준 시간은 ${isPartialPeriod?`실제 기록이 시작된 ${fmt(earliestLogDate)}부터 `:''}${hasFutureExcluded?'오늘까지로':'기간 종료일까지로'} 계산했습니다${isPartialPeriod?' (기록 이전 기간은 제외)':''}${hasFutureExcluded?' (아직 지나지 않은 미래 날짜는 제외)':''}.</div>`:''}
       <div style="display:flex;gap:18px;flex-wrap:wrap;font-size:0.82rem;margin-top:8px;">
-        <div><strong style="color:#ef4444;">${byPrioCount.A}</strong> <span style="color:var(--x-64748b);">긴급(A)</span></div>
-        <div><strong style="color:#f59e0b;">${byPrioCount.B}</strong> <span style="color:var(--x-64748b);">중요(B)</span></div>
-        <div><strong style="color:#10b981;">${byPrioCount.C}</strong> <span style="color:var(--x-64748b);">일반(C)</span></div>
+        <div><strong style="color:#ef4444;">${byPrioCount.A}</strong> <span style="color:var(--x-64748b);">Critical</span></div>
+        <div><strong style="color:#f59e0b;">${byPrioCount.B}</strong> <span style="color:var(--x-64748b);">High</span></div>
+        <div><strong style="color:#10b981;">${byPrioCount.C}</strong> <span style="color:var(--x-64748b);">Normal</span></div>
         <div><strong style="color:var(--x-dc2626);">${overdueTasks.length}</strong> <span style="color:var(--x-64748b);">지연</span></div>
         <div><strong style="color:#10b981;">${doneTasks.length}</strong> <span style="color:var(--x-64748b);">완료(이 기간)</span></div>
       </div>
@@ -8307,7 +8305,7 @@ function renderParkingLot(){
     if(prio!==lastPrio){
       const lbl=document.createElement('div');
       lbl.className='prio-group-label';
-      lbl.innerHTML=`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${prioColor(prio)};margin-right:4px;vertical-align:middle;"></span>${prio[0]==='A'?'긴급':prio[0]==='B'?'중요':'일반'} (${prio[0]||'-'})`;
+      lbl.innerHTML=`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${prioColor(prio)};margin-right:4px;vertical-align:middle;"></span>${prio?prioLabel(prio):'-'}`;
       el.appendChild(lbl);
       lastPrio=prio;
     }
@@ -8318,7 +8316,7 @@ function renderParkingLot(){
     item.innerHTML=`
       <div style="display:flex;align-items:center;gap:8px;width:100%;">
         <span style="flex-shrink:0;font-size:0.8rem;">📥</span>
-        ${prio?`<span onclick="event.stopPropagation();showPriorityPicker(event, ${t.id})" title="클릭하여 우선순위 변경" style="background:${prioColor(prio)};color:white;font-size:0.7rem;font-weight:800;padding:2px 6px;border-radius:4px;min-width:26px;text-align:center;flex-shrink:0;cursor:pointer;">${prio}</span>`:''}
+        ${prio?`<span onclick="event.stopPropagation();showPriorityPicker(event, ${t.id})" title="클릭하여 우선순위 변경" style="background:${prioColor(prio)};color:white;font-size:0.7rem;font-weight:800;padding:2px 6px;border-radius:4px;min-width:26px;text-align:center;flex-shrink:0;cursor:pointer;white-space:nowrap;">${prioLabel(prio)}</span>`:''}
         <span class="p-badge editable" onclick="event.stopPropagation();showProjectPicker(event, ${t.id})" onmousedown="event.stopPropagation()" title="클릭하여 프로젝트/하위분류 변경" style="background:${p.color}22;color:${readable(p.color)};flex-shrink:0;cursor:pointer;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
         <span class="task-text" ondblclick="event.stopPropagation();startInlineEditTaskText(${t.id}, this)" title="더블클릭하여 수정" style="font-size:0.85rem;flex:0 1 auto;min-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;">${t.text}</span>
         ${memoPeekHTML(t,'p')}
