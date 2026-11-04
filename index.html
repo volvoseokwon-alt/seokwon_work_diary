@@ -38,17 +38,21 @@ header h1{font-size:1rem;font-weight:700;white-space:nowrap;flex-shrink:0;}
 .hdr-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
 .world-clocks{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;}
 .wclock{display:flex;flex-direction:column;align-items:center;background:rgba(255,255,255,.12);border-radius:8px;padding:3px 10px;min-width:90px;}
+.wclock.work-hours{background:#047857;}
 .wclock .wc-flag{font-size:0.75rem;opacity:.85;}
 .wclock .wc-time{font-size:0.95rem;font-weight:800;letter-spacing:.03em;line-height:1.2;}
 .wclock .wc-date{font-size:0.62rem;opacity:.75;white-space:nowrap;}
 .score-badge{background:rgba(255,255,255,.18);padding:4px 12px;border-radius:20px;font-size:0.8rem;white-space:nowrap;}
 .week-badge{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);padding:4px 10px;border-radius:20px;font-size:0.78rem;white-space:nowrap;font-weight:600;}
-@media (max-width:1280px){
+@media (max-width:1480px){
   .world-clocks{flex-wrap:nowrap;gap:6px;}
   .wclock{min-width:0;padding:3px 7px;}
   .wclock .wc-flag{font-size:0.66rem;white-space:nowrap;}
 }
-@media (max-width:1100px){
+@media (max-width:1180px){
+  #save-time{display:none;}
+}
+@media (max-width:1280px){
   .world-clocks{gap:4px;}
   .wclock{padding:3px 4px;}
   .wclock .wc-flag{font-size:0.58rem;}
@@ -562,6 +566,11 @@ if ('serviceWorker' in navigator) {
         <span class="wc-time" id="wc-kr-time">--:--</span>
         <span class="wc-date" id="wc-kr-date">---</span>
       </div>
+      <div class="wclock" id="wc-cn">
+        <span class="wc-flag">🇨🇳 중국(상해)</span>
+        <span class="wc-time" id="wc-cn-time">--:--</span>
+        <span class="wc-date" id="wc-cn-date">---</span>
+      </div>
       <div class="wclock" id="wc-in">
         <span class="wc-flag">🇮🇳 인도(방갈로)</span>
         <span class="wc-time" id="wc-in-time">--:--</span>
@@ -590,7 +599,7 @@ if ('serviceWorker' in navigator) {
     <button id="backup-folder-btn" onclick="connectDataFolder()" title="데이터를 저장할 PC 폴더를 연결하세요 (Chrome/Edge PC 전용). OneDrive 안에 두면 다른 PC와 같은 데이터를 쓸 수 있습니다." style="background:#f59e0b;border:none;color:white;font-size:0.7rem;padding:4px 8px;border-radius:5px;cursor:pointer;">📁 저장 폴더 연결</button>
     <button onclick="document.getElementById('restore-file-input').click()" title="저장 폴더의 백업_날짜.json 등 백업 파일에서 되돌립니다" style="background:rgba(255,255,255,0.15);border:none;color:white;font-size:0.7rem;padding:4px 8px;border-radius:5px;cursor:pointer;">📤 복원</button>
     <input type="file" id="restore-file-input" accept=".json" style="display:none;" onchange="restoreFromFile(this.files[0])">
-    <span class="week-badge" id="hdr-week">W?</span>
+    <span class="week-badge" id="hdr-week" title="이번 주차와 오늘 날짜">W?</span>
   </div>
 </header>
 
@@ -2619,8 +2628,10 @@ function weekMonday(key){
    HEADER WEEK BADGE
 ══════════════════════════════════════ */
 function updateHeaderWeek(){
-  const {year,week} = getISOWeek(TODAY);
-  document.getElementById('hdr-week').textContent = `W${week} / ${year}`;
+  const now=new Date();   // 탭을 켜둔 채 날짜가 바뀌어도 맞도록 현재 날짜 기준
+  const {year,week} = getISOWeek(now);
+  const wd=['일','월','화','수','목','금','토'][now.getDay()];
+  document.getElementById('hdr-week').textContent = `W${week} / ${year} · ${now.getMonth()+1}/${now.getDate()}(${wd})`;
 }
 
 /* ══════════════════════════════════════
@@ -8953,6 +8964,7 @@ function updateWorldClocks(){
   const fmt2=n=>String(n).padStart(2,'0');
   const zones=[
     {tz:'Asia/Seoul',      tId:'wc-kr-time', dId:'wc-kr-date'},
+    {tz:'Asia/Shanghai',   tId:'wc-cn-time', dId:'wc-cn-date'},
     {tz:'Asia/Kolkata',    tId:'wc-in-time', dId:'wc-in-date'},
     {tz:'Europe/Berlin',   tId:'wc-de-time', dId:'wc-de-date'},
     {tz:'America/New_York',tId:'wc-us-time', dId:'wc-us-date'},
@@ -8969,6 +8981,9 @@ function updateWorldClocks(){
       const day2=dParts.find(p=>p.type==='day')?.value||'';
       const wd=dParts.find(p=>p.type==='weekday')?.value||'';
       tEl.textContent=tStr;
+      // 현지 시각 07:00~16:59는 업무시간으로 보고 초록색 표시
+      const localHour=parseInt(new Intl.DateTimeFormat('en-GB',{timeZone:tz,hour:'2-digit',hourCycle:'h23'}).format(now),10);
+      tEl.closest('.wclock')?.classList.toggle('work-hours',localHour>=7&&localHour<17);
       dEl.textContent=`${month}/${day2}(${wd})`;
     }catch(e){ console.warn('clock error:',e); }
   });
