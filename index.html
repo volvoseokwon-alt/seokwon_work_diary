@@ -2072,6 +2072,9 @@ function toggleTheme(){
 // 화면 표시 이름. 저장값과 정렬은 A1~C2 그대로 사용
 const PRIORITY_LABEL={A1:'Critical',A2:'Critical·Wait',B1:'High',B2:'High·Wait',C1:'Normal',C2:'Normal·Wait'};
 function prioLabel(p){ return PRIORITY_LABEL[REMOVED_PRIORITY[p]||p]||p||''; }
+// 목록의 그룹 제목은 한글
+const PRIORITY_GROUP_LABEL={A1:'핵심',A2:'핵심·대기',B1:'중요',B2:'중요·대기',C1:'일반',C2:'일반·대기'};
+function prioGroupLabel(p){ return PRIORITY_GROUP_LABEL[REMOVED_PRIORITY[p]||p]||p||''; }
 function prioRank(p){ const i=PRIORITY_ORDER.indexOf(p); return i<0?PRIORITY_ORDER.length:i; }
 function migrateRemovedPriorities(){
   const fix=t=>{ if(t&&REMOVED_PRIORITY[t.priority]) t.priority=REMOVED_PRIORITY[t.priority]; };
@@ -3101,7 +3104,7 @@ function renderTaskList(list){
       const lbl=document.createElement('div');
       lbl.className='prio-group-label';
       const groupColor=prioColor(prio);
-      lbl.innerHTML=`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${groupColor};margin-right:4px;vertical-align:middle;"></span>${prioLabel(prio)}`;
+      lbl.innerHTML=`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${groupColor};margin-right:4px;vertical-align:middle;"></span>${prioGroupLabel(prio)}`;
       el.appendChild(lbl);
       lastPrio=prio;
     }
@@ -8305,7 +8308,7 @@ function renderParkingLot(){
     if(prio!==lastPrio){
       const lbl=document.createElement('div');
       lbl.className='prio-group-label';
-      lbl.innerHTML=`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${prioColor(prio)};margin-right:4px;vertical-align:middle;"></span>${prio?prioLabel(prio):'-'}`;
+      lbl.innerHTML=`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${prioColor(prio)};margin-right:4px;vertical-align:middle;"></span>${prio?prioGroupLabel(prio):'-'}`;
       el.appendChild(lbl);
       lastPrio=prio;
     }
