@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>석원이의 업무 다이어리 · V5</title>
+<title>석원이의 업무 다이어리 · V6</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#4f46e5">
 <meta name="mobile-web-app-capable" content="yes">
@@ -39,9 +39,23 @@ header h1{font-size:1rem;font-weight:700;white-space:nowrap;flex-shrink:0;}
 aside{width:200px;background:var(--card);border-right:1px solid var(--border);padding:14px 10px;display:flex;flex-direction:column;gap:4px;flex-shrink:0;overflow-y:auto;min-width:140px;max-width:400px;position:relative;}
 .sidebar-resizer{width:5px;background:transparent;cursor:col-resize;position:absolute;right:0;top:0;bottom:0;z-index:10;transition:background .15s;}
 .sidebar-resizer:hover,.sidebar-resizer.dragging{background:var(--primary);}
-@keyframes riskPulse{
-  0%,100%{box-shadow:0 0 0 0 rgba(var(--alert-rgb),0.55);}
-  50%{box-shadow:0 0 0 4px rgba(var(--alert-rgb),0.15);}
+/* 마감 깜빡임: 배지는 색 반전+확대, 행과 타임라인 막대는 테두리 빛 */
+@keyframes ddayBlink{
+  0%,100%{background:var(--dday-bg);color:var(--dday-fg);box-shadow:0 0 0 0 rgba(var(--alert-rgb),0.9);transform:scale(1);}
+  50%{background:#ffffff;color:var(--alert-text);box-shadow:0 0 0 2px var(--alert-line),0 0 10px 4px rgba(var(--alert-rgb),0.75);transform:scale(1.14);}
+}
+/* 타임라인 라벨은 칸 밖이 잘리므로 안쪽 테두리로 표시 */
+@keyframes ddayBlinkInset{
+  0%,100%{background:var(--dday-bg);color:var(--dday-fg);box-shadow:inset 0 0 0 0 var(--alert-line);}
+  50%{background:#ffffff;color:var(--alert-text);box-shadow:inset 0 0 0 2px var(--alert-line);}
+}
+@keyframes rowBlink{
+  0%,100%{box-shadow:0 0 0 0 rgba(var(--alert-rgb),0);background:var(--alert-soft);}
+  50%{box-shadow:0 0 0 2px var(--alert-line),0 0 12px 3px rgba(var(--alert-rgb),0.45);background:rgba(var(--alert-rgb),0.22);}
+}
+@keyframes ganttBlink{
+  0%,100%{box-shadow:0 0 0 0 rgba(var(--alert-rgb),0);}
+  50%{box-shadow:0 0 0 2px var(--alert-line),0 0 8px 2px rgba(var(--alert-rgb),0.6);}
 }
 @keyframes spin{
   from{transform:rotate(0deg);}
@@ -53,9 +67,13 @@ aside{width:200px;background:var(--card);border-right:1px solid var(--border);pa
 .alert-d2{--alert-rgb:234,179,8;--alert-line:#eab308;--alert-soft:#fefce8;--alert-text:#a16207;--alert-on:#422006;}
 .alert-d1{--alert-rgb:249,115,22;--alert-line:#f97316;--alert-soft:#fff7ed;--alert-text:#c2410c;--alert-on:#431407;}
 .alert-due{--alert-rgb:239,68,68;--alert-line:#ef4444;--alert-soft:#fef2f2;--alert-text:#dc2626;--alert-on:#ffffff;}
-.gantt-risk{animation:riskPulse 1.6s ease-in-out infinite;border:1.5px solid var(--alert-line) !important;}
+.gantt-risk{border:1.5px solid var(--alert-line) !important;}
+.gantt-risk.blink{animation:ganttBlink 1s ease-in-out infinite;}
 .dday-badge{display:inline-flex;align-items:center;justify-content:center;background:var(--dday-bg);color:var(--dday-fg);font-size:0.66rem;font-weight:800;line-height:1;padding:3px 6px;border-radius:5px;white-space:nowrap;}
-.dday-badge.pulse{animation:riskPulse 1.6s ease-in-out infinite;}
+.dday-badge.pulse{animation:ddayBlink 1s ease-in-out infinite;}
+.chart-label .dday-badge.pulse{animation-name:ddayBlinkInset;}
+.blink-toggle{flex-shrink:0;border:1px solid var(--alert-line);background:#ffffff;color:var(--alert-text);font-size:0.66rem;font-weight:700;line-height:1;padding:3px 6px;border-radius:5px;cursor:pointer;font-family:inherit;}
+.blink-toggle:hover{background:var(--alert-soft);}
 aside h3{font-size:0.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:8px 0 4px;padding:0 4px;}
 .project-item{padding:8px 10px;border-radius:7px;cursor:pointer;font-size:0.85rem;color:var(--muted);transition:.15s;display:flex;align-items:center;gap:7px;position:relative;}
 .project-item:hover{background:var(--bg);color:var(--text);}
@@ -113,6 +131,7 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 .task-list{display:flex;flex-direction:column;gap:7px;}
 .task-item{background:var(--card);padding:11px 13px;border-radius:8px;border:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:8px;transition:box-shadow .15s;}
 .task-item.has-alert{border-color:var(--alert-line);background:var(--alert-soft);}
+.task-item.has-alert.blinking{animation:rowBlink 1s ease-in-out infinite;}
 .task-item:hover{box-shadow:0 2px 8px rgba(0,0,0,.07);}
 .task-item.completed{opacity:.7;}
 .task-item.completed .task-text{text-decoration:line-through;color:var(--muted);}
@@ -530,7 +549,7 @@ if ('serviceWorker' in navigator) {
     <img src="data:image/png;base64,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" alt="Wonder Diary" style="width:32px;height:32px;border-radius:8px;flex-shrink:0;">
     <span style="display:flex;flex-direction:column;line-height:1.1;">
       <span style="font-size:1.05rem;font-weight:800;letter-spacing:0.01em;">Wonder Diary</span>
-      <span style="font-size:0.62rem;font-weight:400;color:rgba(255,255,255,0.65);">developed by seokwon · V5</span>
+      <span style="font-size:0.62rem;font-weight:400;color:rgba(255,255,255,0.65);">developed by seokwon · V6</span>
     </span>
   </h1>
   <div style="display:flex;align-items:center;justify-content:center;gap:24px;flex:1;flex-wrap:wrap;min-width:0;">
@@ -2470,12 +2489,30 @@ function deadlineBadge(t){
 function deadlineSignal(t){
   const b=deadlineBadge(t);
   if(!b||b.diff>DEADLINE_SIGNAL_DAYS) return null;
-  return {...b,cls:b.diff<=0?'alert-due':b.diff===1?'alert-d1':'alert-d2'};
+  // 정지는 현재 단계(D-2 / D-1 / 당일 / 경과)에서만 유효 → 단계가 넘어가거나 마감일이 바뀌면 다시 깜빡임
+  const muteKey=`${t.end}|${b.diff<0?'over':b.diff}`;
+  return {...b,cls:b.diff<=0?'alert-due':b.diff===1?'alert-d1':'alert-d2',muteKey,blinking:t.blinkMute!==muteKey};
 }
 function ddayBadgeHTML(t,extraStyle=''){
   const b=deadlineBadge(t);
   if(!b) return '';
-  return `<span class="dday-badge${b.diff<=DEADLINE_SIGNAL_DAYS?' pulse':''}" title="${b.title}" style="--dday-bg:${b.bg};--dday-fg:${b.fg};${extraStyle}">${b.label}</span>`;
+  const sig=deadlineSignal(t);
+  return `<span class="dday-badge${sig&&sig.blinking?' pulse':''}" title="${b.title}" style="--dday-bg:${b.bg};--dday-fg:${b.fg};${extraStyle}">${b.label}</span>`;
+}
+function blinkToggleHTML(t){
+  const sig=deadlineSignal(t);
+  if(!sig) return '';
+  const title=sig.blinking?'이 업무의 깜빡임 정지 (다음 단계가 되거나 마감일을 바꾸면 다시 깜빡임)':'깜빡임 다시 켜기';
+  return `<button type="button" class="blink-toggle" draggable="false" title="${title}" onmousedown="event.stopPropagation()" onclick="event.stopPropagation();toggleTaskBlink(${t.id})">${sig.blinking?'정지':'켜기'}</button>`;
+}
+function toggleTaskBlink(id){
+  tasks=tasks.map(t=>{
+    if(t.id!==id) return t;
+    const sig=deadlineSignal(t);
+    if(!sig) return t;
+    return {...t,blinkMute:sig.blinking?sig.muteKey:''};
+  });
+  saveAndRender();
 }
 // 탭을 켜둔 채 날짜가 바뀌면 알림 신호를 다시 그린다 (입력 중이면 다음 확인 때로 미룸)
 let deadlineSignalDay=TODAY_STR;
@@ -2928,7 +2965,7 @@ function renderGantt(list){
         ${weekLines.map(w=>`<div style="position:absolute;left:${w.pct}%;top:0;bottom:0;width:1px;background:rgba(0,0,0,0.1);border-left:1px dashed #cbd5e1;z-index:1;"></div>`).join('')}
         <div class="chart-today-line" style="left:${todayPct}%"></div>
         <!-- 바 전체 배경 (기간) -->
-        <div class="${dlSignal?'gantt-risk':''}" style="position:absolute;left:${left}%;width:${width}%;height:100%;background:#e2e8f0;border-radius:4px;max-width:${100-left}%;overflow:visible;">
+        <div class="${dlSignal?'gantt-risk'+(dlSignal.blinking?' blink':''):''}" style="position:absolute;left:${left}%;width:${width}%;height:100%;background:#e2e8f0;border-radius:4px;max-width:${100-left}%;overflow:visible;">
           <div style="position:relative;width:100%;height:100%;border-radius:4px;overflow:hidden;">
             ${t.done ? `
               <!-- 완료: 계획구간(초록) + 지연구간(남색, 늦게 끝났을 때만) -->
@@ -3034,7 +3071,7 @@ function renderTaskList(list){
     const pc=t.done?'#94a3b8':prioColor(prio);
     const dlSignal=deadlineSignal(t);
     const item=document.createElement('div');
-    item.className=`task-item ${t.done?'completed':''} ${over?'overdue':''} ${dlSignal?'has-alert '+dlSignal.cls:''}`;
+    item.className=`task-item ${t.done?'completed':''} ${over?'overdue':''} ${dlSignal?'has-alert '+dlSignal.cls+(dlSignal.blinking?' blinking':''):''}`;
     item.setAttribute('draggable','true');
     item.setAttribute('data-tid', t.id);
     item.setAttribute('data-prio', prio);
@@ -3049,6 +3086,7 @@ function renderTaskList(list){
         <span class="drag-handle" title="같은 우선순위 내 순서 변경">⠿</span>
         <input type="checkbox" draggable="false" onmousedown="event.stopPropagation()" ${t.done?'checked':''} onchange="toggleTask(${t.id})">
         ${ddayBadgeHTML(t,'flex-shrink:0;')}
+        ${blinkToggleHTML(t)}
         ${prio?`<span onclick="event.stopPropagation();showPriorityPicker(event, ${t.id})" title="클릭하여 우선순위 변경" style="background:${pc};color:white;font-size:0.7rem;font-weight:800;padding:2px 6px;border-radius:4px;min-width:26px;text-align:center;flex-shrink:0;cursor:pointer;">${prio}</span>`:''}
         <span class="p-badge editable" onclick="event.stopPropagation();showProjectPicker(event, ${t.id})" onmousedown="event.stopPropagation()" title="클릭하여 프로젝트/하위분류 변경" style="background:${p.color}22;color:${p.color};flex-shrink:0;cursor:pointer;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
         <span class="task-text" ondblclick="event.stopPropagation();startInlineEditTaskText(${t.id}, this)" title="더블클릭하여 수정" style="font-size:0.85rem;flex:0 1 auto;min-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;${dlSignal?'color:var(--alert-text);font-weight:700;':''}">${t.text}</span>
