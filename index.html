@@ -1475,7 +1475,7 @@ let _saveTimer=null, _saveInFlight=false, _savePending=false;
 function buildPayload(){
   const raw = {
     projects, tasks, weeklyLogs, trash, completedProjects,
-    repeatTasks, recurringMeetings, calMemos, taskTags, quickLinks, customHolidays, dailyPlans, dailyMemos,
+    repeatTasks, recurringMeetings, cancelledMeetings, calMemos, taskTags, quickLinks, customHolidays, dailyPlans, dailyMemos,
     sidebarNote: document.getElementById('sidebar-note')?.value || '',
     updatedAt: new Date().toISOString()
   };
@@ -1556,6 +1556,7 @@ function applyData(data){
   completedProjects = data.completedProjects || completedProjects;
   repeatTasks       = data.repeatTasks       || repeatTasks;
   recurringMeetings = data.recurringMeetings || recurringMeetings;
+  cancelledMeetings = data.cancelledMeetings || cancelledMeetings;
   migrateRemovedPriorities();
   calMemos          = data.calMemos          || calMemos;
   taskTags          = data.taskTags          || taskTags;
@@ -1897,6 +1898,7 @@ function restoreFromFile(file){
       completedProjects = data.completedProjects || [];
       repeatTasks = data.repeatTasks || [];
       recurringMeetings = data.recurringMeetings || [];
+      cancelledMeetings = data.cancelledMeetings || [];
       migrateRemovedPriorities();
       calMemos = data.calMemos || {};
       taskTags = data.taskTags || {};
@@ -2254,6 +2256,7 @@ let repeatTasks = [];     // {id, text, project, priority, cycle:'weekly'|'biwee
     weekday:0~6, monthDay:1~31, hours, startTime, endTime, memo,
     anchorDate:'YYYY-MM-DD'(격주 기준일), active:true, skips:['YYYY-MM-DD']} */
 let recurringMeetings = [];
+let cancelledMeetings = [];  // 취소한 미팅. weeklyLogs에서 빼두므로 시간·건수 집계에 들어가지 않는다
 let calMemos = {};        // {'2026-06-17': {text:'...', color:'#4f46e5'}}
 /* {'2026-06-23': {taskId: 2 | {h:2, start:'13:00'}, ...}}
    홈에서 "오늘 계획"으로 입력한 업무별 예상 투입시간.
@@ -5477,8 +5480,9 @@ function renderHome(){
   renderRecurringSuggest();
 
   const tmEl=document.getElementById('home-today-meetings');
+  const selCancelled=cancelledMeetings.filter(l=>l.date===activeLogDate).sort((a,b)=>(a.id||0)-(b.id||0));
   if(tmEl){
-    if(!selMeetings.length){
+    if(!selMeetings.length && !selCancelled.length){
       tmEl.innerHTML=`<div style="color:var(--muted);font-size:0.85rem;padding:10px 0;text-align:center;">${selIsToday?'오늘':fmt(activeLogDate)} 등록된 미팅이 없습니다.</div>`;
     } else {
       tmEl.innerHTML=selMeetings.map(l=>{
@@ -5490,7 +5494,16 @@ function renderHome(){
           ${p?`<span style="color:${readable(p.color)};font-weight:600;font-size:0.72rem;flex-shrink:0;">${p.name}${subLbl}</span>`:''}
           <span style="flex:1;">${l.task||'(제목 없음)'}</span>
           <button class="btn-sm" style="background:var(--bg);color:var(--muted);flex-shrink:0;padding:2px 8px;" onclick="openEditWeekly(${l.id})">수정</button>
+          <button class="btn-sm" title="미팅을 취소합니다. 시간 집계에서 빠지고 되돌릴 수 있습니다" style="background:var(--c-fef3c7);color:var(--x-b45309);flex-shrink:0;padding:2px 8px;" onclick="cancelMeeting(${l.id})">취소</button>
           <button class="btn-sm" style="background:var(--c-fee2e2);color:var(--warn);flex-shrink:0;padding:2px 8px;" onclick="deleteWeekly(${l.id})">삭제</button>
+        </div>`;
+      }).join('')+selCancelled.map(l=>{
+        const p=proj(l.project);
+        return `<div style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--border);font-size:0.84rem;color:var(--muted);">
+          <span style="background:#94a3b8;color:white;font-size:0.68rem;font-weight:800;padding:1px 6px;border-radius:4px;flex-shrink:0;">취소됨</span>
+          <span style="font-weight:600;font-size:0.72rem;flex-shrink:0;text-decoration:line-through;">${l.hours}h · ${p?p.name:''}</span>
+          <span style="flex:1;text-decoration:line-through;">${l.task||'(제목 없음)'}</span>
+          <button class="btn-sm" title="취소를 되돌려 미팅과 시간을 다시 넣습니다" style="background:var(--bg);color:var(--primary-text);flex-shrink:0;padding:2px 8px;" onclick="restoreCancelledMeeting(${l.id})">되돌리기</button>
         </div>`;
       }).join('');
     }
@@ -6302,7 +6315,7 @@ function rmMatchesDate(r, dateStr){
 }
 // 이미 그 날짜에 같은 제목의 미팅이 기록되어 있는가?
 function rmAlreadyLogged(r, dateStr){
-  return weeklyLogs.some(l=>l.type==='meeting' && l.date===dateStr && (l.task||'')===(r.title||''));
+  return [...weeklyLogs,...cancelledMeetings].some(l=>l.type==='meeting' && l.date===dateStr && (l.task||'')===(r.title||''));
 }
 // 선택한 날짜에 제안할 반복 미팅 목록
 function rmPendingForDate(dateStr){
@@ -8892,6 +8905,24 @@ function saveWeeklyLog(){
   }
   editingWeeklyId=null;
   closeModal('modal-weekly'); saveAndRender();
+}
+// 미팅 취소: 기록을 weeklyLogs에서 빼서 근무시간·건수·레포트에서 제외. 되돌리면 그대로 복귀
+function refreshAfterMeetingChange(){
+  saveData();
+  if(document.getElementById('weekly-log')) renderWeekly();
+  refreshDateViews();
+}
+function cancelMeeting(id){
+  const l=weeklyLogs.find(x=>x.id===id); if(!l) return;
+  cancelledMeetings.push(l);
+  weeklyLogs=weeklyLogs.filter(x=>x.id!==id);
+  refreshAfterMeetingChange();
+}
+function restoreCancelledMeeting(id){
+  const l=cancelledMeetings.find(x=>x.id===id); if(!l) return;
+  weeklyLogs.push(l);
+  cancelledMeetings=cancelledMeetings.filter(x=>x.id!==id);
+  refreshAfterMeetingChange();
 }
 function deleteWeekly(id){
   const l=weeklyLogs.find(x=>x.id===id); if(!l) return;
