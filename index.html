@@ -9144,6 +9144,8 @@ setInterval(checkDeadlineSignalDay,60000);
     if(inp){ e.preventDefault(); if(curInput===inp&&popEl&&popEl.style.display==='block'){close();} else open(inp); return; }
     if(popEl&&popEl.style.display==='block'&&!e.target.closest('#wk-picker')) close();
   },true);
+  // 달력 아이콘은 click에서 브라우저 달력을 열어 앱 달력과 겹치므로 막는다
+  document.addEventListener('click',e=>{ if(e.target.closest('input[type="date"]')) e.preventDefault(); },true);
   document.addEventListener('keydown',e=>{ if(e.key==='Escape') close(); });
   window.addEventListener('resize',()=>{ if(curInput&&popEl&&popEl.style.display==='block') position(); });
   window.addEventListener('scroll',()=>{ if(curInput&&popEl&&popEl.style.display==='block') position(); },true);
