@@ -59,23 +59,9 @@ header h1{font-size:1rem;font-weight:700;white-space:nowrap;flex-shrink:0;}
 aside{width:200px;background:var(--card);border-right:1px solid var(--border);padding:14px 10px;display:flex;flex-direction:column;gap:4px;flex-shrink:0;overflow-y:auto;min-width:140px;max-width:400px;position:relative;}
 .sidebar-resizer{width:5px;background:transparent;cursor:col-resize;position:absolute;right:0;top:0;bottom:0;z-index:10;transition:background .15s;}
 .sidebar-resizer:hover,.sidebar-resizer.dragging{background:var(--primary);}
-/* 마감 깜빡임: 배지는 색 반전+확대, 행과 타임라인 막대는 테두리 빛 */
-@keyframes ddayBlink{
-  0%,100%{background:var(--dday-bg);color:var(--dday-fg);box-shadow:0 0 0 0 rgba(var(--alert-rgb),0.9);transform:scale(1);}
-  50%{background:#ffffff;color:#111111;box-shadow:0 0 0 2px var(--alert-line),0 0 10px 4px rgba(var(--alert-rgb),0.75);transform:scale(1.14);}
-}
-/* 타임라인 라벨은 칸 밖이 잘리므로 안쪽 테두리로 표시 */
-@keyframes ddayBlinkInset{
-  0%,100%{background:var(--dday-bg);color:var(--dday-fg);box-shadow:inset 0 0 0 0 var(--alert-line);}
-  50%{background:#ffffff;color:#111111;box-shadow:inset 0 0 0 2px var(--alert-line);}
-}
-@keyframes rowBlink{
-  0%,100%{box-shadow:0 0 0 0 rgba(var(--alert-rgb),0);background:var(--alert-soft);}
-  50%{box-shadow:0 0 0 2px var(--alert-line),0 0 12px 3px rgba(var(--alert-rgb),0.45);background:rgba(var(--alert-rgb),0.22);}
-}
-@keyframes ganttBlink{
-  0%,100%{box-shadow:0 0 0 0 rgba(var(--alert-rgb),0);}
-  50%{box-shadow:0 0 0 2px var(--alert-line),0 0 8px 2px rgba(var(--alert-rgb),0.6);}
+@keyframes riskPulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(var(--alert-rgb),0.55);}
+  50%{box-shadow:0 0 0 4px rgba(var(--alert-rgb),0.15);}
 }
 @keyframes spin{
   from{transform:rotate(0deg);}
@@ -88,10 +74,9 @@ aside{width:200px;background:var(--card);border-right:1px solid var(--border);pa
 .alert-d1{--alert-rgb:249,115,22;--alert-line:#f97316;--alert-soft:#fff7ed;--alert-text:#c2410c;--alert-on:#431407;}
 .alert-due{--alert-rgb:239,68,68;--alert-line:#ef4444;--alert-soft:#fef2f2;--alert-text:#dc2626;--alert-on:#ffffff;}
 .gantt-risk{border:1.5px solid var(--alert-line) !important;}
-.gantt-risk.blink{animation:ganttBlink 1s ease-in-out infinite;}
+.gantt-risk.blink{animation:riskPulse 1.6s ease-in-out infinite;}
 .dday-badge{display:inline-flex;align-items:center;justify-content:center;background:var(--dday-bg);color:var(--dday-fg);font-size:0.66rem;font-weight:800;line-height:1;padding:3px 6px;border-radius:5px;white-space:nowrap;}
-.dday-badge.pulse{animation:ddayBlink 1s ease-in-out infinite;}
-.chart-label .dday-badge.pulse{animation-name:ddayBlinkInset;}
+.dday-badge.pulse{animation:riskPulse 1.6s ease-in-out infinite;}
 .blink-toggle{flex-shrink:0;border:1px solid var(--alert-line);background:var(--card);color:var(--alert-text);font-size:0.66rem;font-weight:700;line-height:1;padding:3px 6px;border-radius:5px;cursor:pointer;font-family:inherit;}
 .blink-toggle:hover{background:var(--alert-soft);}
 aside h3{font-size:0.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:8px 0 4px;padding:0 4px;}
@@ -151,7 +136,6 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 .task-list{display:flex;flex-direction:column;gap:7px;}
 .task-item{background:var(--card);padding:11px 13px;border-radius:8px;border:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:8px;transition:box-shadow .15s;}
 .task-item.has-alert{border-color:var(--alert-line);background:var(--alert-soft);}
-.task-item.has-alert.blinking{animation:rowBlink 1s ease-in-out infinite;}
 .task-item:hover{box-shadow:var(--v-item-hover);}
 .task-item.completed{opacity:.7;}
 .task-item.completed .task-text{text-decoration:line-through;color:var(--muted);}
