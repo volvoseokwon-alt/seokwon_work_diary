@@ -886,6 +886,7 @@ ZB 교체 둘</textarea>
           </div>
         </div>
         <div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px;">📝 날짜를 클릭해서 메모를 추가하세요 (프로젝트 연결 선택 가능)</div>
+        <div id="cal-outlook-status" style="font-size:0.68rem;color:var(--muted);margin-bottom:4px;"></div>
         <div class="cal-grid" id="cal-head-row"></div>
         <div class="cal-grid" id="cal-body"></div>
       </div>
@@ -1804,6 +1805,7 @@ async function connectDataFolder(){
     }
 
     await doSave();
+    syncOutlookMeetings();
     alert(`✅ 저장 폴더가 연결되었습니다: ${dataDirHandle.name}\n\n이제부터 모든 변경이 이 폴더의 ${DATA_FILE_NAME} 에 저장됩니다.\n이 폴더를 OneDrive 안에 두면 다른 PC와도 같은 데이터를 쓸 수 있습니다.`);
   } catch(e) {
     if (e.name !== 'AbortError') console.warn('폴더 선택 취소 또는 실패:', e);
@@ -9048,11 +9050,10 @@ function applyOutlookEvents(raw){
   return {added,updated,cancelled,upcomingChanged,total:list.length};
 }
 function setOutlookStatus(text){
-  const el=document.getElementById('outlook-sync-status');
-  if(el) el.textContent=text;
+  ['outlook-sync-status','cal-outlook-status'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=text; });
 }
 async function syncOutlookMeetings(){
-  if(!dataDirHandle) return;
+  if(!dataDirHandle){ setOutlookStatus('Outlook 연동: 저장 폴더가 연결되어 있지 않습니다'); return; }
   try{
     const fh=await dataDirHandle.getFileHandle(OUTLOOK_FILE_NAME);
     const file=await fh.getFile();
@@ -9062,11 +9063,11 @@ async function syncOutlookMeetings(){
     if(r.added||r.updated||r.cancelled||r.upcomingChanged){
       await saveAndRender();
     }
-    setOutlookStatus(`📨 Outlook 일정 ${stamp} 기준`);
+    setOutlookStatus(`📨 Outlook 일정 ${stamp} 기준 · 읽은 일정 ${r.total}건 · 예정 ${(outlookSync.upcoming||[]).length}건`);
   }catch(e){
-    if(e&&e.name==='NotFoundError') return;        // 아직 연동 전
+    if(e&&e.name==='NotFoundError'){ setOutlookStatus(`Outlook 연동: ${dataDirHandle.name} 폴더에 ${OUTLOOK_FILE_NAME} 파일이 없습니다`); return; }
     console.warn('Outlook 일정 읽기 실패:',e);
-    setOutlookStatus('⚠️ Outlook 일정 파일을 읽지 못했습니다');
+    setOutlookStatus(`⚠️ Outlook 일정 파일을 읽지 못했습니다 (${e&&e.name||'오류'})`);
   }
 }
 function deleteWeekly(id){
@@ -9164,6 +9165,7 @@ setInterval(checkDeadlineSignalDay,60000);
   setTimeout(()=>{ if(tasks.length>0) autoArchiveCompletedTasks(); }, 500);
   syncOutlookMeetings();
   setInterval(syncOutlookMeetings, 5*60*1000);
+  window.addEventListener('focus',syncOutlookMeetings);
   document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') syncOutlookMeetings(); });
   setTimeout(checkDeadlineAlert, 1500);
   setTimeout(checkWorklogAlerts, 3000);
