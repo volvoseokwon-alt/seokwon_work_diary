@@ -1285,6 +1285,17 @@ ZB 교체 둘</textarea>
 </div>
 
 <!-- 캘린더 날짜 클릭 메모 모달 -->
+<div class="modal" id="modal-meeting-detail">
+  <div class="modal-box" style="width:640px;">
+    <h3 id="md-title" style="word-break:break-word;"></h3>
+    <div id="md-meta" style="font-size:0.8rem;color:var(--muted);line-height:1.6;word-break:break-word;"></div>
+    <div id="md-links" style="display:flex;flex-wrap:wrap;gap:6px;font-size:0.76rem;"></div>
+    <div id="md-body" style="white-space:pre-wrap;word-break:break-word;font-size:0.83rem;line-height:1.55;max-height:50vh;overflow-y:auto;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modal-meeting-detail')">닫기</button>
+    </div>
+  </div>
+</div>
 <div class="modal" id="modal-cal-memo">
   <div class="modal-box">
     <h3>📝 <span id="cal-memo-date-title"></span> 메모</h3>
@@ -5529,7 +5540,7 @@ function renderHome(){
         return `<div style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--border);font-size:0.84rem;">
           <span style="background:#a855f7;color:white;font-size:0.68rem;font-weight:800;padding:1px 6px;border-radius:4px;flex-shrink:0;">🗣️ ${l.hours}h</span>
           ${p?`<span style="color:${readable(p.color)};font-weight:600;font-size:0.72rem;flex-shrink:0;">${p.name}${subLbl}</span>`:''}
-          <span style="flex:1;">${l.task||'(제목 없음)'}</span>
+          <span style="flex:1;cursor:pointer;" title="눌러서 내용 보기" onclick="openMeetingDetail(${l.id})">${l.task||'(제목 없음)'}</span>
           <button class="btn-sm" style="background:var(--bg);color:var(--muted);flex-shrink:0;padding:2px 8px;" onclick="openEditWeekly(${l.id})">수정</button>
           <button class="btn-sm" title="미팅을 취소합니다. 시간 집계에서 빠지고 되돌릴 수 있습니다" style="background:var(--c-fef3c7);color:var(--x-b45309);flex-shrink:0;padding:2px 8px;" onclick="cancelMeeting(${l.id})">취소</button>
           <button class="btn-sm" style="background:var(--c-fee2e2);color:var(--warn);flex-shrink:0;padding:2px 8px;" onclick="deleteWeekly(${l.id})">삭제</button>
@@ -5539,7 +5550,7 @@ function renderHome(){
         return `<div style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--border);font-size:0.84rem;color:var(--muted);">
           <span style="background:#94a3b8;color:white;font-size:0.68rem;font-weight:800;padding:1px 6px;border-radius:4px;flex-shrink:0;">취소됨</span>
           <span style="font-weight:600;font-size:0.72rem;flex-shrink:0;text-decoration:line-through;">${l.hours}h · ${p?p.name:''}</span>
-          <span style="flex:1;text-decoration:line-through;">${l.task||'(제목 없음)'}</span>
+          <span style="flex:1;text-decoration:line-through;cursor:pointer;" title="눌러서 내용 보기" onclick="openMeetingDetail(${l.id})">${l.task||'(제목 없음)'}</span>
           <button class="btn-sm" title="취소를 되돌려 미팅과 시간을 다시 넣습니다" style="background:var(--bg);color:var(--primary-text);flex-shrink:0;padding:2px 8px;" onclick="restoreCancelledMeeting(${l.id})">되돌리기</button>
         </div>`;
       }).join('');
@@ -8978,6 +8989,8 @@ function parseOutlookTime(v){
   const dt=new Date(t);
   return isNaN(dt)?null:dt;
 }
+// 일정 상세(본문·참석자)는 화면에서만 쓰고 저장 데이터에는 넣지 않는다
+let outlookDetails={};
 function normalizeOutlookEvent(e){
   if(!e||!e.id) return null;
   if(String(e.isAllDay).toLowerCase()==='true') return null;
@@ -8993,7 +9006,42 @@ function normalizeOutlookEvent(e){
   const cancelled=String(e.isCancelled).toLowerCase()==='true'||/^(canceled|cancelled|취소됨|취소)\s*:/i.test(rawTitle);
   // 외부에서 온 제목이 화면에서 HTML로 해석되지 않도록 특수문자를 정리
   const title=rawTitle.replace(/^(canceled|cancelled|취소됨|취소)\s*:\s*/i,'').replace(/[<>"`\\]/g,'').replace(/'/g,'’').trim()||'(제목 없음)';
-  return {id:String(e.id),title,date,startTime:hhmm(st),endTime:hhmm(en),hours:Math.max(0.5,Math.round((en-st)/1800000)/2),cancelled};
+  const detail={location:e.location||'',organizer:e.organizer||'',attendees:e.attendees||'',optional:e.optionalAttendees||'',body:e.body||'',webLink:e.webLink||''};
+  return {id:String(e.id),title,date,startTime:hhmm(st),endTime:hhmm(en),hours:Math.max(0.5,Math.round((en-st)/1800000)/2),cancelled,detail};
+}
+// 메일 본문 HTML을 글자로 변환. 외부에서 온 내용이므로 HTML로 넣지 않고 textContent로만 표시한다
+function outlookBodyParts(html){
+  const raw=String(html||'');
+  const doc=new DOMParser().parseFromString(raw,'text/html');
+  doc.querySelectorAll('script,style,head,title,meta,link').forEach(x=>x.remove());
+  const links=[], seen=new Set();
+  doc.querySelectorAll('a[href]').forEach(a=>{
+    const href=a.getAttribute('href')||'', label=(a.textContent||'').trim();
+    if(/^https?:\/\//i.test(href)&&!seen.has(href)&&links.length<8){ seen.add(href); links.push({href,label:label&&!/^https?:/i.test(label)?label.slice(0,50):'링크 열기'}); }
+  });
+  doc.querySelectorAll('br').forEach(b=>b.replaceWith('\n'));
+  doc.querySelectorAll('p,div,li,tr,h1,h2,h3,h4').forEach(b=>b.append('\n'));
+  const text=(doc.body?doc.body.textContent:'').replace(/\u00a0/g,' ').replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
+  return {text,links};
+}
+function openMeetingDetail(id){
+  const l=[...weeklyLogs,...cancelledMeetings].find(x=>x.id===id); if(!l) return;
+  const det=l.outlookId?outlookDetails[l.outlookId]:null;
+  const parts=det?outlookBodyParts(det.body):{text:'',links:[]};
+  const fmtPeople=v=>String(v||'').split(';').map(x=>x.trim()).filter(Boolean).join(', ');
+  document.getElementById('md-title').textContent=l.task||'(제목 없음)';
+  const meta=document.getElementById('md-meta'); meta.textContent='';
+  const row=(k,v)=>{ if(!v) return; const d=document.createElement('div'); const b=document.createElement('b'); b.textContent=k+' '; d.append(b,String(v)); meta.append(d); };
+  row('일시',`${l.date}${l.startTime?` ${l.startTime}~${l.endTime||''}`:''} (${l.hours}h)`);
+  if(det){ row('장소',det.location); row('주최자',det.organizer); row('참석자',fmtPeople(det.attendees)); row('선택 참석',fmtPeople(det.optional)); }
+  if(cancelledMeetings.includes(l)) row('상태','취소됨');
+  const lk=document.getElementById('md-links'); lk.textContent='';
+  const addLink=(href,label)=>{ const a=document.createElement('a'); a.href=href; a.target='_blank'; a.rel='noopener noreferrer'; a.textContent=label; a.style.cssText='color:var(--primary-text);border:1px solid var(--border);border-radius:6px;padding:2px 8px;text-decoration:none;'; lk.append(a); };
+  if(det&&/^https:\/\//i.test(det.webLink)) addLink(det.webLink,'Outlook에서 열기');
+  parts.links.forEach(x=>addLink(x.href,x.label));
+  const body=document.getElementById('md-body');
+  body.textContent=parts.text||l.memo||(l.outlookId?'본문 내용이 없습니다. Power Automate 흐름에 본문 항목을 추가하면 표시됩니다.':'저장된 내용이 없습니다.');
+  openModal('modal-meeting-detail');
 }
 function moveMeetingToCancelled(log){
   cancelledMeetings.push(log);
@@ -9006,6 +9054,8 @@ function applyOutlookEvents(raw){
   const seen=outlookSync.seen;
   const list=(Array.isArray(raw)?raw:(raw&&raw.value)||[]).map(normalizeOutlookEvent).filter(Boolean);
   const ids=new Set(list.map(e=>e.id));
+  outlookDetails={};
+  list.forEach(e=>{ outlookDetails[e.id]=e.detail; });
   const mine=id=>weeklyLogs.find(l=>l.outlookId===id);
   let added=0, updated=0, cancelled=0;
   list.forEach(e=>{
