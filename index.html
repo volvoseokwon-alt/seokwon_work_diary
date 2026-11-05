@@ -9100,7 +9100,7 @@ function applyOutlookEvents(raw){
   return {added,updated,cancelled,upcomingChanged,total:list.length};
 }
 function setOutlookStatus(text){
-  ['outlook-sync-status','cal-outlook-status'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=text; });
+  ['outlook-sync-status','cal-outlook-status'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=text+outlookFlagStatus; });
 }
 /* ══════════════════════════════════════
    플래그 메일 → 할 일
@@ -9135,23 +9135,30 @@ function addFlaggedMailTask(mail){
   outlookSync.flagged[id]=task.start;
   return true;
 }
+let outlookFlagStatus='';
 async function syncOutlookFlags(){
+  outlookFlagStatus='';
   let dir;
   try{ dir=await dataDirHandle.getDirectoryHandle(OUTLOOK_FLAG_DIR); }
   catch(e){ return 0; }                            // 폴더가 없으면 아직 연동 전
-  let added=0;
+  let added=0, skipped=0, failed=0, keptFiles=0, lastError='';
   const names=[];
   try{
     for await(const [name,h] of dir.entries()){ if(h.kind==='file'&&/\.json$/i.test(name)) names.push(name); }
     for(const name of names){
+      let mail;
       try{
         const fh=await dir.getFileHandle(name);
-        const mail=JSON.parse(await (await fh.getFile()).text());
-        if(addFlaggedMailTask(mail)) added++;
-        await dir.removeEntry(name);
-      }catch(e){ console.warn('플래그 메일 파일 처리 건너뜀:',name,e); }   // 동기화 중인 파일은 다음에 다시 시도
+        mail=JSON.parse(await (await fh.getFile()).text());
+      }catch(e){ failed++; lastError=e&&e.name||'오류'; console.warn('플래그 메일 파일 읽기 실패:',name,e); continue; }   // 동기화 중이면 다음에 다시 시도
+      if(addFlaggedMailTask(mail)) added++; else skipped++;
+      try{ await dir.removeEntry(name); }
+      catch(e){ keptFiles++; lastError=e&&e.name||'오류'; console.warn('플래그 메일 파일 삭제 실패:',name,e); }   // 파일이 남아도 id로 중복을 막는다
     }
-  }catch(e){ console.warn('플래그 메일 폴더 읽기 실패:',e); }
+  }catch(e){ failed++; lastError=e&&e.name||'오류'; console.warn('플래그 메일 폴더 읽기 실패:',e); }
+  if(names.length||failed){
+    outlookFlagStatus=` · 플래그 메일 파일 ${names.length}개: 추가 ${added}건, 중복 ${skipped}건`+(failed?`, 읽기 실패 ${failed}건`:'')+(keptFiles?`, 파일 남음 ${keptFiles}개`:'')+(lastError?` (${lastError})`:'');
+  }
   if(added) await saveAndRender();
   return added;
 }
