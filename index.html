@@ -64,8 +64,8 @@ aside{width:200px;background:var(--card);border-right:1px solid var(--border);pa
 .sidebar-resizer{width:5px;background:transparent;cursor:col-resize;position:absolute;right:0;top:0;bottom:0;z-index:10;transition:background .15s;}
 .sidebar-resizer:hover,.sidebar-resizer.dragging{background:var(--primary);}
 @keyframes riskPulse{
-  0%,100%{box-shadow:0 0 0 0 rgba(var(--alert-rgb),0.55);}
-  50%{box-shadow:0 0 0 4px rgba(var(--alert-rgb),0.15);}
+  0%,100%{opacity:0;}
+  50%{opacity:1;}
 }
 @keyframes spin{
   from{transform:rotate(0deg);}
@@ -78,9 +78,10 @@ aside{width:200px;background:var(--card);border-right:1px solid var(--border);pa
 .alert-d1{--alert-rgb:249,115,22;--alert-line:#f97316;--alert-soft:#fff7ed;--alert-text:#c2410c;--alert-on:#431407;}
 .alert-due{--alert-rgb:239,68,68;--alert-line:#ef4444;--alert-soft:#fef2f2;--alert-text:#dc2626;--alert-on:#ffffff;}
 .gantt-risk{border:1.5px solid var(--alert-line) !important;}
-.gantt-risk.blink{animation:riskPulse 1.6s ease-in-out infinite;}
+.gantt-risk.blink::after{content:'';position:absolute;inset:0;border-radius:inherit;box-shadow:0 0 0 4px rgba(var(--alert-rgb),0.35);pointer-events:none;animation:riskPulse 1.6s ease-in-out infinite;}
 .dday-badge{display:inline-flex;align-items:center;justify-content:center;background:var(--dday-bg);color:var(--dday-fg);font-size:0.66rem;font-weight:800;line-height:1;padding:3px 6px;border-radius:5px;white-space:nowrap;}
-.dday-badge.pulse{animation:riskPulse 1.6s ease-in-out infinite;}
+.dday-badge.pulse{position:relative;}
+.dday-badge.pulse::after{content:'';position:absolute;inset:0;border-radius:inherit;box-shadow:0 0 0 4px rgba(var(--alert-rgb),0.35);pointer-events:none;animation:riskPulse 1.6s ease-in-out infinite;}
 .dday-badge.can-toggle{cursor:pointer;}
 aside h3{font-size:0.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:8px 0 4px;padding:0 4px;}
 .project-item{padding:8px 10px;border-radius:7px;cursor:pointer;font-size:0.85rem;color:var(--muted);transition:.15s;display:flex;align-items:center;gap:7px;position:relative;}
@@ -9176,13 +9177,29 @@ async function syncOutlookFlags(){
   if(added||flagMemoUpdated){ flagMemoUpdated=false; await saveAndRender(); }
   return added;
 }
+// 앱으로 돌아올 때마다 OneDrive 파일을 읽지 않도록 1분에 한 번으로 제한
+let outlookSyncBusy=false, outlookSyncAt=0, outlookFileStamp='';
+function requestOutlookSync(){
+  if(Date.now()-outlookSyncAt<60000) return;
+  syncOutlookMeetings();
+}
 async function syncOutlookMeetings(){
+  if(outlookSyncBusy) return;
+  outlookSyncBusy=true;
+  outlookSyncAt=Date.now();
+  try{ await runOutlookSync(); }
+  finally{ outlookSyncBusy=false; }
+}
+async function runOutlookSync(){
   if(!dataDirHandle){ setOutlookStatus('Outlook 연동: 저장 폴더가 연결되어 있지 않습니다'); return; }
   await syncOutlookFlags();
   try{
     const fh=await dataDirHandle.getFileHandle(OUTLOOK_FILE_NAME);
     const file=await fh.getFile();
+    const fileStamp=`${file.lastModified}|${file.size}|${dailyMemoDateKey()}`;
+    if(fileStamp===outlookFileStamp) return;       // 파일과 날짜가 그대로면 다시 읽지 않음
     const r=applyOutlookEvents(JSON.parse(await file.text()));
+    outlookFileStamp=fileStamp;
     const at=new Date(file.lastModified);
     const stamp=`${at.getMonth()+1}/${at.getDate()} ${String(at.getHours()).padStart(2,'0')}:${String(at.getMinutes()).padStart(2,'0')}`;
     if(r.added||r.updated||r.cancelled||r.upcomingChanged){
@@ -9290,8 +9307,8 @@ setInterval(checkDeadlineSignalDay,60000);
   setTimeout(()=>{ if(tasks.length>0) autoArchiveCompletedTasks(); }, 500);
   syncOutlookMeetings();
   setInterval(syncOutlookMeetings, 5*60*1000);
-  window.addEventListener('focus',syncOutlookMeetings);
-  document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') syncOutlookMeetings(); });
+  window.addEventListener('focus',requestOutlookSync);
+  document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') requestOutlookSync(); });
   setTimeout(checkDeadlineAlert, 1500);
   setTimeout(checkWorklogAlerts, 3000);
   setInterval(checkWorklogAlerts, 5*60*1000); // 탭을 계속 켜둔 경우를 위해 5분마다 재검사
