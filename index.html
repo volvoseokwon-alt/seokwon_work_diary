@@ -9114,28 +9114,42 @@ function flagTaskProject(){
   const p=projects.find(x=>x.name==='메일답변');
   return p?p.id:'__ext__메일답변';
 }
+// 메일 메모: 전체 본문을 글자로 바꿔 넣고, 너무 긴 메일은 뒤를 줄인다 (이미지는 포함되지 않음)
+const FLAG_MEMO_MAX=4000;
+function flaggedMailMemo(mail){
+  const received=parseOutlookTime(mail.received);
+  const bodyText=mail.body?outlookBodyParts(mail.body).text:(mail.preview||'');
+  let text=cleanExternalText(bodyText);
+  if(text.length>FLAG_MEMO_MAX) text=text.slice(0,FLAG_MEMO_MAX)+'\n… (이하 생략, 전체 내용은 메일 확인)';
+  return [
+    mail.from?`보낸 사람: ${cleanExternalText(mail.from)}`:'',
+    received?`받은 날짜: ${dailyMemoDateKey(received)}`:'',
+    text
+  ].filter(Boolean).join('\n');
+}
 function addFlaggedMailTask(mail){
   const id=String(mail&&mail.id||'');
   if(!id) return false;
   if(!outlookSync.flagged) outlookSync.flagged={};
-  if(outlookSync.flagged[id]) return false;
+  const memo=flaggedMailMemo(mail);
+  if(outlookSync.flagged[id]){
+    // 이미 추가된 메일: 사용자가 메모를 고치지 않았다면 더 긴 본문으로 갱신
+    const t=tasks.find(x=>x.outlookMailId===id);
+    const untouched=t&&((t.outlookMemoLen!=null&&(t.memo||'').length===t.outlookMemoLen)||(t.outlookMemoLen==null&&(t.memo||'').startsWith('보낸 사람:')&&(t.memo||'').length<=400));
+    if(untouched&&memo.length>(t.memo||'').length){ t.memo=memo; t.outlookMemoLen=memo.length; flagMemoUpdated=true; }
+    return false;
+  }
   const today=new Date(), due=new Date();
   due.setDate(due.getDate()+3);
-  const received=parseOutlookTime(mail.received);
-  const memo=[
-    mail.from?`보낸 사람: ${cleanExternalText(mail.from)}`:'',
-    received?`받은 날짜: ${dailyMemoDateKey(received)}`:'',
-    mail.preview?cleanExternalText(mail.preview).slice(0,300):''
-  ].filter(Boolean).join('\n');
   const projectId=flagTaskProject();
   const task={id:Date.now()+Object.keys(outlookSync.flagged).length,text:cleanExternalText(mail.subject)||'(제목 없는 메일)',project:projectId,done:false,
-    start:dailyMemoDateKey(today),end:dailyMemoDateKey(due),actualEnd:null,priority:'B1',status:'not_started',outlookMailId:id};
+    start:dailyMemoDateKey(today),end:dailyMemoDateKey(due),actualEnd:null,priority:'B1',status:'not_started',outlookMailId:id,outlookMemoLen:memo.length};
   if(memo) task.memo=memo;
   tasks.push(task);
   outlookSync.flagged[id]=task.start;
   return true;
 }
-let outlookFlagStatus='';
+let outlookFlagStatus='', flagMemoUpdated=false;
 async function syncOutlookFlags(){
   outlookFlagStatus='';
   let dir;
@@ -9159,7 +9173,7 @@ async function syncOutlookFlags(){
   if(names.length||failed){
     outlookFlagStatus=` · 플래그 메일 파일 ${names.length}개: 추가 ${added}건, 중복 ${skipped}건`+(failed?`, 읽기 실패 ${failed}건`:'')+(keptFiles?`, 파일 남음 ${keptFiles}개`:'')+(lastError?` (${lastError})`:'');
   }
-  if(added) await saveAndRender();
+  if(added||flagMemoUpdated){ flagMemoUpdated=false; await saveAndRender(); }
   return added;
 }
 async function syncOutlookMeetings(){
