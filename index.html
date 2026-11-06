@@ -5461,36 +5461,11 @@ function renderHome(){
   const availableHours = Math.max(0, dayBudget - meetingHours);
   const holidayBadge = !selIsWorkday ? `<span style="font-weight:700;color:var(--muted);background:var(--c-f1f5f9);padding:1px 8px;border-radius:6px;font-size:0.72rem;">📅 휴무일</span>` : '';
 
-  // 오늘 총 근무 예상시간 = 업무별 계획(📝) 합 + 미팅 시간 / 오늘 총 실제 근무시간 = weeklyLogs에 기록된 모든 시간(업무+미팅)
-  const totalPlanned = planHoursSum + meetingHours;
-  const totalActual = actualHoursSum;
   const actualTaskHours = Math.max(0, Math.round((actualHoursSum - meetingHours) * 2) / 2); // 실제 합계에서 미팅을 뺀 순수 업무 실적 (0.5h 단위 반올림으로 부동소수점 오차 방지)
-  const diff = totalActual - totalPlanned;
-  const diffLabel = diff===0 ? '' : (diff>0 ? `<span style="color:var(--warn);font-weight:700;font-size:0.74rem;">(+${diff}h 더 함)</span>` : `<span style="color:var(--muted);font-weight:700;font-size:0.74rem;">(${diff}h 남음)</span>`);
-
   const capEl=document.getElementById('home-today-capacity');
-  // 실제 업무시간이 가장 중요한 정보이므로: 1) 먼저 보여주고 2) 더 크게 3) 하이라이트 배경으로 강조.
-  // 예상치는 참고용으로 작게 뒤에 붙인다.
-  const plannedBreakdown = `업무 ${planHoursSum}h+미팅 ${meetingHours}h`;
-  const actualBreakdown = `업무 ${actualTaskHours}h+미팅 ${meetingHours}h${selMeetings.length>0?`·${selMeetings.length}건`:''}`;
-  const totalSummary = `<span style="font-weight:700;">📊 오늘 총 근무 —</span> `
-    + `<span style="background:var(--c-d1fae5);color:var(--x-047857);font-weight:800;font-size:1.05rem;padding:2px 9px;border-radius:7px;">실제 ${totalActual}h</span>`
-    + `<span style="color:var(--muted);font-size:0.72rem;font-weight:600;margin-left:3px;">(${actualBreakdown})</span> ${diffLabel}`
-    + `<span style="color:var(--muted);font-size:0.78rem;margin-left:6px;">· 예상 ${totalPlanned}h<span style="font-size:0.72rem;">(${plannedBreakdown})</span></span>`;
-
-  if(selMeetings.length===0){
-    capEl.innerHTML=holidayBadge + totalSummary
-      + `<span style="color:var(--muted);">·</span><span style="color:var(--muted);font-size:0.78rem;">🗣️ 미팅 없음</span>`
-      + `<span style="color:var(--muted);">·</span><span style="color:var(--muted);font-size:0.78rem;">업무 가용 약 ${availableHours}h</span>`;
-  } else {
-    const overBudget = meetingHours > dayBudget;
-    capEl.innerHTML=holidayBadge + totalSummary
-      + `<span style="color:var(--muted);">·</span><span style="color:#a855f7;font-size:0.78rem;font-weight:600;">🗣️ 미팅 ${meetingHours}h (${selMeetings.length}건)</span>`
-      + `<span style="color:var(--muted);">·</span>`
-      + (overBudget
-          ? `<span style="font-size:0.78rem;color:var(--warn);font-weight:700;">⚠️ 미팅이 하루 근무시간 초과</span>`
-          : `<span style="color:var(--muted);font-size:0.78rem;">업무 가용 약 ${availableHours}h</span>`);
-  }
+  // 하루 요약: 미팅이 얼마나 잡혔는지 한눈에 보이도록 미팅과 업무 시간만 크게 표시
+  const sumChip=(label,h,bg,fg)=>`<span style="background:${bg};color:${fg};font-weight:800;font-size:1.25rem;padding:4px 14px;border-radius:8px;">${label} ${h}h</span>`;
+  capEl.innerHTML=holidayBadge+sumChip('미팅',meetingHours,'var(--c-ede9fe)','var(--x-6d28d9)')+sumChip('업무',actualTaskHours,'var(--c-d1fae5)','var(--x-047857)');
 
   const ttEl=document.getElementById('home-today-tasks');
   if(!selTasks.length){
