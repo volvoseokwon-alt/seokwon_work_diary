@@ -3217,6 +3217,7 @@ function findCalMemoForDate(dateKey){
 }
 
 function renderCalendar(){
+  calMeetingRefs=[];
   document.getElementById('cal-title').textContent=`${calYear}년 ${calMonth+1}월`;
   const firstOfMonth=new Date(calYear,calMonth,1);
   const lastOfMonth=new Date(calYear,calMonth+1,0);
@@ -3265,20 +3266,36 @@ function renderCalendar(){
 // 캘린더 칸의 미팅: 기록된 미팅 + 앞으로 예정된 Outlook 일정 (취소한 미팅은 제외)
 function calMeetingsForDate(dateKey){
   const today=dailyMemoDateKey();
-  const list=weeklyLogs.filter(l=>l.type==='meeting'&&l.date===dateKey).map(l=>({title:l.task||'(제목 없음)',startTime:l.startTime||''}));
+  const list=weeklyLogs.filter(l=>l.type==='meeting'&&l.date===dateKey).map(l=>({title:l.task||'(제목 없음)',startTime:l.startTime||'',logId:l.id}));
   if(dateKey>today) (outlookSync.upcoming||[]).forEach(e=>{
-    if(e.date===dateKey&&!list.some(x=>x.title===e.title)&&!cancelledMeetings.some(x=>x.date===dateKey&&x.task===e.title)) list.push({title:e.title,startTime:e.startTime});
+    if(e.date===dateKey&&!list.some(x=>x.title===e.title)&&!cancelledMeetings.some(x=>x.date===dateKey&&x.task===e.title)) list.push({title:e.title,startTime:e.startTime,upcoming:e});
   });
   return list.sort((a,b)=>(a.startTime||'99').localeCompare(b.startTime||'99'));
+}
+// 캘린더의 미팅 줄을 누르면 상세 창. 외부 id를 onclick에 넣지 않도록 번호로 찾는다
+let calMeetingRefs=[];
+const calExpandedDays=new Set();
+function openCalMeeting(n){
+  const m=calMeetingRefs.at(n); if(!m) return;
+  if(m.logId!=null){ openMeetingDetail(m.logId); return; }
+  const e=m.upcoming;
+  showMeetingDetail({task:e.title,date:e.date,startTime:e.startTime,endTime:e.endTime,hours:e.hours,outlookId:e.id});
+}
+function toggleCalDay(dateKey){
+  if(calExpandedDays.has(dateKey)) calExpandedDays.delete(dateKey); else calExpandedDays.add(dateKey);
+  renderCalendar();
 }
 function calMeetingsHTML(dateKey){
   const list=calMeetingsForDate(dateKey);
   if(!list.length) return '';
   const line=m=>`${m.startTime?m.startTime+' ':''}${m.title}`;
-  const all=list.map(line).join('&#10;');
-  const shown=list.slice(0,3).map(m=>`<div style="border-radius:3px;padding:1px 4px;margin-top:2px;font-size:0.62rem;background:#a855f71f;color:${readable('#7e22ce')};border-left:2px solid #a855f7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${line(m)}</div>`).join('');
-  const more=list.length>3?`<div style="font-size:0.6rem;color:var(--muted);margin-top:1px;">외 ${list.length-3}건</div>`:'';
-  return `<div title="${all}">${shown}${more}</div>`;
+  const open=calExpandedDays.has(dateKey);
+  const shown=(open?list:list.slice(0,3)).map(m=>{
+    const n=calMeetingRefs.push(m)-1;
+    return `<div onclick="event.stopPropagation();openCalMeeting(${n})" title="${line(m)}" style="border-radius:3px;padding:1px 4px;margin-top:2px;font-size:0.62rem;background:#a855f71f;color:${readable('#7e22ce')};border-left:2px solid #a855f7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;">${line(m)}</div>`;
+  }).join('');
+  const more=list.length>3?`<div onclick="event.stopPropagation();toggleCalDay('${dateKey}')" style="font-size:0.6rem;color:var(--muted);margin-top:1px;cursor:pointer;">${open?'접기':`외 ${list.length-3}건`}</div>`:'';
+  return `<div>${shown}${more}</div>`;
 }
 function calMove(dir){ calMonth+=dir; if(calMonth>11){calMonth=0;calYear++;}else if(calMonth<0){calMonth=11;calYear--;} renderCalendar(); }
 
@@ -9033,6 +9050,9 @@ function outlookBodyParts(html){
 }
 function openMeetingDetail(id){
   const l=[...weeklyLogs,...cancelledMeetings].find(x=>x.id===id); if(!l) return;
+  showMeetingDetail(l);
+}
+function showMeetingDetail(l){
   const det=l.outlookId?outlookDetails[l.outlookId]:null;
   const parts=det?outlookBodyParts(det.body):{text:'',links:[]};
   const fmtPeople=v=>String(v||'').split(';').map(x=>x.trim()).filter(Boolean).join(', ');
@@ -9089,7 +9109,7 @@ function applyOutlookEvents(raw){
     added++;
   });
   // 캘린더에 미리 보여줄 예정 일정
-  const upcoming=list.filter(e=>e.date>today&&!e.cancelled).map(e=>({date:e.date,title:e.title,startTime:e.startTime}));
+  const upcoming=list.filter(e=>e.date>today&&!e.cancelled).map(e=>({id:e.id,date:e.date,title:e.title,startTime:e.startTime,endTime:e.endTime,hours:e.hours}));
   const upcomingChanged=JSON.stringify(upcoming)!==JSON.stringify(outlookSync.upcoming||[]);
   outlookSync.upcoming=upcoming;
   // 파일에서 사라진 일정 = 취소. 빈 파일은 오류일 수 있어 건너뛴다
