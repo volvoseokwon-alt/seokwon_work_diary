@@ -71,6 +71,19 @@ header h1{font-size:1rem;font-weight:700;white-space:nowrap;flex-shrink:0;}
 [data-theme="dark"] .sticky-board.zoomed-out{background-color:var(--bg);}
 .sticky-canvas{position:absolute;left:0;top:0;width:0;height:0;transform-origin:0 0;}
 .sticky-zoom{display:flex;align-items:center;gap:3px;}
+.sticky-links{position:absolute;left:0;top:0;overflow:visible;z-index:0;pointer-events:none;}
+.sl-line{fill:none;stroke:var(--muted);stroke-width:2.2;stroke-linecap:round;}
+.sl-line.sel{stroke:var(--primary);stroke-width:3;}
+.sl-line.sl-temp{stroke:var(--primary);stroke-dasharray:6 5;}
+.sl-hit{fill:none;stroke:transparent;stroke-width:16;pointer-events:stroke;cursor:pointer;}
+.sl-arrow{fill:var(--muted);} .sl-arrow-sel{fill:var(--primary);}
+.sticky-link-del{position:absolute;transform:translate(-50%,-50%);z-index:99999;border:none;border-radius:50%;width:24px;height:24px;background:var(--primary);color:#fff;font-size:0.75rem;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.25);}
+.sticky-link-handle{position:absolute;right:-8px;top:50%;width:14px;height:14px;margin-top:-7px;border-radius:50%;background:var(--primary);border:2px solid #fff;cursor:crosshair;opacity:0;transition:opacity .12s;touch-action:none;box-shadow:0 1px 4px rgba(0,0,0,.3);}
+.sticky-note:hover .sticky-link-handle{opacity:1;}
+.sticky-note.link-target,.sticky-note.link-src{box-shadow:0 0 0 3px var(--primary),0 10px 24px rgba(0,0,0,.18);}
+.sticky-board.linking .sticky-note{cursor:crosshair;}
+.sticky-board.linking .sticky-note *{pointer-events:none;}
+#sticky-link-btn.on{background:var(--primary);color:#fff;}
 .sticky-zoom button{min-width:26px;}
 #sticky-zoom-label{min-width:52px;font-variant-numeric:tabular-nums;}
 .sticky-note{position:absolute;width:190px;min-height:170px;border-radius:4px;box-shadow:0 2px 6px rgba(0,0,0,.18),0 8px 18px rgba(0,0,0,.08);display:flex;flex-direction:column;}
@@ -855,9 +868,10 @@ ZB 교체 둘</textarea>
       <div class="sticky-wrap">
         <div class="sticky-toolbar">
           <strong style="font-size:1.05rem;">🗒️ 메모 보드</strong>
-          <span class="sticky-hint">더블클릭: 추가 · 스크롤: 확대/축소 · 빈 곳 드래그: 화면 이동 · 포스트잇 윗부분 드래그: 옮기기</span>
+          <span class="sticky-hint" title="더블클릭: 추가 · 휠: 확대/축소 · 빈 곳 드래그: 화면 이동 · 윗부분 드래그: 옮기기 · 오른쪽 ● 끌어서 다른 포스트잇에 놓기: 화살표 · 화살표 클릭 후 Delete: 삭제">더블클릭 추가 · 휠 확대/축소 · ● 끌어서 화살표</span>
           <span style="flex:1"></span>
           <span class="sticky-zoom"><button class="btn-sm" onclick="stickyZoomBy(1/1.2)" title="축소">−</button><button class="btn-sm" id="sticky-zoom-label" onclick="stickyZoomReset()" title="100%로">100%</button><button class="btn-sm" onclick="stickyZoomBy(1.2)" title="확대">+</button><button class="btn-sm" onclick="stickyFitAll()" title="모든 포스트잇이 보이게">전체 보기</button></span>
+          <button class="btn-sm" id="sticky-link-btn" onclick="toggleStickyLinkMode()" title="포스트잇 두 개를 차례로 클릭해서 화살표 연결 (Esc로 끝)">↗ 화살표 연결</button>
           <span id="sticky-palette" class="sticky-palette"></span>
           <button class="btn-sm sticky-add" onclick="addStickyNote()">+ 포스트잇</button>
           <button class="btn-sm" style="background:var(--bg);color:var(--muted);" onclick="toggleOldDailyMemos()" id="old-memo-toggle">📅 이전 날짜별 메모</button>
@@ -1540,7 +1554,7 @@ let _saveTimer=null, _saveInFlight=false, _savePending=false;
 function buildPayload(){
   const raw = {
     projects, tasks, weeklyLogs, trash, completedProjects,
-    repeatTasks, recurringMeetings, cancelledMeetings, outlookSync, calMemos, taskTags, quickLinks, customHolidays, dailyPlans, dailyMemos, stickyNotes,
+    repeatTasks, recurringMeetings, cancelledMeetings, outlookSync, calMemos, taskTags, quickLinks, customHolidays, dailyPlans, dailyMemos, stickyNotes, stickyLinks,
     sidebarNote: document.getElementById('sidebar-note')?.value || '',
     updatedAt: new Date().toISOString()
   };
@@ -1631,6 +1645,7 @@ function applyData(data){
   dailyPlans        = data.dailyPlans        || dailyPlans;
   dailyMemos        = normalizeDailyMemos(data.dailyMemos);
   stickyNotes       = Array.isArray(data.stickyNotes) ? data.stickyNotes : stickyNotes;
+  stickyLinks       = Array.isArray(data.stickyLinks) ? data.stickyLinks : stickyLinks;
   dailyMemoUndo     = null;
   if(typeof data.sidebarNote==='string'){
     const noteEl=document.getElementById('sidebar-note');
@@ -1976,6 +1991,7 @@ function restoreFromFile(file){
       dailyPlans = data.dailyPlans || {};
       dailyMemos = normalizeDailyMemos(data.dailyMemos);
       stickyNotes = Array.isArray(data.stickyNotes) ? data.stickyNotes : [];
+      stickyLinks = Array.isArray(data.stickyLinks) ? data.stickyLinks : [];
       dailyMemoUndo = null;
       const noteEl = document.getElementById('sidebar-note');
       if (noteEl && typeof data.sidebarNote==='string') noteEl.value = data.sidebarNote;
@@ -2922,6 +2938,7 @@ function isStickyBackground(t){ return t&&(t.id==='sticky-board'||t.id==='sticky
 function wireStickyBoard(){
   const board=document.getElementById('sticky-board'); if(!board||board.dataset.wired) return;
   board.dataset.wired='1';
+  board.addEventListener('pointerdown',stickyLinkModeClick,true);
   board.addEventListener('wheel',e=>{
     e.preventDefault();
     const r=board.getBoundingClientRect();
@@ -2930,6 +2947,7 @@ function wireStickyBoard(){
   },{passive:false});
   board.addEventListener('pointerdown',e=>{
     if(e.button!==0||!isStickyBackground(e.target)) return;
+    if(stickyLinkSel!=null){ stickyLinkSel=null; drawStickyLinks(); }
     if(document.activeElement&&board.contains(document.activeElement)) document.activeElement.blur();
     const sx=e.clientX, sy=e.clientY, ox=stickyView.x, oy=stickyView.y;
     try{ board.setPointerCapture(e.pointerId); }catch(_){}
@@ -2958,10 +2976,132 @@ function stickyBoardDblClick(e){
   const p=stickyScreenToBoard(e.clientX,e.clientY);
   addStickyNote(p.x-95,p.y-20);
 }
+/* 화살표 연결: stickyLinks = [{id,from,to}] (from → to) */
+let stickyLinks=[];
+let stickyLinkSel=null, stickyLinkMode=false, stickyLinkSrc=null;
+const SVG_NS='http://www.w3.org/2000/svg';
+const sameId=(a,b)=>String(a)===String(b);
+function stickyNoteBox(id){
+  const n=stickyNotes.find(x=>sameId(x.id,id)); if(!n) return null;
+  const el=document.querySelector(`#sticky-canvas .sticky-note[data-id="${n.id}"]`);
+  return {x:n.x,y:n.y,w:el?el.offsetWidth:190,h:el?el.offsetHeight:170};
+}
+// 두 상자의 가까운 변끼리 곡선으로 잇는다
+function stickyLinkPath(a,b){
+  const ax=a.x+a.w/2, ay=a.y+a.h/2, bx=b.x+b.w/2, by=b.y+b.h/2, dx=bx-ax, dy=by-ay;
+  let p1,p2,n1,n2;
+  if(Math.abs(dx)/((a.w+b.w)/2+1) >= Math.abs(dy)/((a.h+b.h)/2+1)){
+    const sx=dx>=0?1:-1; p1={x:ax+sx*a.w/2,y:ay}; p2={x:bx-sx*(b.w/2+2),y:by}; n1={x:sx,y:0}; n2={x:-sx,y:0};
+  }else{
+    const sy=dy>=0?1:-1; p1={x:ax,y:ay+sy*a.h/2}; p2={x:bx,y:by-sy*(b.h/2+2)}; n1={x:0,y:sy}; n2={x:0,y:-sy};
+  }
+  const c=Math.max(30,Math.min(160,Math.hypot(p2.x-p1.x,p2.y-p1.y)*0.45));
+  const c1={x:p1.x+n1.x*c,y:p1.y+n1.y*c}, c2={x:p2.x+n2.x*c,y:p2.y+n2.y*c};
+  return {d:`M${p1.x},${p1.y} C${c1.x},${c1.y} ${c2.x},${c2.y} ${p2.x},${p2.y}`,
+          mid:{x:(p1.x+3*c1.x+3*c2.x+p2.x)/8,y:(p1.y+3*c1.y+3*c2.y+p2.y)/8}};
+}
+function ensureStickyLinkLayer(){
+  const cv=document.getElementById('sticky-canvas'); if(!cv) return null;
+  let svg=document.getElementById('sticky-links');
+  if(!svg){
+    svg=document.createElementNS(SVG_NS,'svg'); svg.id='sticky-links'; svg.setAttribute('class','sticky-links'); svg.setAttribute('width','1'); svg.setAttribute('height','1');
+    const defs=document.createElementNS(SVG_NS,'defs');
+    [['sl-arrow','sl-arrow'],['sl-arrow-sel','sl-arrow-sel']].forEach(([id,cls])=>{
+      const m=document.createElementNS(SVG_NS,'marker');
+      [['id',id],['viewBox','0 0 10 10'],['refX','9'],['refY','5'],['markerWidth','12'],['markerHeight','12'],['markerUnits','userSpaceOnUse'],['orient','auto']].forEach(([k,v])=>m.setAttribute(k,v));
+      const ph=document.createElementNS(SVG_NS,'path'); ph.setAttribute('d','M0,0 L10,5 L0,10 z'); ph.setAttribute('class',cls);
+      m.appendChild(ph); defs.appendChild(m);
+    });
+    const g=document.createElementNS(SVG_NS,'g'); g.id='sticky-links-g';
+    svg.append(defs,g); cv.prepend(svg);
+  }
+  return svg;
+}
+function drawStickyLinks(){
+  const svg=ensureStickyLinkLayer(); if(!svg) return;
+  const g=document.getElementById('sticky-links-g'); g.textContent='';
+  document.querySelectorAll('#sticky-canvas .sticky-link-del').forEach(x=>x.remove());
+  stickyLinks.forEach(l=>{
+    const a=stickyNoteBox(l.from), b=stickyNoteBox(l.to); if(!a||!b) return;
+    const {d,mid}=stickyLinkPath(a,b), sel=sameId(l.id,stickyLinkSel);
+    const hit=document.createElementNS(SVG_NS,'path'); hit.setAttribute('d',d); hit.setAttribute('class','sl-hit');
+    hit.addEventListener('pointerdown',e=>{ e.stopPropagation(); stickyLinkSel=l.id; drawStickyLinks(); });
+    const line=document.createElementNS(SVG_NS,'path'); line.setAttribute('d',d); line.setAttribute('class','sl-line'+(sel?' sel':''));
+    line.setAttribute('marker-end',`url(#${sel?'sl-arrow-sel':'sl-arrow'})`);
+    g.append(line,hit);
+    if(sel){
+      const del=document.createElement('button'); del.type='button'; del.className='sticky-link-del'; del.textContent='✕'; del.title='화살표 삭제 (Delete)';
+      del.style.left=mid.x+'px'; del.style.top=mid.y+'px';
+      del.addEventListener('pointerdown',e=>e.stopPropagation());
+      del.onclick=()=>deleteStickyLink(l.id);
+      document.getElementById('sticky-canvas').appendChild(del);
+    }
+  });
+}
+function addStickyLink(from,to){
+  if(sameId(from,to)) return;
+  if(stickyLinks.some(l=>(sameId(l.from,from)&&sameId(l.to,to))||(sameId(l.from,to)&&sameId(l.to,from)))) return;
+  stickyLinks.push({id:Date.now()+Math.floor(Math.random()*1000),from,to});
+  saveData(); drawStickyLinks();
+}
+function deleteStickyLink(id){
+  stickyLinks=stickyLinks.filter(l=>!sameId(l.id,id)); stickyLinkSel=null;
+  saveData(); drawStickyLinks();
+}
+// 오른쪽 ● 핸들을 끌어서 다른 포스트잇 위에 놓기
+function startStickyLinkDrag(e,id){
+  if(e.button!==0) return;
+  e.stopPropagation(); e.preventDefault();
+  const h=e.currentTarget; try{ h.setPointerCapture(e.pointerId); }catch(_){}
+  const svg=ensureStickyLinkLayer(), g=document.getElementById('sticky-links-g');
+  const tmp=document.createElementNS(SVG_NS,'path'); tmp.setAttribute('class','sl-line sl-temp'); tmp.setAttribute('marker-end','url(#sl-arrow-sel)'); g.appendChild(tmp);
+  let target=null;
+  const clearMark=()=>document.querySelectorAll('.sticky-note.link-target').forEach(x=>x.classList.remove('link-target'));
+  const move=ev=>{
+    const over=document.elementFromPoint(ev.clientX,ev.clientY)?.closest?.('#sticky-canvas .sticky-note');
+    target=(over&&!sameId(over.dataset.id,id))?over.dataset.id:null;
+    clearMark(); if(target) over.classList.add('link-target');
+    const p=stickyScreenToBoard(ev.clientX,ev.clientY), a=stickyNoteBox(id);
+    const b=target?stickyNoteBox(target):{x:p.x,y:p.y,w:0,h:0};
+    if(a&&b) tmp.setAttribute('d',stickyLinkPath(a,b).d);
+  };
+  const up=()=>{
+    h.removeEventListener('pointermove',move); h.removeEventListener('pointerup',up); h.removeEventListener('pointercancel',up);
+    tmp.remove(); clearMark();
+    if(target){ const t=stickyNotes.find(x=>sameId(x.id,target)); if(t) addStickyLink(id,t.id); }
+  };
+  h.addEventListener('pointermove',move); h.addEventListener('pointerup',up); h.addEventListener('pointercancel',up);
+}
+// 툴바 "화살표 연결": 포스트잇 두 개를 차례로 클릭
+function toggleStickyLinkMode(on){
+  stickyLinkMode=on==null?!stickyLinkMode:on; stickyLinkSrc=null;
+  document.querySelectorAll('.sticky-note.link-src').forEach(x=>x.classList.remove('link-src'));
+  document.getElementById('sticky-board')?.classList.toggle('linking',stickyLinkMode);
+  const btn=document.getElementById('sticky-link-btn');
+  if(btn){ btn.classList.toggle('on',stickyLinkMode); btn.textContent=stickyLinkMode?'↗ 연결 중… (Esc 끝)':'↗ 화살표 연결'; }
+  if(stickyLinkMode&&document.activeElement&&document.getElementById('sticky-board')?.contains(document.activeElement)) document.activeElement.blur();
+}
+function stickyLinkModeClick(e){
+  if(!stickyLinkMode) return;
+  const note=e.target.closest&&e.target.closest('#sticky-canvas .sticky-note'); if(!note) return;
+  e.preventDefault(); e.stopPropagation();
+  const id=stickyNotes.find(x=>sameId(x.id,note.dataset.id))?.id; if(id==null) return;
+  if(stickyLinkSrc==null){ stickyLinkSrc=id; note.classList.add('link-src'); return; }
+  document.querySelectorAll('.sticky-note.link-src').forEach(x=>x.classList.remove('link-src'));
+  if(!sameId(stickyLinkSrc,id)) addStickyLink(stickyLinkSrc,id);
+  stickyLinkSrc=null;
+}
+document.addEventListener('keydown',e=>{
+  if(currentTab!=='notes') return;
+  const typing=/^(TEXTAREA|INPUT|SELECT)$/.test(document.activeElement?.tagName||'');
+  if(e.key==='Escape'){ if(stickyLinkMode) toggleStickyLinkMode(false); if(stickyLinkSel!=null){ stickyLinkSel=null; drawStickyLinks(); } }
+  else if((e.key==='Delete'||e.key==='Backspace')&&stickyLinkSel!=null&&!typing){ e.preventDefault(); deleteStickyLink(stickyLinkSel); }
+});
 function deleteStickyNote(id){
   const n=stickyNotes.find(x=>x.id===id); if(!n) return;
   if(n.text.trim()&&!confirm('이 포스트잇을 삭제할까요?')) return;
   stickyNotes=stickyNotes.filter(x=>x.id!==id);
+  stickyLinks=stickyLinks.filter(l=>!sameId(l.from,id)&&!sameId(l.to,id));
   saveData();
   renderStickyBoard(true);
 }
@@ -2979,7 +3119,7 @@ function startStickyDrag(e,id){
   n.z=stickyTopZ()+1; el.style.zIndex=n.z;
   const sx=e.clientX, sy=e.clientY, ox=n.x, oy=n.y;
   try{ grip.setPointerCapture(e.pointerId); }catch(_){}
-  const move=ev=>{ n.x=Math.round(ox+(ev.clientX-sx)/stickyView.zoom); n.y=Math.round(oy+(ev.clientY-sy)/stickyView.zoom); el.style.left=n.x+'px'; el.style.top=n.y+'px'; };
+  const move=ev=>{ n.x=Math.round(ox+(ev.clientX-sx)/stickyView.zoom); n.y=Math.round(oy+(ev.clientY-sy)/stickyView.zoom); el.style.left=n.x+'px'; el.style.top=n.y+'px'; drawStickyLinks(); };
   const up=()=>{ grip.removeEventListener('pointermove',move); grip.removeEventListener('pointerup',up); grip.removeEventListener('pointercancel',up); n.updatedAt=new Date().toISOString(); saveData(); };
   grip.addEventListener('pointermove',move);
   grip.addEventListener('pointerup',up);
@@ -3019,13 +3159,17 @@ function renderStickyBoard(force){
     const col=document.createElement('button'); col.type='button'; col.textContent='🎨'; col.title='색상 바꾸기'; col.onclick=()=>cycleStickyColor(n.id);
     const del=document.createElement('button'); del.type='button'; del.textContent='✕'; del.title='삭제'; del.onclick=()=>deleteStickyNote(n.id);
     grip.append(col,del);
+    const hd=document.createElement('div'); hd.className='sticky-link-handle'; hd.title='끌어서 다른 포스트잇에 놓으면 화살표 연결';
+    hd.addEventListener('pointerdown',e=>startStickyLinkDrag(e,n.id));
     const ta=document.createElement('textarea'); ta.className='sticky-text'; ta.value=n.text; ta.placeholder='메모 입력'; ta.spellcheck=false;
-    ta.addEventListener('input',()=>{ n.text=ta.value; n.updatedAt=new Date().toISOString(); fitStickyText(ta); stickySaveSoon(); });
+    ta.addEventListener('input',()=>{ n.text=ta.value; n.updatedAt=new Date().toISOString(); fitStickyText(ta); drawStickyLinks(); stickySaveSoon(); });
     ta.addEventListener('focus',()=>{ n.z=stickyTopZ()+1; el.style.zIndex=n.z; });
-    el.append(grip,ta);
+    el.append(grip,ta,hd);
     cv.appendChild(el);
     fitStickyText(ta);
   });
+  if(stickyLinkMode) document.getElementById('sticky-board').classList.add('linking');
+  drawStickyLinks();
   applyStickyView();
 }
 function toggleOldDailyMemos(){
