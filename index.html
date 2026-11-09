@@ -262,6 +262,37 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 .cal-nav-btn{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:4px 11px;cursor:pointer;font-size:0.82rem;}
 .cal-nav-btn:hover{background:var(--border);}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
+.memo-links{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-top:5px;}
+.memo-links:empty{display:none;}
+.memo-links .ml-ico{font-size:0.75rem;}
+.memo-links a{font-size:0.72rem;color:var(--primary-text);background:var(--c-eef2ff);border:1px solid var(--c-c7d2fe);border-radius:5px;padding:2px 8px;text-decoration:none;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.memo-links a:hover{text-decoration:underline;}
+.cal-layout{display:grid;grid-template-columns:270px minmax(0,1fr);gap:11px;align-items:start;}
+@media(max-width:900px){.cal-layout{grid-template-columns:1fr;}}
+.cal-day-panel{position:sticky;top:8px;gap:8px;padding:12px 12px 14px;}
+.cdp-head{display:flex;align-items:center;gap:6px;}
+.cdp-head .cdp-title{flex:1;text-align:center;font-weight:800;font-size:0.95rem;}
+.cdp-head .cdp-title small{display:block;font-size:0.66rem;font-weight:600;color:var(--muted);}
+.cdp-nav{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:0.75rem;}
+.cdp-actions{display:flex;gap:6px;justify-content:center;}
+.cdp-sum{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;}
+.cdp-chip{font-size:0.72rem;font-weight:700;border-radius:999px;padding:3px 10px;background:#a855f71f;color:var(--cdp-mt);}
+.cdp-chip.free{background:#10b9811f;color:var(--cdp-free);}
+.cdp-extra{font-size:0.68rem;color:var(--muted);display:flex;flex-direction:column;gap:3px;}
+.cdp-extra div{cursor:pointer;border-left:2px solid #a855f7;padding:1px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cdp-grid{position:relative;margin-top:4px;}
+.cdp-hour{position:absolute;left:0;right:0;border-top:1px solid var(--border);}
+.cdp-hour span{position:absolute;left:0;top:-7px;font-size:0.62rem;color:var(--muted);background:var(--card);padding-right:4px;font-variant-numeric:tabular-nums;}
+.cdp-half{position:absolute;left:42px;right:0;border-top:1px dashed var(--border);opacity:.6;}
+.cdp-mt{position:absolute;border-radius:5px;background:#a855f72a;border-left:3px solid #a855f7;color:var(--cdp-mt);padding:2px 5px;font-size:0.68rem;line-height:1.25;overflow:hidden;cursor:pointer;box-sizing:border-box;}
+.cdp-mt:hover{background:#a855f744;}
+.cdp-mt b{display:block;font-size:0.6rem;font-weight:700;opacity:.85;font-variant-numeric:tabular-nums;}
+.cdp-now{position:absolute;left:38px;right:0;border-top:2px solid #ef4444;z-index:3;pointer-events:none;}
+.cdp-now::before{content:'';position:absolute;left:-4px;top:-5px;width:8px;height:8px;border-radius:50%;background:#ef4444;}
+.cdp-empty{position:absolute;left:46px;right:0;top:40%;text-align:center;font-size:0.75rem;color:var(--muted);}
+.cal-cell.sel-cell{outline:2px solid var(--primary);outline-offset:-2px;}
+:root{--cdp-mt:#7e22ce;--cdp-free:#047857;}
+[data-theme="dark"]{--cdp-mt:#e9d5ff;--cdp-free:#6ee7b7;}
 .cal-head{text-align:center;font-size:0.7rem;font-weight:700;color:var(--muted);padding:3px 0;}
 .cal-cell{min-height:74px;border:1px solid var(--border);border-radius:4px;padding:3px 4px;background:var(--card);overflow:hidden;}
 .cal-cell.other{background:var(--c-f8fafc);}
@@ -929,7 +960,9 @@ ZB 교체 둘</textarea>
 
     <!-- 캘린더 (자유 메모) -->
     <div id="tab-calendar" style="display:none;">
-      <div class="card">
+      <div class="cal-layout">
+      <div class="card cal-day-panel" id="cal-day-panel"></div>
+      <div class="card" style="min-width:0;">
         <div class="cal-nav" style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;">
           <button class="cal-nav-btn" onclick="calMove(-1)" style="justify-self:start;">◀</button>
           <div class="cal-title-wrap">
@@ -941,10 +974,11 @@ ZB 교체 둘</textarea>
             <button class="btn-sm" style="background:var(--c-fef9c3);color:var(--x-a16207);padding:6px 11px;white-space:nowrap;" onclick="openHolidayManager()">🗓️ 휴무일 관리</button>
           </div>
         </div>
-        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px;">📝 날짜를 클릭해서 메모를 추가하세요 (프로젝트 연결 선택 가능)</div>
+        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px;">📝 날짜 클릭: 왼쪽에 그날 일정 · 더블클릭: 메모 추가 (프로젝트 연결 선택 가능)</div>
         <div id="cal-outlook-status" style="font-size:0.68rem;color:var(--muted);margin-bottom:4px;"></div>
         <div class="cal-grid" id="cal-head-row"></div>
         <div class="cal-grid" id="cal-body"></div>
+      </div>
       </div>
       <div class="card" style="margin-top:11px;">
         <strong style="font-size:0.88rem;">📋 이번 달 메모 목록</strong>
@@ -3575,6 +3609,118 @@ function findCalMemoForDate(dateKey){
   return null;
 }
 
+/* 캘린더 왼쪽: 선택한 날짜 07:00~19:00 미팅 타임라인 (기본은 오늘) */
+let calSelDate=TODAY_STR;
+const CDP_START=7, CDP_END=19, CDP_HOUR_PX=42, CDP_LABEL_W=44;
+const cdpKey=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const cdpHHMM=m=>`${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
+function calDayMeetings(dateKey){
+  const list=weeklyLogs.filter(l=>l.type==='meeting'&&l.date===dateKey)
+    .map(l=>({title:l.task||'(제목 없음)',startTime:l.startTime||'',endTime:l.endTime||'',hours:+l.hours||0,logId:l.id}));
+  if(dateKey>=TODAY_STR) (outlookSync.upcoming||[]).forEach(e=>{
+    if(e.date===dateKey&&!list.some(x=>x.title===e.title)&&!cancelledMeetings.some(x=>x.date===dateKey&&x.task===e.title))
+      list.push({title:e.title||'(제목 없음)',startTime:e.startTime||'',endTime:e.endTime||'',hours:+e.hours||0,upcoming:e});
+  });
+  return list;
+}
+function openCalDayMeeting(m){
+  if(m.logId!=null){ openMeetingDetail(m.logId); return; }
+  const e=m.upcoming;
+  showMeetingDetail({task:e.title,date:e.date,startTime:e.startTime,endTime:e.endTime,hours:e.hours,outlookId:e.id});
+}
+function calSelectDay(dateKey){
+  calSelDate=dateKey;
+  document.querySelectorAll('#cal-body .cal-cell[data-date]').forEach(c=>c.classList.toggle('sel-cell',c.dataset.date===dateKey));
+  renderCalDayPanel();
+}
+function calDayStep(n){
+  const d=new Date(calSelDate+'T00:00:00'); d.setDate(d.getDate()+n);
+  calSelDate=cdpKey(d);
+  if(d.getFullYear()!==calYear||d.getMonth()!==calMonth){ calYear=d.getFullYear(); calMonth=d.getMonth(); renderCalendar(); }
+  else calSelectDay(calSelDate);
+}
+function calDayToday(){ calSelDate=TODAY_STR; calYear=TODAY.getFullYear(); calMonth=TODAY.getMonth(); renderCalendar(); }
+function renderCalDayPanel(){
+  const box=document.getElementById('cal-day-panel'); if(!box) return;
+  const d=new Date(calSelDate+'T00:00:00'), isToday=calSelDate===TODAY_STR;
+  const mk=(tag,cls,text)=>{ const e=document.createElement(tag); if(cls) e.className=cls; if(text!=null) e.textContent=text; return e; };
+  const S=CDP_START*60, E=CDP_END*60;
+  const all=calDayMeetings(calSelDate);
+  const timed=all.filter(m=>/^\d{1,2}:\d{2}/.test(m.startTime)).map(m=>{
+    const s=tlToMin(m.startTime);
+    let e=/^\d{1,2}:\d{2}/.test(m.endTime)?tlToMin(m.endTime):s+Math.round((m.hours||0.5)*60);
+    if(!(e>s)) e=s+30;
+    return {...m,_s:s,_e:e};
+  }).sort((a,b)=>a._s-b._s||a._e-b._e);
+  const untimed=all.filter(m=>!/^\d{1,2}:\d{2}/.test(m.startTime));
+  const inRange=timed.filter(m=>m._e>S&&m._s<E), outRange=timed.filter(m=>!(m._e>S&&m._s<E));
+  // 겹치는 시간을 합쳐서 실제 미팅 시간 계산 (07~19시 안)
+  let busy=0,cur=null;
+  inRange.forEach(m=>{ const s=Math.max(S,m._s), e=Math.min(E,m._e); if(!cur||s>cur[1]){ if(cur) busy+=cur[1]-cur[0]; cur=[s,e]; } else cur[1]=Math.max(cur[1],e); });
+  if(cur) busy+=cur[1]-cur[0];
+  const fmtH=min=>{ const h=min/60; return (Math.round(h*10)/10)+'h'; };
+
+  box.textContent='';
+  const head=mk('div','cdp-head');
+  const prev=mk('button','cdp-nav','◀'); prev.title='전날'; prev.onclick=()=>calDayStep(-1);
+  const next=mk('button','cdp-nav','▶'); next.title='다음날'; next.onclick=()=>calDayStep(1);
+  const ttl=mk('div','cdp-title',`${d.getMonth()+1}/${d.getDate()} (${'일월화수목금토'[d.getDay()]})`);
+  ttl.appendChild(mk('small','',isToday?'오늘 · 07:00 ~ 19:00':'07:00 ~ 19:00'));
+  head.append(prev,ttl,next); box.appendChild(head);
+
+  const act=mk('div','cdp-actions');
+  if(!isToday){ const b=mk('button','btn-sm','오늘로'); b.onclick=calDayToday; act.appendChild(b); }
+  const mb=mk('button','btn-sm','📝 이 날 메모'); mb.onclick=()=>openCalMemo(calSelDate); act.appendChild(mb);
+  box.appendChild(act);
+
+  const sum=mk('div','cdp-sum');
+  sum.appendChild(mk('span','cdp-chip',`미팅 ${inRange.length+outRange.length+untimed.length}건 · ${fmtH(busy)}`));
+  sum.appendChild(mk('span','cdp-chip free',`빈 시간 ${fmtH(Math.max(0,(E-S)-busy))}`));
+  box.appendChild(sum);
+
+  if(outRange.length||untimed.length){
+    const ex=mk('div','cdp-extra');
+    outRange.forEach(m=>{ const r=mk('div','',`${cdpHHMM(m._s)} ${m.title}`); r.title='07~19시 밖 · '+m.title; r.onclick=()=>openCalDayMeeting(m); ex.appendChild(r); });
+    untimed.forEach(m=>{ const r=mk('div','',`시간 미정 · ${m.title}`); r.title=m.title; r.onclick=()=>openCalDayMeeting(m); ex.appendChild(r); });
+    box.appendChild(ex);
+  }
+
+  const grid=mk('div','cdp-grid'); grid.style.height=((CDP_END-CDP_START)*CDP_HOUR_PX+8)+'px';
+  for(let h=CDP_START;h<=CDP_END;h++){
+    const ln=mk('div','cdp-hour'); ln.style.top=((h-CDP_START)*CDP_HOUR_PX+6)+'px';
+    ln.appendChild(mk('span','',`${String(h).padStart(2,'0')}:00`)); grid.appendChild(ln);
+    if(h<CDP_END){ const hf=mk('div','cdp-half'); hf.style.top=((h-CDP_START)*CDP_HOUR_PX+6+CDP_HOUR_PX/2)+'px'; grid.appendChild(hf); }
+  }
+  // 겹치는 미팅은 옆으로 나눠서 표시
+  const groups=[]; let g=null, gEnd=-1;
+  inRange.forEach(m=>{ if(!g||m._s>=gEnd){ g=[]; groups.push(g); gEnd=m._e; } else gEnd=Math.max(gEnd,m._e); g.push(m); });
+  groups.forEach(grp=>{
+    const colEnd=[];
+    grp.forEach(m=>{ let c=colEnd.findIndex(e=>e<=m._s); if(c<0){ c=colEnd.length; colEnd.push(0); } colEnd[c]=m._e; m._col=c; });
+    const n=colEnd.length;
+    grp.forEach(m=>{
+      const s=Math.max(S,m._s), e=Math.min(E,m._e);
+      const el=mk('div','cdp-mt');
+      el.style.top=((s-S)/60*CDP_HOUR_PX+6)+'px';
+      el.style.height=Math.max(16,(e-s)/60*CDP_HOUR_PX-2)+'px';
+      el.style.left=`calc(${CDP_LABEL_W}px + (100% - ${CDP_LABEL_W}px) * ${m._col/n})`;
+      el.style.width=`calc((100% - ${CDP_LABEL_W}px) / ${n} - 2px)`;
+      const tm=`${cdpHHMM(m._s)}~${cdpHHMM(m._e)}`;
+      el.title=`${tm} ${m.title}`;
+      if((e-s)/60*CDP_HOUR_PX>=30) el.appendChild(mk('b','',tm));
+      el.appendChild(document.createTextNode(m.title));
+      el.onclick=()=>openCalDayMeeting(m);
+      grid.appendChild(el);
+    });
+  });
+  if(!inRange.length) grid.appendChild(mk('div','cdp-empty','이 날은 07~19시 미팅이 없어요'));
+  if(isToday){
+    const now=new Date(), nm=now.getHours()*60+now.getMinutes();
+    if(nm>=S&&nm<=E){ const nl=mk('div','cdp-now'); nl.style.top=((nm-S)/60*CDP_HOUR_PX+6)+'px'; nl.title='지금 '+cdpHHMM(nm); grid.appendChild(nl); }
+  }
+  box.appendChild(grid);
+}
+setInterval(()=>{ if(currentTab==='calendar'&&calSelDate===TODAY_STR) renderCalDayPanel(); },60000);
 function renderCalendar(){
   calMeetingRefs=[];
   document.getElementById('cal-title').textContent=`${calYear}년 ${calMonth+1}월`;
@@ -3607,7 +3753,7 @@ function renderCalendar(){
     const holidayLabel=isHoliday(dateKey)?getHolidayLabel(dateKey):null;
     const dow=cellDate.getDay();
     const isWeekend=dow===0||dow===6;
-    html+=`<div class="cal-cell ${isToday?'today-cell':''}" onclick="openCalMemo('${dateKey}')" style="cursor:pointer;${holidayLabel?'background:var(--c-fef2f2);':''}" onmouseover="this.style.background='${holidayLabel?'var(--c-fee2e2)':'var(--c-f8fafc)'}'" onmouseout="this.style.background='${holidayLabel?'var(--c-fef2f2)':''}'">
+    html+=`<div class="cal-cell ${isToday?'today-cell':''} ${dateKey===calSelDate?'sel-cell':''}" data-date="${dateKey}" onclick="calSelectDay('${dateKey}')" ondblclick="openCalMemo('${dateKey}')" title="클릭: 왼쪽에 일정 보기 · 더블클릭: 메모" style="cursor:pointer;${holidayLabel?'background:var(--c-fef2f2);':''}" onmouseover="this.style.background='${holidayLabel?'var(--c-fee2e2)':'var(--c-f8fafc)'}'" onmouseout="this.style.background='${holidayLabel?'var(--c-fef2f2)':''}'">
       <div class="cal-day" style="display:flex;align-items:center;gap:3px;">
         ${isToday?`<span class="today-num">${day}</span>`:`<span style="${holidayLabel||isWeekend?'color:#ef4444;':''}">${day}</span>`}
         ${isMonday?`<span style="font-size:0.58rem;color:var(--muted);">W${week}</span>`:''}
@@ -3621,6 +3767,7 @@ function renderCalendar(){
   if(rem) for(let i=1;i<=7-rem;i++) html+=`<div class="cal-cell other"><div class="cal-day" style="color:#cbd5e1">${i}</div></div>`;
   document.getElementById('cal-body').innerHTML=html;
   renderCalMemoList();
+  renderCalDayPanel();
 }
 // 캘린더 칸의 미팅: 기록된 미팅 + 앞으로 예정된 Outlook 일정 (취소한 미팅은 제외)
 function calMeetingsForDate(dateKey){
@@ -4864,13 +5011,52 @@ function memoPanelHTML(t, ns, placeholder){
     </div>
     <textarea id="task-memo-ta-${ns}${t.id}" placeholder="${placeholder||'진행 메모 (예: 80%인 이유, 남은 작업...)'}"
       onmousedown="event.stopPropagation()" ondblclick="event.stopPropagation()"
-      oninput="autoGrowMemo(this)"
+      oninput="autoGrowMemo(this);updateMemoLinks(this,'${ns}${t.id}')" onclick="memoCtrlClick(event,this)" title="Ctrl+클릭: 링크 열기"
       style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:0.82rem;resize:vertical;min-height:44px;overflow-y:hidden;font-family:inherit;line-height:1.5;background:var(--card);color:${readable(cur)};font-weight:${t.memoStyle?.bold?'700':'400'};"
       onpaste="handleMemoPaste(event, ${t.id}, '${ns}')"
       onblur="saveTaskMemo(${t.id},this.value,'${ns}')">${t.memo||''}</textarea>
+    <div id="task-memo-links-${ns}${t.id}" class="memo-links">${memoLinksHTML(t.memo)}</div>
     <div id="task-memo-imgs-${ns}${t.id}" class="memo-imgs">${memoImagesHTML(t, ns)}</div>
     <div id="task-memo-time-${ns}${t.id}" style="margin-top:4px;font-size:0.7rem;color:var(--muted);text-align:right;">${memoStampLabel(t)}</div>
   </div>`;
+}
+/* 메모 속 링크: 메모칸 아래에 눌러서 여는 링크 목록 + 메모칸에서 Ctrl+클릭 */
+function memoFindLinks(text){
+  const out=[];
+  String(text||'').replace(/https?:\/\/[^\s<>"'`]+/gi,u=>{
+    u=u.replace(/[.,;:!?。、]+$/,'');
+    while(/[)\]}]$/.test(u)){                       // 짝이 안 맞는 닫는 괄호는 주소에서 뺀다
+      const c=u.slice(-1), o={')':'(',']':'[','}':'{'}[c];
+      if(u.split(o).length>=u.split(c).length) break;
+      u=u.slice(0,-1);
+    }
+    try{ const x=new URL(u); if(/^https?:$/.test(x.protocol)&&!out.includes(u)) out.push(u); }catch(_){}
+    return u;
+  });
+  return out;
+}
+function memoLinkLabel(u){
+  let l=u;
+  try{ const x=new URL(u); l=x.hostname.replace(/^www\./,'')+decodeURIComponent(x.pathname).replace(/\/$/,''); }catch(_){}
+  return l.length>70?l.slice(0,40)+'…'+l.slice(-26):l;
+}
+function memoLinksHTML(memo){
+  const links=memoFindLinks(memo); if(!links.length) return '';
+  return `<span class="ml-ico">🔗</span>`+links.map(u=>
+    `<a href="${escAttr(u)}" target="_blank" rel="noopener noreferrer" title="${escAttr(u)}" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()">${escAttr(memoLinkLabel(u))}</a>`).join('');
+}
+function updateMemoLinks(ta,key){
+  const box=document.getElementById('task-memo-links-'+key); if(!box) return;
+  const html=memoLinksHTML(ta.value); if(box.innerHTML!==html) box.innerHTML=html;
+}
+function memoCtrlClick(e,ta){
+  if(!(e.ctrlKey||e.metaKey)) return;
+  const pos=ta.selectionStart, v=ta.value;
+  let a=pos, b=pos;
+  while(a>0&&!/\s/.test(v[a-1])) a--;
+  while(b<v.length&&!/\s/.test(v[b])) b++;
+  const hit=memoFindLinks(v.slice(a,b))[0];
+  if(hit){ e.preventDefault(); window.open(hit,'_blank','noopener'); }
 }
 function updateActualHours(id, val){
   const h=parseFloat(val);
