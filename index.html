@@ -65,7 +65,14 @@ header h1{font-size:1rem;font-weight:700;white-space:nowrap;flex-shrink:0;}
 .sticky-swatch{width:18px;height:18px;border-radius:4px;border:1px solid rgba(0,0,0,.15);cursor:pointer;padding:0;}
 .sticky-swatch.on{outline:2px solid var(--primary);outline-offset:1px;}
 .sticky-add{background:var(--primary);color:white;font-weight:700;}
-.sticky-board{position:relative;min-height:620px;border-radius:10px;overflow:auto;background-color:var(--bg);background-image:radial-gradient(var(--c-cbd5e1) 1.2px,transparent 1.3px);background-size:22px 22px;}
+.sticky-board{position:relative;height:calc(100vh - 230px);min-height:460px;border-radius:10px;overflow:hidden;cursor:grab;touch-action:none;background-color:var(--bg);background-image:radial-gradient(var(--c-cbd5e1) 1.2px,transparent 1.3px);background-size:22px 22px;transition:background-color .25s;}
+.sticky-board.panning{cursor:grabbing;}
+.sticky-board.zoomed-out{background-image:none;background-color:#ffffff;}
+[data-theme="dark"] .sticky-board.zoomed-out{background-color:var(--bg);}
+.sticky-canvas{position:absolute;left:0;top:0;width:0;height:0;transform-origin:0 0;}
+.sticky-zoom{display:flex;align-items:center;gap:3px;}
+.sticky-zoom button{min-width:26px;}
+#sticky-zoom-label{min-width:52px;font-variant-numeric:tabular-nums;}
 .sticky-note{position:absolute;width:190px;min-height:170px;border-radius:4px;box-shadow:0 2px 6px rgba(0,0,0,.18),0 8px 18px rgba(0,0,0,.08);display:flex;flex-direction:column;}
 .sticky-note:focus-within{box-shadow:0 0 0 2px var(--primary),0 10px 24px rgba(0,0,0,.18);}
 .sticky-grip{height:24px;cursor:grab;display:flex;align-items:center;justify-content:flex-end;gap:4px;padding:0 5px;opacity:.15;transition:opacity .12s;touch-action:none;}
@@ -848,13 +855,14 @@ ZB 교체 둘</textarea>
       <div class="sticky-wrap">
         <div class="sticky-toolbar">
           <strong style="font-size:1.05rem;">🗒️ 메모 보드</strong>
-          <span class="sticky-hint">빈 곳 더블클릭으로 추가 · 윗부분을 잡고 끌어서 이동</span>
+          <span class="sticky-hint">더블클릭: 추가 · 스크롤: 확대/축소 · 빈 곳 드래그: 화면 이동 · 포스트잇 윗부분 드래그: 옮기기</span>
           <span style="flex:1"></span>
+          <span class="sticky-zoom"><button class="btn-sm" onclick="stickyZoomBy(1/1.2)" title="축소">−</button><button class="btn-sm" id="sticky-zoom-label" onclick="stickyZoomReset()" title="100%로">100%</button><button class="btn-sm" onclick="stickyZoomBy(1.2)" title="확대">+</button><button class="btn-sm" onclick="stickyFitAll()" title="모든 포스트잇이 보이게">전체 보기</button></span>
           <span id="sticky-palette" class="sticky-palette"></span>
           <button class="btn-sm sticky-add" onclick="addStickyNote()">+ 포스트잇</button>
           <button class="btn-sm" style="background:var(--bg);color:var(--muted);" onclick="toggleOldDailyMemos()" id="old-memo-toggle">📅 이전 날짜별 메모</button>
         </div>
-        <div id="sticky-board" class="sticky-board" ondblclick="stickyBoardDblClick(event)"></div>
+        <div id="sticky-board" class="sticky-board" ondblclick="stickyBoardDblClick(event)"><div id="sticky-canvas" class="sticky-canvas"></div></div>
       </div>
       <div class="daily-memo-page" id="old-daily-memos" style="display:none;margin-top:14px;">
         <div class="daily-memo-heading">
@@ -2863,23 +2871,92 @@ let stickyColor=STICKY_COLORS[0];
 let stickySaveTimer=null;
 function stickySaveSoon(){ clearTimeout(stickySaveTimer); stickySaveTimer=setTimeout(saveData,600); }
 function stickyTopZ(){ return stickyNotes.reduce((m,n)=>Math.max(m,n.z||0),0); }
+/* 화면 이동·확대: 보드 좌표 → 화면 = pan + 좌표×zoom */
+let stickyView={zoom:1,x:0,y:0};
+try{ const v=JSON.parse(localStorage.getItem('wd-sticky-view')||'null'); if(v&&isFinite(v.zoom)&&isFinite(v.x)&&isFinite(v.y)) stickyView=v; }catch(_){}
+const STICKY_ZOOM_MIN=0.15, STICKY_ZOOM_MAX=2.5, STICKY_ZOOM_WHITE=0.6;
+let stickyViewSaveTimer=null;
+function applyStickyView(){
+  const board=document.getElementById('sticky-board'), cv=document.getElementById('sticky-canvas'); if(!board||!cv) return;
+  const {zoom,x,y}=stickyView;
+  cv.style.transform=`translate(${x}px,${y}px) scale(${zoom})`;
+  board.style.backgroundSize=`${22*zoom}px ${22*zoom}px`;
+  board.style.backgroundPosition=`${x}px ${y}px`;
+  board.classList.toggle('zoomed-out',zoom<STICKY_ZOOM_WHITE);
+  const lb=document.getElementById('sticky-zoom-label'); if(lb) lb.textContent=Math.round(zoom*100)+'%';
+  clearTimeout(stickyViewSaveTimer);
+  stickyViewSaveTimer=setTimeout(()=>{ try{ localStorage.setItem('wd-sticky-view',JSON.stringify(stickyView)); }catch(_){} },300);
+}
+// (cx,cy) = 보드 안의 화면 좌표. 그 점이 제자리에 있도록 확대/축소
+function stickyZoomAt(newZoom,cx,cy){
+  const z=Math.min(STICKY_ZOOM_MAX,Math.max(STICKY_ZOOM_MIN,newZoom)), old=stickyView.zoom;
+  stickyView.x=cx-(cx-stickyView.x)*z/old;
+  stickyView.y=cy-(cy-stickyView.y)*z/old;
+  stickyView.zoom=z;
+  applyStickyView();
+}
+function stickyZoomBy(f){
+  const board=document.getElementById('sticky-board'); if(!board) return;
+  stickyZoomAt(stickyView.zoom*f,board.clientWidth/2,board.clientHeight/2);
+}
+function stickyZoomReset(){ stickyZoomBy(1/stickyView.zoom); }
+function stickyFitAll(){
+  const board=document.getElementById('sticky-board'); if(!board) return;
+  if(!stickyNotes.length){ stickyView={zoom:1,x:0,y:0}; applyStickyView(); return; }
+  const els=[...document.querySelectorAll('#sticky-canvas .sticky-note')];
+  let x1=Infinity,y1=Infinity,x2=-Infinity,y2=-Infinity;
+  stickyNotes.forEach(n=>{
+    const el=els.find(e=>e.dataset.id==String(n.id)); const h=el?el.offsetHeight:180;
+    x1=Math.min(x1,n.x); y1=Math.min(y1,n.y); x2=Math.max(x2,n.x+190); y2=Math.max(y2,n.y+h);
+  });
+  const pad=40, W=board.clientWidth, H=board.clientHeight;
+  const z=Math.min(1,Math.max(STICKY_ZOOM_MIN,Math.min((W-pad*2)/(x2-x1),(H-pad*2)/(y2-y1))));
+  stickyView={zoom:z,x:(W-(x2-x1)*z)/2-x1*z,y:(H-(y2-y1)*z)/2-y1*z};
+  applyStickyView();
+}
+function stickyScreenToBoard(clientX,clientY){
+  const r=document.getElementById('sticky-board').getBoundingClientRect();
+  return {x:(clientX-r.left-stickyView.x)/stickyView.zoom, y:(clientY-r.top-stickyView.y)/stickyView.zoom};
+}
+function isStickyBackground(t){ return t&&(t.id==='sticky-board'||t.id==='sticky-canvas'||t.classList.contains('sticky-empty')); }
+function wireStickyBoard(){
+  const board=document.getElementById('sticky-board'); if(!board||board.dataset.wired) return;
+  board.dataset.wired='1';
+  board.addEventListener('wheel',e=>{
+    e.preventDefault();
+    const r=board.getBoundingClientRect();
+    const d=e.deltaMode===1?e.deltaY*33:e.deltaY;
+    stickyZoomAt(stickyView.zoom*Math.exp(-Math.max(-300,Math.min(300,d))*0.0015),e.clientX-r.left,e.clientY-r.top);
+  },{passive:false});
+  board.addEventListener('pointerdown',e=>{
+    if(e.button!==0||!isStickyBackground(e.target)) return;
+    if(document.activeElement&&board.contains(document.activeElement)) document.activeElement.blur();
+    const sx=e.clientX, sy=e.clientY, ox=stickyView.x, oy=stickyView.y;
+    try{ board.setPointerCapture(e.pointerId); }catch(_){}
+    board.classList.add('panning');
+    const move=ev=>{ stickyView.x=ox+ev.clientX-sx; stickyView.y=oy+ev.clientY-sy; applyStickyView(); };
+    const up=()=>{ board.removeEventListener('pointermove',move); board.removeEventListener('pointerup',up); board.removeEventListener('pointercancel',up); board.classList.remove('panning'); };
+    board.addEventListener('pointermove',move); board.addEventListener('pointerup',up); board.addEventListener('pointercancel',up);
+  });
+}
 function addStickyNote(x,y){
   const board=document.getElementById('sticky-board');
   if(x==null){
-    const n=stickyNotes.length;
-    x=(board?board.scrollLeft:0)+24+(n%6)*28; y=(board?board.scrollTop:0)+20+(n%6)*28;
+    // 지금 보이는 화면의 가운데 근처에 붙인다
+    const n=stickyNotes.length%6, W=board?board.clientWidth:600, H=board?board.clientHeight:400;
+    x=(W/2-stickyView.x)/stickyView.zoom-95+n*24; y=(H/2-stickyView.y)/stickyView.zoom-90+n*24;
   }
-  const note={id:Date.now(),text:'',x:Math.max(0,Math.round(x)),y:Math.max(0,Math.round(y)),color:stickyColor,z:stickyTopZ()+1,updatedAt:new Date().toISOString()};
+  const note={id:Date.now(),text:'',x:Math.round(x),y:Math.round(y),color:stickyColor,z:stickyTopZ()+1,updatedAt:new Date().toISOString()};
   stickyNotes.push(note);
   saveData();
   renderStickyBoard(true);
   const ta=document.querySelector(`.sticky-note[data-id="${note.id}"] textarea`);
-  if(ta) ta.focus();
+  if(ta) ta.focus({preventScroll:true});
 }
 function stickyBoardDblClick(e){
-  if(e.target.id!=='sticky-board') return;
-  const r=e.currentTarget.getBoundingClientRect();
-  addStickyNote(e.clientX-r.left+e.currentTarget.scrollLeft-95,e.clientY-r.top+e.currentTarget.scrollTop-20);
+  if(!isStickyBackground(e.target)) return;
+  const p=stickyScreenToBoard(e.clientX,e.clientY);
+  addStickyNote(p.x-95,p.y-20);
 }
 function deleteStickyNote(id){
   const n=stickyNotes.find(x=>x.id===id); if(!n) return;
@@ -2902,16 +2979,11 @@ function startStickyDrag(e,id){
   n.z=stickyTopZ()+1; el.style.zIndex=n.z;
   const sx=e.clientX, sy=e.clientY, ox=n.x, oy=n.y;
   try{ grip.setPointerCapture(e.pointerId); }catch(_){}
-  const move=ev=>{ n.x=Math.max(0,ox+ev.clientX-sx); n.y=Math.max(0,oy+ev.clientY-sy); el.style.left=n.x+'px'; el.style.top=n.y+'px'; };
-  const up=()=>{ grip.removeEventListener('pointermove',move); grip.removeEventListener('pointerup',up); grip.removeEventListener('pointercancel',up); n.updatedAt=new Date().toISOString(); saveData(); fitStickyBoard(); };
+  const move=ev=>{ n.x=Math.round(ox+(ev.clientX-sx)/stickyView.zoom); n.y=Math.round(oy+(ev.clientY-sy)/stickyView.zoom); el.style.left=n.x+'px'; el.style.top=n.y+'px'; };
+  const up=()=>{ grip.removeEventListener('pointermove',move); grip.removeEventListener('pointerup',up); grip.removeEventListener('pointercancel',up); n.updatedAt=new Date().toISOString(); saveData(); };
   grip.addEventListener('pointermove',move);
   grip.addEventListener('pointerup',up);
   grip.addEventListener('pointercancel',up);
-}
-function fitStickyBoard(){
-  const board=document.getElementById('sticky-board'); if(!board) return;
-  const h=stickyNotes.reduce((m,n)=>Math.max(m,n.y+260),620);
-  board.style.minHeight=Math.max(620,h)+'px';
 }
 function updateStickyCount(){
   const el=document.getElementById('daily-memo-tab-count'); if(el) el.textContent=stickyNotes.length;
@@ -2928,10 +3000,12 @@ function renderStickyPalette(){
 // 입력 중에는 다시 그리지 않는다 (다른 타이머가 render()를 불러도 글자가 날아가지 않도록)
 function renderStickyBoard(force){
   updateStickyCount();
-  const board=document.getElementById('sticky-board'); if(!board) return;
+  const board=document.getElementById('sticky-board'), cv=document.getElementById('sticky-canvas'); if(!board||!cv) return;
+  wireStickyBoard();
   if(!force&&board.contains(document.activeElement)) return;
   renderStickyPalette();
-  board.textContent='';
+  cv.textContent='';
+  board.querySelectorAll('.sticky-empty').forEach(x=>x.remove());
   if(!stickyNotes.length){
     const em=document.createElement('div'); em.className='sticky-empty'; em.textContent='빈 곳을 더블클릭하거나 + 포스트잇을 눌러 메모를 붙이세요';
     board.appendChild(em);
@@ -2949,10 +3023,10 @@ function renderStickyBoard(force){
     ta.addEventListener('input',()=>{ n.text=ta.value; n.updatedAt=new Date().toISOString(); fitStickyText(ta); stickySaveSoon(); });
     ta.addEventListener('focus',()=>{ n.z=stickyTopZ()+1; el.style.zIndex=n.z; });
     el.append(grip,ta);
-    board.appendChild(el);
+    cv.appendChild(el);
     fitStickyText(ta);
   });
-  fitStickyBoard();
+  applyStickyView();
 }
 function toggleOldDailyMemos(){
   const el=document.getElementById('old-daily-memos'); if(!el) return;
