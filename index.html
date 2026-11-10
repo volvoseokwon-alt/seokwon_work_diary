@@ -275,6 +275,19 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 .sf-item button{background:none;border:none;color:#f59e0b;cursor:pointer;font-size:0.78rem;padding:0 2px;opacity:0;flex-shrink:0;}
 .sf-item:hover button{opacity:1;}
 .sf-empty{font-size:0.7rem;color:var(--muted);padding:2px 4px 0;line-height:1.5;}
+.lg-resize{position:absolute;top:6px;bottom:6px;right:-5px;width:9px;cursor:ew-resize;z-index:2;border-radius:4px;}
+.lg-resize::after{content:'';position:absolute;top:50%;left:3px;width:3px;height:28px;margin-top:-14px;border-radius:2px;background:var(--border);opacity:0;transition:opacity .12s;}
+.link-group-card:hover .lg-resize::after,.lg-resize.on::after{opacity:1;}
+.lg-resize.on::after{background:var(--primary);}
+.lg-color-dot{width:11px;height:11px;border-radius:50%;display:inline-block;flex-shrink:0;cursor:pointer;box-shadow:0 0 0 2px var(--card);transition:transform .1s;}
+.lg-color-dot:hover{transform:scale(1.35);}
+.lg-color-pop{position:fixed;z-index:100001;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.2);padding:10px;width:206px;}
+.lg-color-pop .t{font-size:0.72rem;font-weight:700;color:var(--muted);margin-bottom:7px;}
+.lg-color-pop .sw{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;}
+.lg-color-pop .sw button{width:26px;height:26px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0;}
+.lg-color-pop .sw button.on{border-color:var(--text);}
+.lg-color-pop .row{display:flex;align-items:center;gap:8px;margin-top:9px;font-size:0.72rem;color:var(--muted);}
+.lg-color-pop input[type=color]{width:34px;height:24px;border:none;padding:0;background:none;cursor:pointer;}
 .link-group-add:hover{border-color:var(--primary)!important;color:var(--primary-text)!important;background:var(--c-eef2ff);}
 .link-star{background:none;border:none;cursor:pointer;font-size:0.85rem;flex-shrink:0;padding:2px;line-height:1;color:#cbd5e1;}
 .link-star.on{color:#f59e0b;}
@@ -1609,7 +1622,7 @@ let _saveTimer=null, _saveInFlight=false, _savePending=false;
 function buildPayload(){
   const raw = {
     projects, tasks, weeklyLogs, trash, completedProjects,
-    repeatTasks, recurringMeetings, cancelledMeetings, outlookSync, calMemos, taskTags, quickLinks, linkGroupsExtra, customHolidays, dailyPlans, dailyMemos, stickyNotes, stickyLinks,
+    repeatTasks, recurringMeetings, cancelledMeetings, outlookSync, calMemos, taskTags, quickLinks, linkGroupsExtra, linkGroupStyle, customHolidays, dailyPlans, dailyMemos, stickyNotes, stickyLinks,
     sidebarNote: document.getElementById('sidebar-note')?.value || '',
     updatedAt: new Date().toISOString()
   };
@@ -1697,6 +1710,7 @@ function applyData(data){
   taskTags          = data.taskTags          || taskTags;
   quickLinks        = data.quickLinks        || quickLinks;
   linkGroupsExtra   = Array.isArray(data.linkGroupsExtra) ? data.linkGroupsExtra : linkGroupsExtra;
+  linkGroupStyle    = (data.linkGroupStyle&&typeof data.linkGroupStyle==='object') ? data.linkGroupStyle : linkGroupStyle;
   customHolidays    = data.customHolidays    || customHolidays;
   dailyPlans        = data.dailyPlans        || dailyPlans;
   dailyMemos        = normalizeDailyMemos(data.dailyMemos);
@@ -2044,6 +2058,7 @@ function restoreFromFile(file){
       taskTags = data.taskTags || {};
       if (data.quickLinks) quickLinks = data.quickLinks; // 🐛 fix: 전체 복원 시 링크가 빠져있던 문제
       linkGroupsExtra = Array.isArray(data.linkGroupsExtra) ? data.linkGroupsExtra : [];
+      linkGroupStyle = (data.linkGroupStyle&&typeof data.linkGroupStyle==='object') ? data.linkGroupStyle : {};
       customHolidays = data.customHolidays || [];
       dailyPlans = data.dailyPlans || {};
       dailyMemos = normalizeDailyMemos(data.dailyMemos);
@@ -2410,6 +2425,7 @@ let dailyPlans = {};
 let taskTags = {};        // {taskId: ['#회의','#문서']}
 let quickLinks = [];      // {id, title, url, group, icon}
 let linkGroupsExtra = [];  // 링크 없이 이름만 만든 그룹
+let linkGroupStyle = {};   // {그룹명:{w:넓이px, color:'#rrggbb'}}
 let currentFilter = 'all';
 // 전체 보기에서 숨길 프로젝트 id 목록 (눈 아이콘 토글로 켜고 끔, localStorage에 저장해서 새로고침해도 유지)
 let hiddenProjects = (()=>{ try { return new Set(JSON.parse(localStorage.getItem('hiddenProjects')||'[]')); } catch(e){ return new Set(); } })();
@@ -7634,6 +7650,8 @@ const LINK_ICONS = ['🔗','🏢','💼','📊','📁','💻','📧','📅','�
 const LINK_GROUP_COLORS = ['#4f46e5','#0284c7','#10b981','#f59e0b','#ef4444','#7c3aed','#06b6d4','#64748b'];
 
 function groupColorFor(groupName){
+  const custom=linkGroupStyle[groupName]&&linkGroupStyle[groupName].color;
+  if(custom&&/^#[0-9a-f]{6}$/i.test(custom)) return custom;   // 내가 고른 색
   // 그룹명 문자열을 기반으로 항상 같은 색을 반환 (간단한 해시)
   let hash=0;
   for(let i=0;i<groupName.length;i++) hash=(hash*31+groupName.charCodeAt(i))>>>0;
@@ -7921,6 +7939,8 @@ function startInlineEditGroupName(el, oldName){
     // 이 그룹에 속한 모든 링크의 group 값을 일괄 변경
     quickLinks = quickLinks.map(l => (l.group||'기타')===oldName ? {...l, group:newName} : l);
     linkGroupsExtra = [...new Set(linkGroupsExtra.map(g => g===oldName ? newName : g))];
+    if (linkGroupStyle[oldName] && !linkGroupStyle[newName]) { linkGroupStyle[newName]=linkGroupStyle[oldName]; }
+    delete linkGroupStyle[oldName];
 
     // 그룹 순서 저장값도 이름 변경 반영
     const order = getLinkGroupOrder().map(g => g===oldName ? newName : g);
@@ -7997,7 +8017,7 @@ function renderLinks(){
   window._linkGroupNames=groupNames;
   const collapsedState=getLinkGroupCollapsed();
 
-  el.innerHTML=`<div id="links-masonry-wrap" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(208px,1fr));grid-auto-rows:1px;gap:0;align-items:start;">`
+  el.innerHTML=`<div id="links-masonry-wrap" style="position:relative;min-height:80px;">`
     + groupNames.map((g,gi)=>{
       const links=byGroup[g];
       const gc=groupColorFor(g);
@@ -8036,11 +8056,13 @@ function renderLinks(){
         ondragover="onLinkGroupDragOver(event,'${gEsc}')"
         ondragleave="onLinkGroupDragLeave(event)"
         ondrop="onLinkGroupDrop(event,'${gEsc}')"
-        style="border:1.5px solid ${gc}33;border-radius:9px;padding:8px 9px;background:${gc}08;transition:opacity .15s, outline .1s;box-sizing:border-box;margin:0 10px 10px 0;grid-row-end:span 1;">
+        data-group-w="${(linkGroupStyle[g]&&+linkGroupStyle[g].w)||''}"
+        style="border:1.5px solid ${gc}33;border-radius:9px;padding:8px 9px;background:${gc}08;transition:opacity .15s, outline .1s;box-sizing:border-box;position:absolute;">
+        <div class="lg-resize" title="끌어서 넓이 조절 · 더블클릭: 기본 넓이" onmousedown="event.preventDefault();event.stopPropagation()" onpointerdown="startLinkGroupResize(event,${gi})" ondblclick="event.stopPropagation();resetLinkGroupWidth(${gi})"></div>
         <div style="display:flex;align-items:center;gap:5px;margin-bottom:${isCollapsed?'0':'7px'};padding-bottom:${isCollapsed?'0':'6px'};border-bottom:${isCollapsed?'none':'1.5px solid '+gc+'33'};">
           <span style="cursor:grab;color:${readable(gc)}88;font-size:0.75rem;flex-shrink:0;" title="드래그해서 순서 변경">⠿</span>
           <span onclick="toggleLinkGroup('${gEsc}')" style="display:inline-block;transition:transform .2s;transform:rotate(${isCollapsed?'-90deg':'0deg'});color:${readable(gc)};font-size:0.68rem;cursor:pointer;">▼</span>
-          <span style="width:7px;height:7px;border-radius:50%;background:${gc};display:inline-block;flex-shrink:0;"></span>
+          <span class="lg-color-dot" onmousedown="event.stopPropagation()" onclick="event.stopPropagation();openLinkGroupColor(event,${gi})" title="그룹 색 바꾸기" style="background:${gc};"></span>
           <span onclick="handleGroupTitleClick(event,'${gEsc}')" ondblclick="event.preventDefault();event.stopPropagation();cancelPendingGroupToggle();startInlineEditGroupName(this,'${gEsc}')" title="클릭: 펼치기/접기 · 더블클릭: 이름 수정" style="font-weight:800;font-size:0.82rem;color:${readable(gc)};flex:1;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${g}</span>
           <span style="font-size:0.62rem;color:var(--muted);background:var(--card);padding:1px 6px;border-radius:9px;flex-shrink:0;">${links.length}</span>
           ${links.length?'':`<button type="button" draggable="false" onmousedown="event.stopPropagation()" onclick="event.stopPropagation();deleteEmptyLinkGroup(${gi})" title="빈 그룹 삭제" style="flex-shrink:0;background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.75rem;padding:0 2px;">✕</button>`}
@@ -8050,7 +8072,7 @@ function renderLinks(){
       </div>`;
     }).join('')
     + `<div class="link-group-card link-group-add" role="button" tabindex="0" onclick="startNewLinkGroup(this)" onkeydown="if(event.key==='Enter'&&event.target===this)startNewLinkGroup(this)" title="그룹 이름만 입력해서 새 그룹 만들기 (즐겨찾기를 여기에 끌어다 놓아도 돼요)"
-        style="border:1.5px dashed var(--border);border-radius:9px;padding:14px 9px;box-sizing:border-box;margin:0 10px 10px 0;grid-row-end:span 1;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--muted);min-height:74px;">
+        style="border:1.5px dashed var(--border);border-radius:9px;padding:14px 9px;box-sizing:border-box;position:absolute;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--muted);min-height:74px;">
         <span style="font-size:1.4rem;line-height:1;font-weight:300;">+</span>
         <span style="font-size:0.78rem;font-weight:700;">새 그룹 추가</span>
       </div>`
@@ -8058,42 +8080,113 @@ function renderLinks(){
   layoutLinksMasonry();
 }
 
+/* 그룹 카드 배치: 넓이가 카드마다 달라도 빈틈이 적게 채워 넣는다.
+   기본 넓이 카드는 예전처럼 화면을 균등한 열로 나눈 넓이를 쓰고,
+   넓이를 조절한 카드는 그 넓이(px)를 쓴다. 순서대로 가장 위쪽 빈자리에 놓는다. */
+const LINK_GROUP_GAP=10, LINK_GROUP_MIN_W=170;
+function linkGroupBaseWidth(W){
+  const n=Math.max(1,Math.floor((W+LINK_GROUP_GAP)/(208+LINK_GROUP_GAP)));
+  return (W-LINK_GROUP_GAP*(n-1))/n;
+}
 function layoutLinksMasonry(){
   const wrap=document.getElementById('links-masonry-wrap');
   if(!wrap) return;
-  const cards=Array.from(wrap.querySelectorAll('.link-group-card'));
+  const cards=Array.from(wrap.querySelectorAll(':scope > .link-group-card'));
   if(!cards.length) return;
-  const rowH=1; // grid-auto-rows 값과 일치
-  const gap=10; // 카드 간 가로/세로 간격(px)
-  const minColWidth=208;
-
-  // 컬럼 수 계산 (grid-template-columns: repeat(auto-fill, minmax(208px,1fr)) 와 동일한 로직)
-  const wrapWidth=wrap.getBoundingClientRect().width;
-  let colCount=Math.max(1, Math.floor((wrapWidth+gap)/(minColWidth+gap)));
-  if(colCount<1) colCount=1;
-
-  requestAnimationFrame(()=>{
-    // 1) 먼저 모든 카드를 1열 너비로 렌더링한 상태에서 실제 높이 측정
-    //    (gridColumn을 임시로 지정하지 않아도 카드 자체 너비는 컬럼폭과 동일)
-    const heights=cards.map(c=>c.getBoundingClientRect().height);
-
-    // 2) 각 컬럼의 현재 누적 row 수(=다음 카드가 시작할 row)를 추적
-    const colRows=new Array(colCount).fill(1); // grid-row는 1부터 시작
-
-    cards.forEach((c,idx)=>{
-      // 원래 가로 순서 그대로: idx번째 카드는 (idx % colCount) 컬럼에 배정
-      // (순서/열 위치를 정확히 보존하는 것이 우선이며, 약간의 빈 공간은 감수)
-      const col=idx%colCount;
-      const span=Math.ceil(heights[idx]/rowH)+Math.ceil(gap/rowH); // 카드 높이 + 간격만큼 행 차지
-      const rowStart=colRows[col];
-      c.style.gridColumn=(col+1)+'';
-      c.style.gridRowStart=rowStart+'';
-      c.style.gridRowEnd='span '+Math.ceil(heights[idx]/rowH);
-      colRows[col]=rowStart+span;
-    });
+  const W=wrap.clientWidth; if(!W) return;
+  const base=linkGroupBaseWidth(W);
+  cards.forEach(c=>{
+    const cw=+c.dataset.groupW||0;
+    c.style.width=Math.round(Math.min(W,Math.max(LINK_GROUP_MIN_W,cw||base)))+'px';
   });
+  const placed=[]; let maxB=0;
+  cards.forEach(c=>{
+    const w=c.offsetWidth, h=c.offsetHeight;
+    const xs=[0,...placed.map(p=>p.x+p.w+LINK_GROUP_GAP)].filter(x=>x+w<=W+1);
+    if(!xs.length) xs.push(0);
+    let best=null;
+    xs.forEach(x=>{
+      let y=0;
+      placed.forEach(p=>{ if(p.x<x+w&&x<p.x+p.w) y=Math.max(y,p.y+p.h+LINK_GROUP_GAP); });
+      if(!best||y<best.y-0.5||(Math.abs(y-best.y)<=0.5&&x<best.x)) best={x,y};
+    });
+    c.style.left=best.x+'px'; c.style.top=best.y+'px';
+    placed.push({x:best.x,y:best.y,w,h});
+    maxB=Math.max(maxB,best.y+h);
+  });
+  wrap.style.height=maxB+'px';
 }
-
+function linkGroupStyleOf(g){ if(!linkGroupStyle[g]||typeof linkGroupStyle[g]!=='object') linkGroupStyle[g]={}; return linkGroupStyle[g]; }
+// 오른쪽 가장자리를 끌어서 넓이 조절
+function startLinkGroupResize(e,gi){
+  if(e.button!==0) return;
+  e.preventDefault(); e.stopPropagation();
+  const g=(window._linkGroupNames||[])[gi]; if(g==null) return;
+  const h=e.currentTarget, card=h.closest('.link-group-card'), wrap=document.getElementById('links-masonry-wrap');
+  const sx=e.clientX, sw=card.offsetWidth, W=wrap.clientWidth;
+  card.draggable=false; h.classList.add('on');
+  try{ h.setPointerCapture(e.pointerId); }catch(_){}
+  document.body.style.cursor='ew-resize';
+  const move=ev=>{
+    let w=Math.round((sw+ev.clientX-sx)/10)*10;
+    w=Math.max(LINK_GROUP_MIN_W,Math.min(W,w));
+    card.dataset.groupW=w; layoutLinksMasonry();
+  };
+  const up=()=>{
+    h.removeEventListener('pointermove',move); h.removeEventListener('pointerup',up); h.removeEventListener('pointercancel',up);
+    h.classList.remove('on'); card.draggable=true; document.body.style.cursor='';
+    const w=+card.dataset.groupW||0;
+    if(w) linkGroupStyleOf(g).w=w;
+    saveData();
+  };
+  h.addEventListener('pointermove',move); h.addEventListener('pointerup',up); h.addEventListener('pointercancel',up);
+}
+function resetLinkGroupWidth(gi){
+  const g=(window._linkGroupNames||[])[gi]; if(g==null||!linkGroupStyle[g]) return;
+  delete linkGroupStyle[g].w; if(!Object.keys(linkGroupStyle[g]).length) delete linkGroupStyle[g];
+  saveAndRender();
+}
+// 그룹 색: ● 을 누르면 색 고르기
+const LINK_GROUP_PICK=['#4f46e5','#2563eb','#0284c7','#06b6d4','#0d9488','#10b981','#65a30d','#ca8a04','#f59e0b','#ea580c','#ef4444','#db2777','#c026d3','#7c3aed','#92400e','#64748b','#334155','#111827'];
+function closeLinkGroupColor(){ document.getElementById('lg-color-pop')?.remove(); document.removeEventListener('pointerdown',lgColorOutside,true); }
+function lgColorOutside(e){ const p=document.getElementById('lg-color-pop'); if(p&&!p.contains(e.target)) closeLinkGroupColor(); }
+function setLinkGroupColor(g,c){
+  if(c){ linkGroupStyleOf(g).color=c; }
+  else if(linkGroupStyle[g]){ delete linkGroupStyle[g].color; if(!Object.keys(linkGroupStyle[g]).length) delete linkGroupStyle[g]; }
+  saveAndRender();
+}
+function openLinkGroupColor(e,gi){
+  closeLinkGroupColor();
+  const g=(window._linkGroupNames||[])[gi]; if(g==null) return;
+  const cur=groupColorFor(g), hasCustom=!!(linkGroupStyle[g]&&linkGroupStyle[g].color);
+  const pop=document.createElement('div'); pop.id='lg-color-pop'; pop.className='lg-color-pop';
+  const t=document.createElement('div'); t.className='t'; t.textContent=`"${g}" 그룹 색`; pop.appendChild(t);
+  const sw=document.createElement('div'); sw.className='sw';
+  LINK_GROUP_PICK.forEach(c=>{
+    const b=document.createElement('button'); b.type='button'; b.style.background=c; b.title=c;
+    if(c.toLowerCase()===cur.toLowerCase()) b.className='on';
+    b.onclick=()=>{ closeLinkGroupColor(); setLinkGroupColor(g,c); };
+    sw.appendChild(b);
+  });
+  pop.appendChild(sw);
+  const row=document.createElement('div'); row.className='row';
+  const lab=document.createElement('label'); lab.style.cssText='display:flex;align-items:center;gap:6px;cursor:pointer;';
+  const inp=document.createElement('input'); inp.type='color'; inp.value=cur;
+  inp.addEventListener('change',()=>{ closeLinkGroupColor(); setLinkGroupColor(g,inp.value); });
+  lab.append(inp,document.createTextNode('직접 고르기'));
+  row.appendChild(lab);
+  if(hasCustom){
+    const rs=document.createElement('button'); rs.type='button'; rs.className='btn-sm'; rs.textContent='기본색'; rs.style.marginLeft='auto';
+    rs.onclick=()=>{ closeLinkGroupColor(); setLinkGroupColor(g,null); };
+    row.appendChild(rs);
+  }
+  pop.appendChild(row);
+  document.body.appendChild(pop);
+  const r=e.currentTarget.getBoundingClientRect();
+  pop.style.left=Math.max(8,Math.min(window.innerWidth-pop.offsetWidth-8,r.left-8))+'px';
+  pop.style.top=Math.min(window.innerHeight-pop.offsetHeight-8,r.bottom+8)+'px';
+  setTimeout(()=>document.addEventListener('pointerdown',lgColorOutside,true),0);
+}
 let _linksResizeTimer=null;
 window.addEventListener('resize',()=>{
   if(document.getElementById('links-masonry-wrap')){
