@@ -381,7 +381,7 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 /* Modal */
 .modal{display:none;position:fixed;inset:0;background:var(--v-modal-overlay);z-index:100;align-items:center;justify-content:center;}
 .modal.open{display:flex;}
-.modal-box{background:var(--card);border-radius:12px;padding:22px;width:380px;max-width:95vw;display:flex;flex-direction:column;gap:12px;max-height:90vh;overflow-y:auto;}
+.modal-box{background:var(--card);border-radius:12px;padding:22px;width:380px;max-width:95vw;display:flex;flex-direction:column;gap:12px;max-height:90vh;overflow-y:auto;overflow-x:hidden;}
 .modal-box h3{font-size:1rem;font-weight:700;}
 .modal-box input,.modal-box select,.modal-box textarea{padding:8px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:0.85rem;width:100%;font-family:inherit;}
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;}
@@ -1364,7 +1364,7 @@ ZB 교체 둘</textarea>
     </div>
     <input type="text" id="link-group-new" placeholder="새 그룹 이름 (예: 업무용, 개인용, 회사도구)">
     <div style="font-size:0.74rem;color:var(--muted);margin-top:-4px;">아이콘 선택 (선택사항)</div>
-    <div id="link-icon-palette" style="display:grid;grid-template-columns:repeat(8,1fr);gap:5px;"></div>
+    <div id="link-icon-palette" style="display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px;"></div>
     <input type="hidden" id="link-icon" value="🔗">
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal('modal-add-link')">취소</button>
@@ -8162,7 +8162,7 @@ function openAddLinkModal(group){
 
   // 아이콘 팔레트 렌더
   const palette=document.getElementById('link-icon-palette');
-  palette.innerHTML=LINK_ICONS.map(ic=>`<span onclick="selectLinkIcon('${ic}',this)" style="font-size:1.3rem;text-align:center;padding:6px;border-radius:6px;cursor:pointer;border:2px solid ${ic==='🔗'?'var(--primary)':'transparent'};">${ic}</span>`).join('');
+  palette.innerHTML=LINK_ICONS.map(ic=>`<span onclick="selectLinkIcon('${ic}',this)" style="font-size:1.3rem;text-align:center;padding:6px 0;border-radius:6px;cursor:pointer;min-width:0;border:2px solid ${ic==='🔗'?'var(--primary)':'transparent'};">${ic}</span>`).join('');
 
   editingLinkId = null;
   document.getElementById('link-modal-title').textContent='🔗 링크 추가';
@@ -8204,7 +8204,7 @@ function openEditLinkModal(id){
 
   // 아이콘 팔레트 렌더 (현재 아이콘 선택 표시)
   const palette=document.getElementById('link-icon-palette');
-  palette.innerHTML=LINK_ICONS.map(ic=>`<span onclick="selectLinkIcon('${ic}',this)" style="font-size:1.3rem;text-align:center;padding:6px;border-radius:6px;cursor:pointer;border:2px solid ${ic===(link.icon||'🔗')?'var(--primary)':'transparent'};">${ic}</span>`).join('');
+  palette.innerHTML=LINK_ICONS.map(ic=>`<span onclick="selectLinkIcon('${ic}',this)" style="font-size:1.3rem;text-align:center;padding:6px 0;border-radius:6px;cursor:pointer;min-width:0;border:2px solid ${ic===(link.icon||'🔗')?'var(--primary)':'transparent'};">${ic}</span>`).join('');
 
   document.getElementById('link-modal-title').textContent='✏️ 링크 수정';
   document.getElementById('link-modal-save-btn').textContent='수정 완료';
@@ -10027,7 +10027,13 @@ function deleteWeekly(id){
 ══════════════════════════════════════ */
 function openModal(id){ document.getElementById(id).classList.add('open'); }
 function closeModal(id){ document.getElementById(id).classList.remove('open'); }
-document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{ if(e.target===m) m.classList.remove('open'); }));
+// 바깥(어두운 배경)을 눌렀다 뗐을 때만 닫는다.
+// 창 안에서 글자를 드래그하다가 바깥에서 마우스를 떼도 닫히지 않도록 누른 위치를 함께 확인
+document.querySelectorAll('.modal').forEach(m=>{
+  let downOnBackdrop=false;
+  m.addEventListener('pointerdown',e=>{ downOnBackdrop=(e.target===m); });
+  m.addEventListener('click',e=>{ if(e.target===m&&downOnBackdrop) m.classList.remove('open'); downOnBackdrop=false; });
+});
 
 /* ══════════════════════════════════════
    INIT
