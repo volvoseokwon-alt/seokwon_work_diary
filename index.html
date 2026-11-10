@@ -262,6 +262,22 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 .cal-nav-btn{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:4px 11px;cursor:pointer;font-size:0.82rem;}
 .cal-nav-btn:hover{background:var(--border);}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
+.side-favs{margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+.side-favs>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:6px;font-size:0.78rem;font-weight:800;color:var(--x-b45309);padding:2px 2px 6px;user-select:none;}
+.side-favs>summary::-webkit-details-marker{display:none;}
+.side-favs>summary::before{content:'▾';font-size:0.7rem;color:var(--muted);transition:transform .15s;}
+.side-favs:not([open])>summary::before{transform:rotate(-90deg);}
+.side-favs .sf-count{margin-left:auto;font-size:0.62rem;font-weight:700;color:var(--muted);background:var(--bg);border-radius:9px;padding:1px 7px;}
+.sf-item{display:flex;align-items:center;gap:7px;padding:5px 7px;border-radius:6px;text-decoration:none;color:var(--text);font-size:0.78rem;font-weight:600;cursor:pointer;}
+.sf-item:hover{background:var(--c-fef3c7);}
+.sf-item .i{flex-shrink:0;font-size:0.85rem;}
+.sf-item .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sf-item button{background:none;border:none;color:#f59e0b;cursor:pointer;font-size:0.78rem;padding:0 2px;opacity:0;flex-shrink:0;}
+.sf-item:hover button{opacity:1;}
+.sf-empty{font-size:0.7rem;color:var(--muted);padding:2px 4px 0;line-height:1.5;}
+.link-star{background:none;border:none;cursor:pointer;font-size:0.85rem;flex-shrink:0;padding:2px;line-height:1;color:#cbd5e1;}
+.link-star.on{color:#f59e0b;}
+.link-star:hover{color:#f59e0b;}
 .memo-links{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-top:5px;}
 .memo-links:empty{display:none;}
 .memo-links .ml-ico{font-size:0.75rem;}
@@ -680,6 +696,10 @@ if ('serviceWorker' in navigator) {
 <div class="container">
   <aside id="sidebar">
     <div class="sidebar-resizer" id="sidebar-resizer"></div>
+    <details class="side-favs" id="side-favs-details" open>
+      <summary><span>⭐ 즐겨찾기</span><span class="sf-count" id="side-favs-count">0</span></summary>
+      <div id="side-favs"></div>
+    </details>
     <h3>📁 프로젝트</h3>
     <div id="project-list"></div>
     <button class="add-proj-btn" onclick="openModal_proj_add()">+ 프로젝트 추가</button>
@@ -732,8 +752,8 @@ ZB 교체 둘</textarea>
     <div class="tabs">
       <button class="tab-btn active" onclick="switchTab('today',this)">📋 할 일</button>
       <button class="tab-btn" onclick="switchTab('home',this)">🏠 홈</button>
-      <button class="tab-btn" onclick="switchTab('weekly',this)">⏱️ 주간/월간 기록</button>
       <button class="tab-btn" onclick="switchTab('calendar',this)">📅 캘린더</button>
+      <button class="tab-btn" onclick="switchTab('weekly',this)">⏱️ 주간/월간 기록</button>
       <button class="tab-btn" id="notes-tab-btn" onclick="switchTab('notes',this)">📝 메모 모아보기 <span class="daily-memo-count" id="daily-memo-tab-count">0</span></button>
       <button class="tab-btn" onclick="switchTab('links',this)">🔗 링크</button>
       <button class="tab-btn" onclick="switchTab('search',this)">🔍 검색</button>
@@ -1071,7 +1091,7 @@ ZB 교체 둘</textarea>
       <div class="card">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <strong>🔗 자주 가는 링크</strong>
-          <span style="font-size:0.78rem;color:var(--muted);">업무용/개인용 등 그룹으로 정리</span>
+          <span style="font-size:0.78rem;color:var(--muted);">업무용/개인용 등 그룹으로 정리 · 브라우저 즐겨찾기를 그룹에 끌어다 놓으면 바로 추가</span>
           <button class="btn-primary" style="margin-left:auto;font-size:0.8rem;padding:6px 14px;" onclick="openAddLinkModal()">+ 링크 추가</button>
           <button style="font-size:0.78rem;padding:6px 12px;border:1.5px solid var(--border);border-radius:6px;background:var(--card);cursor:pointer;color:var(--x-555);" title="백업 JSON에서 링크만 가져오기 (다른 데이터는 그대로 유지)" onclick="document.getElementById('restore-links-file-input').click()">📤 백업에서 링크만 복원</button>
           <input type="file" id="restore-links-file-input" accept=".json" style="display:none;" onchange="restoreLinksFromFile(this.files[0]);this.value='';">
@@ -1335,7 +1355,7 @@ ZB 교체 둘</textarea>
   <div class="modal-box">
     <h3 id="link-modal-title">🔗 링크 추가</h3>
     <input type="text" id="link-title" placeholder="이름 (예: 회사업무 포털)">
-    <input type="text" id="link-url" placeholder="https://...">
+    <input type="text" id="link-url" placeholder="https://... 또는 폴더 경로 (예: C:\Users\...\Protom, \\서버\공유폴더)">
     <div style="display:flex;gap:8px;align-items:center;">
       <select id="link-group-select" style="flex:1;padding:8px;border:1.5px solid var(--border);border-radius:6px;" onchange="onLinkGroupSelectChange()">
         <option value="__new__">+ 새 그룹 만들기</option>
@@ -7646,6 +7666,69 @@ function sortGroupsByOrder(groupNames){
 
 let dragGroupName = null;
 
+/* 브라우저 즐겨찾기(또는 주소창/웹페이지 링크)를 끌어다 놓으면 링크로 추가
+   - 그룹 카드 위에 놓기: 그 그룹에 바로 추가
+   - 빈 곳에 놓기: 주소/이름이 채워진 추가 창을 연다 */
+function extDragHasUrl(e){
+  if(dragLinkId||dragGroupName) return false;              // 앱 안에서 순서 바꾸는 중
+  const t=[...(e.dataTransfer?.types||[])];
+  return t.includes('text/uri-list')||t.includes('text/x-moz-url')||(t.includes('text/plain')&&!t.includes('Files'));
+}
+function extDropLink(e){
+  const dt=e.dataTransfer; if(!dt) return null;
+  let url='', title='';
+  const moz=dt.getData('text/x-moz-url');
+  if(moz){ const [u,t]=moz.split('\n'); url=u||''; title=t||''; }
+  if(!url) url=(dt.getData('text/uri-list')||'').split('\n').map(x=>x.trim()).find(x=>x&&!x.startsWith('#'))||'';
+  if(!url) url=(dt.getData('text/plain')||'').trim().split(/\s+/)[0]||'';
+  url=url.trim();
+  const lp=linkLocalPath(url);
+  if(lp) url=lp;
+  else { try{ const x=new URL(url); if(!/^https?:$/.test(x.protocol)) return null; }catch(_){ return null; } }
+  if(!title){
+    const html=dt.getData('text/html');
+    if(html){ try{ const doc=new DOMParser().parseFromString(html,'text/html'); const a=doc.querySelector('a'); title=((a&&a.textContent)||doc.body.textContent||'').trim(); }catch(_){} }
+  }
+  title=cleanExternalText?cleanExternalText(title):title;
+  if(!title||title===url){
+    if(lp) title=lp.split('\\').filter(Boolean).pop()||lp;
+    else { try{ const x=new URL(url); const seg=decodeURIComponent(x.pathname).split('/').filter(Boolean).pop(); title=(seg?seg+' · ':'')+x.hostname.replace(/^www\./,''); }catch(_){ title=url; } }
+  }
+  return {url, title:title.slice(0,120)};
+}
+function wireLinkExternalDrop(){
+  const root=document.getElementById('tab-links'); if(!root||root.dataset.extDrop) return;
+  root.dataset.extDrop='1';
+  const clear=()=>root.querySelectorAll('.link-group-card.ext-drop').forEach(c=>{ c.classList.remove('ext-drop'); c.style.outline='none'; });
+  root.addEventListener('dragover',e=>{
+    if(!extDragHasUrl(e)) return;
+    e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect='copy';
+    const card=e.target.closest&&e.target.closest('.link-group-card');
+    clear();
+    if(card){ card.classList.add('ext-drop'); card.style.outline='2.5px dashed var(--primary)'; }
+  },true);
+  root.addEventListener('dragleave',e=>{ if(!root.contains(e.relatedTarget)) clear(); },true);
+  root.addEventListener('drop',e=>{
+    if(!extDragHasUrl(e)) return;
+    e.preventDefault(); e.stopPropagation();
+    const card=e.target.closest&&e.target.closest('.link-group-card'); clear();
+    const lk=extDropLink(e);
+    if(!lk){ showMiniToast('이 항목은 링크 주소를 읽을 수 없어요'); return; }
+    const group=card?(window._linkGroupNames||[])[+card.dataset.gi]:null;
+    if(!group){
+      openAddLinkModal();
+      document.getElementById('link-title').value=lk.title;
+      document.getElementById('link-url').value=lk.url;
+      return;
+    }
+    if(quickLinks.some(l=>(l.group||'기타')===group&&l.url===lk.url)){ showMiniToast(`이미 <b>${escAttr(group)}</b>에 있는 링크예요`); return; }
+    quickLinks.push({id:Date.now(), title:lk.title, url:lk.url, group, icon:'🔗'});
+    saveAndRender();
+    showMiniToast(`🔗 <b>${escAttr(lk.title)}</b> → <b>${escAttr(group)}</b>에 추가했어요<br><span style="opacity:.7;font-size:0.72rem;">이름은 더블클릭으로 바꿀 수 있어요</span>`,3500);
+  },true);
+}
+document.addEventListener('DOMContentLoaded',wireLinkExternalDrop);
+setTimeout(wireLinkExternalDrop,0);
 function onLinkGroupDragStart(e, groupName){
   dragGroupName = groupName;
   e.currentTarget.style.opacity = '0.4';
@@ -7833,6 +7916,7 @@ function startInlineEditTitle(el, linkId){
 function renderLinks(){
   const el=document.getElementById('links-groups');
   if(!el) return;
+  renderLinkFavs();
   if(!quickLinks.length){
     el.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-size:0.85rem;">등록된 링크가 없습니다.<br><span style="font-size:0.78rem;">+ 링크 추가 버튼으로 자주 가는 사이트를 등록해보세요.</span></div>';
     return;
@@ -7845,6 +7929,7 @@ function renderLinks(){
     byGroup[g].push(l);
   });
   const groupNames=sortGroupsByOrder(Object.keys(byGroup));
+  window._linkGroupNames=groupNames;
   const collapsedState=getLinkGroupCollapsed();
 
   el.innerHTML=`<div id="links-masonry-wrap" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(208px,1fr));grid-auto-rows:1px;gap:0;align-items:start;">`
@@ -7855,7 +7940,9 @@ function renderLinks(){
       const gEsc=g.replace(/'/g,"\\'");
       const cardsHtml=links.map(l=>{
         let hostname='';
-        try{ hostname=new URL(l.url).hostname.replace('www.',''); }catch(e){ hostname=l.url; }
+        const lp=linkLocalPath(l.url);
+        if(lp) hostname=lp.length>34?lp.slice(0,14)+'…'+lp.slice(-18):lp;
+        else { try{ hostname=new URL(l.url).hostname.replace('www.',''); }catch(e){ hostname=l.url; } }
         return `<div draggable="true"
           ondragstart="onLinkItemDragStart(event,${l.id})"
           ondragend="onLinkItemDragEnd(event)"
@@ -7864,13 +7951,14 @@ function renderLinks(){
           ondrop="onLinkItemDrop(event,${l.id})"
           style="display:flex;align-items:center;gap:5px;padding:5px 6px;border-radius:6px;background:var(--card);margin-bottom:4px;border:1px solid var(--c-f1f5f9);transition:opacity .15s, outline .1s;">
           <span style="cursor:grab;color:#cbd5e1;font-size:0.7rem;flex-shrink:0;" title="드래그해서 순서 변경">⠿</span>
-          <a href="${l.url}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:6px;flex:1;text-decoration:none;color:var(--text);min-width:0;">
-            <span style="font-size:0.95rem;flex-shrink:0;">${l.icon||'🔗'}</span>
+          <a ${lp?`href="#" onclick="openFolderLink(event,${l.id})" title="${escAttr('폴더 경로 복사 → Win+R, Ctrl+V, Enter\n'+lp)}"`:`href="${escAttr(l.url)}" target="_blank" rel="noopener"`} style="display:flex;align-items:center;gap:6px;flex:1;text-decoration:none;color:var(--text);min-width:0;">
+            <span style="font-size:0.95rem;flex-shrink:0;">${lp&&(!l.icon||l.icon==='🔗')?'📁':(l.icon||'🔗')}</span>
             <div style="min-width:0;flex:1;">
               <div ondblclick="event.preventDefault();event.stopPropagation();startInlineEditTitle(this,${l.id})" title="더블클릭해서 이름 수정" style="font-weight:600;font-size:0.78rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.title}</div>
               <div style="font-size:0.64rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${hostname}</div>
             </div>
           </a>
+          <button class="link-star ${l.fav?'on':''}" onclick="toggleLinkFav(${l.id})" title="${l.fav?'즐겨찾기 해제':'즐겨찾기에 추가'}">${l.fav?'★':'☆'}</button>
           <button onclick="openEditLinkModal(${l.id})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:0.7rem;flex-shrink:0;padding:2px;" onmouseover="this.style.color='var(--primary-text)'" onmouseout="this.style.color='#cbd5e1'" title="수정">✎</button>
           <button onclick="deleteLink(${l.id})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:0.78rem;flex-shrink:0;padding:2px;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#cbd5e1'" title="삭제">✕</button>
         </div>`;
@@ -7890,6 +7978,7 @@ function renderLinks(){
           <span style="width:7px;height:7px;border-radius:50%;background:${gc};display:inline-block;flex-shrink:0;"></span>
           <span onclick="handleGroupTitleClick(event,'${gEsc}')" ondblclick="event.preventDefault();event.stopPropagation();cancelPendingGroupToggle();startInlineEditGroupName(this,'${gEsc}')" title="클릭: 펼치기/접기 · 더블클릭: 이름 수정" style="font-weight:800;font-size:0.82rem;color:${readable(gc)};flex:1;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${g}</span>
           <span style="font-size:0.62rem;color:var(--muted);background:var(--card);padding:1px 6px;border-radius:9px;flex-shrink:0;">${links.length}</span>
+          <button type="button" draggable="false" onmousedown="event.stopPropagation()" onclick="event.stopPropagation();openAddLinkToGroup(${gi})" title="이 그룹에 링크 추가" style="flex-shrink:0;width:22px;height:22px;border-radius:6px;border:1.5px solid ${gc}66;background:var(--card);color:${readable(gc)};font-weight:800;font-size:0.9rem;line-height:1;cursor:pointer;padding:0;">+</button>
         </div>
         ${isCollapsed?'':`<div>${cardsHtml}</div>`}
       </div>`;
@@ -7942,7 +8031,71 @@ window.addEventListener('resize',()=>{
   }
 });
 
-function openAddLinkModal(){
+/* 폴더/파일 경로 링크: C:\..., \\서버\공유, file:///...
+   예전에 https:// 가 붙어 저장된 것(https://C:\...)도 경로로 알아본다.
+   브라우저는 보안상 윈도우 탐색기를 직접 열 수 없어서, 경로를 복사해 두고 Win+R로 연다. */
+function linkLocalPath(url){
+  let u=String(url||'').trim().replace(/^["']|["']$/g,'');
+  const pre=u.match(/^https?:\/\/(.*)$/i);
+  if(pre&&/^([a-zA-Z]:[\\/]|[a-zA-Z]:$|\\\\[^\\])/.test(pre[1])) u=pre[1];
+  if(/^file:\/\//i.test(u)){
+    let r=u.replace(/^file:\/\/\/?/i,'');
+    try{ r=decodeURIComponent(r); }catch(_){}
+    if(/^[a-zA-Z]:/.test(r)) return r.replace(/\//g,'\\');
+    return '\\\\'+r.replace(/^\/+/,'').replace(/\//g,'\\');     // file://server/share
+  }
+  if(/^[a-zA-Z]:([\\/]|$)/.test(u)) return u.replace(/\//g,'\\');
+  if(/^\\\\[^\\]/.test(u)) return u;
+  return null;
+}
+function showMiniToast(html,ms){
+  let t=document.getElementById('mini-toast');
+  if(!t){ t=document.createElement('div'); t.id='mini-toast'; t.style.cssText='position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:100000;background:#1f2937;color:#fff;padding:11px 16px;border-radius:10px;font-size:0.8rem;line-height:1.5;box-shadow:0 8px 24px rgba(0,0,0,.3);max-width:min(560px,92vw);'; document.body.appendChild(t); }
+  t.innerHTML=html; t.style.display='block';
+  clearTimeout(t._h); t._h=setTimeout(()=>{ t.style.display='none'; },ms||5000);
+}
+async function copyTextSafe(text){
+  try{ await navigator.clipboard.writeText(text); return true; }
+  catch(e){
+    const ta=document.createElement('textarea'); ta.value=text; ta.style.cssText='position:fixed;left:-9999px;';
+    document.body.appendChild(ta); ta.select();
+    let ok=false; try{ ok=document.execCommand('copy'); }catch(_){}
+    ta.remove(); return ok;
+  }
+}
+async function openFolderLink(e,id){
+  e.preventDefault(); e.stopPropagation();
+  const l=quickLinks.find(x=>x.id===id); if(!l) return;
+  const path=linkLocalPath(l.url); if(!path) return;
+  const ok=await copyTextSafe(path);
+  showMiniToast(ok
+    ? `📋 <b>폴더 경로를 복사했어요</b><br><b>Win + R</b> → <b>Ctrl + V</b> → <b>Enter</b> 하면 탐색기로 바로 열려요<br><span style="opacity:.7;font-size:0.72rem;">${escAttr(path)}</span>`
+    : `복사에 실패했어요. 경로: ${escAttr(path)}`, 6000);
+}
+/* 즐겨찾기: 링크마다 ☆ 를 눌러 위쪽 즐겨찾기 줄에 고정 (favAt 순서) */
+function toggleLinkFav(id){
+  quickLinks=quickLinks.map(l=>{
+    if(l.id!==id) return l;
+    const u={...l};
+    if(u.fav){ delete u.fav; delete u.favAt; } else { u.fav=true; u.favAt=Date.now(); }
+    return u;
+  });
+  saveAndRender();
+}
+function renderLinkFavs(){
+  const box=document.getElementById('side-favs'); if(!box) return;
+  const favs=quickLinks.filter(l=>l.fav).sort((a,b)=>(a.favAt||0)-(b.favAt||0));
+  const cnt=document.getElementById('side-favs-count'); if(cnt) cnt.textContent=favs.length;
+  if(!favs.length){ box.innerHTML=`<div class="sf-empty">🔗 링크 탭에서 링크 옆 ☆를 누르면 여기에 추가돼요</div>`; return; }
+  box.innerHTML=favs.map(l=>{
+    const lp=linkLocalPath(l.url);
+    const icon=lp&&(!l.icon||l.icon==='🔗')?'📁':(l.icon||'🔗');
+    const attrs=lp?`href="#" onclick="openFolderLink(event,${l.id})" title="${escAttr(l.title+'\n'+lp+'\n(클릭: 경로 복사 → Win+R, Ctrl+V, Enter)')}"`
+                  :`href="${escAttr(l.url)}" target="_blank" rel="noopener" title="${escAttr(l.title+'\n'+l.url)}"`;
+    return `<a class="sf-item" ${attrs}><span class="i">${icon}</span><span class="t">${escAttr(l.title)}</span><button type="button" title="즐겨찾기 해제" onclick="event.preventDefault();event.stopPropagation();toggleLinkFav(${l.id})">★</button></a>`;
+  }).join('');
+}
+function openAddLinkModal(group){
   document.getElementById('link-title').value='';
   document.getElementById('link-url').value='';
   document.getElementById('link-group-new').value='';
@@ -7952,9 +8105,10 @@ function openAddLinkModal(){
   const groups=[...new Set(quickLinks.map(l=>l.group||'기타'))];
   const gSel=document.getElementById('link-group-select');
   gSel.innerHTML='<option value="__new__">+ 새 그룹 만들기</option>'
-    + groups.map(g=>`<option value="${g}">${g}</option>`).join('');
-  gSel.value='__new__';
-  document.getElementById('link-group-new').style.display='';
+    + groups.map(g=>`<option value="${escAttr(g)}">${escAttr(g)}</option>`).join('');
+  const preset=typeof group==='string'&&groups.includes(group);
+  gSel.value=preset?group:'__new__';
+  document.getElementById('link-group-new').style.display=preset?'none':'';
 
   // 아이콘 팔레트 렌더
   const palette=document.getElementById('link-icon-palette');
@@ -7964,6 +8118,12 @@ function openAddLinkModal(){
   document.getElementById('link-modal-title').textContent='🔗 링크 추가';
   document.getElementById('link-modal-save-btn').textContent='추가';
   openModal('modal-add-link');
+  setTimeout(()=>document.getElementById('link-title')?.focus(),50);
+}
+// 그룹 카드의 + 버튼: 그 그룹이 선택된 상태로 링크 추가 창을 연다
+function openAddLinkToGroup(gi){
+  const g=(window._linkGroupNames||[])[gi];
+  openAddLinkModal(g);
 }
 
 let editingLinkId = null;
@@ -7974,7 +8134,7 @@ function openEditLinkModal(id){
   editingLinkId = id;
 
   document.getElementById('link-title').value = link.title;
-  document.getElementById('link-url').value = link.url;
+  document.getElementById('link-url').value = linkLocalPath(link.url) || link.url;
   document.getElementById('link-icon').value = link.icon || '🔗';
 
   // 그룹 목록 채우고 현재 그룹 선택
@@ -8016,7 +8176,9 @@ function saveLink(){
   const title=document.getElementById('link-title').value.trim();
   let url=document.getElementById('link-url').value.trim();
   if(!title||!url) { alert('이름과 URL을 입력해주세요.'); return; }
-  if(!/^https?:\/\//i.test(url)) url='https://'+url;
+  const localPath=linkLocalPath(url);
+  if(localPath) url=localPath;                      // 폴더/파일 경로는 그대로 저장
+  else if(!/^https?:\/\//i.test(url)) url='https://'+url;
 
   const gSelVal=document.getElementById('link-group-select').value;
   const group = gSelVal==='__new__'
@@ -8736,6 +8898,7 @@ function calcScore(){
    MAIN RENDER
 ══════════════════════════════════════ */
 function render(){
+  try{ renderLinkFavs(); }catch(_){}
   if(!activeLogDate) activeLogDate = TODAY_STR; // 홈/할 일이 공유하는 작업 날짜
   // 오늘자 반복 미팅 자동 반영.
   // 중복/부활 방지는 각 항목의 lastAuto가 담당하므로 매 렌더에서 호출해도 안전하고,
