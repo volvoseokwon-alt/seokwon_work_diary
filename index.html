@@ -1609,7 +1609,7 @@ let _saveTimer=null, _saveInFlight=false, _savePending=false;
 function buildPayload(){
   const raw = {
     projects, tasks, weeklyLogs, trash, completedProjects,
-    repeatTasks, recurringMeetings, cancelledMeetings, outlookSync, calMemos, taskTags, quickLinks, customHolidays, dailyPlans, dailyMemos, stickyNotes, stickyLinks,
+    repeatTasks, recurringMeetings, cancelledMeetings, outlookSync, calMemos, taskTags, quickLinks, linkGroupsExtra, customHolidays, dailyPlans, dailyMemos, stickyNotes, stickyLinks,
     sidebarNote: document.getElementById('sidebar-note')?.value || '',
     updatedAt: new Date().toISOString()
   };
@@ -1696,6 +1696,7 @@ function applyData(data){
   calMemos          = data.calMemos          || calMemos;
   taskTags          = data.taskTags          || taskTags;
   quickLinks        = data.quickLinks        || quickLinks;
+  linkGroupsExtra   = Array.isArray(data.linkGroupsExtra) ? data.linkGroupsExtra : linkGroupsExtra;
   customHolidays    = data.customHolidays    || customHolidays;
   dailyPlans        = data.dailyPlans        || dailyPlans;
   dailyMemos        = normalizeDailyMemos(data.dailyMemos);
@@ -2042,6 +2043,7 @@ function restoreFromFile(file){
       calMemos = data.calMemos || {};
       taskTags = data.taskTags || {};
       if (data.quickLinks) quickLinks = data.quickLinks; // 🐛 fix: 전체 복원 시 링크가 빠져있던 문제
+      linkGroupsExtra = Array.isArray(data.linkGroupsExtra) ? data.linkGroupsExtra : [];
       customHolidays = data.customHolidays || [];
       dailyPlans = data.dailyPlans || {};
       dailyMemos = normalizeDailyMemos(data.dailyMemos);
@@ -2407,6 +2409,7 @@ let calMemos = {};        // {'2026-06-17': {text:'...', color:'#4f46e5'}}
 let dailyPlans = {};
 let taskTags = {};        // {taskId: ['#회의','#문서']}
 let quickLinks = [];      // {id, title, url, group, icon}
+let linkGroupsExtra = [];  // 링크 없이 이름만 만든 그룹
 let currentFilter = 'all';
 // 전체 보기에서 숨길 프로젝트 id 목록 (눈 아이콘 토글로 켜고 끔, localStorage에 저장해서 새로고침해도 유지)
 let hiddenProjects = (()=>{ try { return new Set(JSON.parse(localStorage.getItem('hiddenProjects')||'[]')); } catch(e){ return new Set(); } })();
@@ -7656,6 +7659,44 @@ function getLinkGroupOrder(){
 function setLinkGroupOrder(order){
   localStorage.setItem('linkGroupOrder', JSON.stringify(order));
 }
+/* 링크 없이 이름만 만든 그룹 (linkGroupsExtra). 링크가 다 지워져도 그룹은 남는다 */
+function allLinkGroupNames(){
+  return [...new Set([...quickLinks.map(l=>l.group||'기타'), ...linkGroupsExtra])];
+}
+function createLinkGroup(name){
+  name=String(name||'').trim().slice(0,40);
+  if(!name) return false;
+  if(allLinkGroupNames().includes(name)){ showMiniToast(`<b>${escAttr(name)}</b> 그룹은 이미 있어요`); return false; }
+  const order=sortGroupsByOrder(allLinkGroupNames());
+  linkGroupsExtra.push(name);
+  setLinkGroupOrder([...order,name]);               // 새 그룹은 맨 뒤에
+  saveAndRender();
+  showMiniToast(`📁 <b>${escAttr(name)}</b> 그룹을 만들었어요<br><span style="opacity:.7;font-size:0.72rem;">+ 를 누르거나 즐겨찾기를 끌어다 놓아 링크를 넣으세요</span>`,3500);
+  return true;
+}
+function deleteEmptyLinkGroup(gi){
+  const g=(window._linkGroupNames||[])[gi]; if(g==null) return;
+  if(quickLinks.some(l=>(l.group||'기타')===g)) return;
+  linkGroupsExtra=linkGroupsExtra.filter(x=>x!==g);
+  saveAndRender();
+}
+// "+ 새 그룹 추가" 카드: 그 자리에서 이름만 입력
+function startNewLinkGroup(card){
+  if(card.querySelector('input')) return;
+  card.textContent='';
+  card.style.cursor='default';
+  const inp=document.createElement('input');
+  inp.type='text'; inp.placeholder='새 그룹 이름 입력 후 Enter'; inp.maxLength=40;
+  inp.style.cssText='width:100%;padding:7px 9px;border:1.5px solid var(--primary);border-radius:6px;font-size:0.8rem;background:var(--card);color:var(--text);box-sizing:border-box;';
+  const hint=document.createElement('div'); hint.style.cssText='font-size:0.66rem;color:var(--muted);margin-top:5px;'; hint.textContent='Enter: 만들기 · Esc: 취소';
+  card.append(inp,hint);
+  let done=false;
+  const finish=ok=>{ if(done) return; done=true; if(!(ok&&createLinkGroup(inp.value))) renderLinks(); };
+  inp.addEventListener('click',e=>e.stopPropagation());
+  inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); finish(true); } else if(e.key==='Escape'){ e.preventDefault(); finish(false); } });
+  inp.addEventListener('blur',()=>finish(!!inp.value.trim()));
+  inp.focus();
+}
 function sortGroupsByOrder(groupNames){
   const saved = getLinkGroupOrder();
   // 저장된 순서 중 현재 존재하는 그룹만 유지
@@ -7848,7 +7889,7 @@ function startInlineEditGroupName(el, oldName){
     }
 
     // 이름이 같은 다른 그룹이 이미 있으면 합쳐짐을 알리고 확인
-    const existingOther = quickLinks.some(l => (l.group||'기타') === newName);
+    const existingOther = allLinkGroupNames().includes(newName);
     if (existingOther) {
       if (!confirm(`"${newName}" 그룹이 이미 있습니다. 합치시겠습니까?`)) {
         el.textContent = oldName;
@@ -7858,6 +7899,7 @@ function startInlineEditGroupName(el, oldName){
 
     // 이 그룹에 속한 모든 링크의 group 값을 일괄 변경
     quickLinks = quickLinks.map(l => (l.group||'기타')===oldName ? {...l, group:newName} : l);
+    linkGroupsExtra = [...new Set(linkGroupsExtra.map(g => g===oldName ? newName : g))];
 
     // 그룹 순서 저장값도 이름 변경 반영
     const order = getLinkGroupOrder().map(g => g===oldName ? newName : g);
@@ -7918,7 +7960,7 @@ function renderLinks(){
   const el=document.getElementById('links-groups');
   if(!el) return;
   renderLinkFavs();
-  if(!quickLinks.length){
+  if(!quickLinks.length&&!linkGroupsExtra.length){
     el.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-size:0.85rem;">등록된 링크가 없습니다.<br><span style="font-size:0.78rem;">+ 링크 추가 버튼으로 자주 가는 사이트를 등록해보세요.</span></div>';
     return;
   }
@@ -7929,6 +7971,7 @@ function renderLinks(){
     if(!byGroup[g]) byGroup[g]=[];
     byGroup[g].push(l);
   });
+  linkGroupsExtra.forEach(g=>{ if(!byGroup[g]) byGroup[g]=[]; });
   const groupNames=sortGroupsByOrder(Object.keys(byGroup));
   window._linkGroupNames=groupNames;
   const collapsedState=getLinkGroupCollapsed();
@@ -7979,12 +8022,13 @@ function renderLinks(){
           <span style="width:7px;height:7px;border-radius:50%;background:${gc};display:inline-block;flex-shrink:0;"></span>
           <span onclick="handleGroupTitleClick(event,'${gEsc}')" ondblclick="event.preventDefault();event.stopPropagation();cancelPendingGroupToggle();startInlineEditGroupName(this,'${gEsc}')" title="클릭: 펼치기/접기 · 더블클릭: 이름 수정" style="font-weight:800;font-size:0.82rem;color:${readable(gc)};flex:1;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${g}</span>
           <span style="font-size:0.62rem;color:var(--muted);background:var(--card);padding:1px 6px;border-radius:9px;flex-shrink:0;">${links.length}</span>
+          ${links.length?'':`<button type="button" draggable="false" onmousedown="event.stopPropagation()" onclick="event.stopPropagation();deleteEmptyLinkGroup(${gi})" title="빈 그룹 삭제" style="flex-shrink:0;background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.75rem;padding:0 2px;">✕</button>`}
           <button type="button" draggable="false" onmousedown="event.stopPropagation()" onclick="event.stopPropagation();openAddLinkToGroup(${gi})" title="이 그룹에 링크 추가" style="flex-shrink:0;width:22px;height:22px;border-radius:6px;border:1.5px solid ${gc}66;background:var(--card);color:${readable(gc)};font-weight:800;font-size:0.9rem;line-height:1;cursor:pointer;padding:0;">+</button>
         </div>
-        ${isCollapsed?'':`<div>${cardsHtml}</div>`}
+        ${isCollapsed?'':`<div>${cardsHtml||`<div onclick="openAddLinkToGroup(${gi})" style="font-size:0.7rem;color:var(--muted);text-align:center;padding:12px 6px;border:1px dashed var(--border);border-radius:6px;cursor:pointer;line-height:1.5;">+ 를 누르거나<br>즐겨찾기를 여기에 끌어다 놓으세요</div>`}</div>`}
       </div>`;
     }).join('')
-    + `<div class="link-group-card link-group-add" role="button" tabindex="0" onclick="openAddLinkModal('__new__')" onkeydown="if(event.key==='Enter')openAddLinkModal('__new__')" title="새 그룹을 만들고 링크 추가 (즐겨찾기를 여기에 끌어다 놓아도 돼요)"
+    + `<div class="link-group-card link-group-add" role="button" tabindex="0" onclick="startNewLinkGroup(this)" onkeydown="if(event.key==='Enter'&&event.target===this)startNewLinkGroup(this)" title="그룹 이름만 입력해서 새 그룹 만들기 (즐겨찾기를 여기에 끌어다 놓아도 돼요)"
         style="border:1.5px dashed var(--border);border-radius:9px;padding:14px 9px;box-sizing:border-box;margin:0 10px 10px 0;grid-row-end:span 1;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--muted);min-height:74px;">
         <span style="font-size:1.4rem;line-height:1;font-weight:300;">+</span>
         <span style="font-size:0.78rem;font-weight:700;">새 그룹 추가</span>
@@ -8107,8 +8151,8 @@ function openAddLinkModal(group){
   document.getElementById('link-group-new').value='';
   document.getElementById('link-icon').value='🔗';
 
-  // 기존 그룹 목록 채우기
-  const groups=[...new Set(quickLinks.map(l=>l.group||'기타'))];
+  // 기존 그룹 목록 채우기 (빈 그룹 포함)
+  const groups=sortGroupsByOrder(allLinkGroupNames());
   const gSel=document.getElementById('link-group-select');
   gSel.innerHTML='<option value="__new__">+ 새 그룹 만들기</option>'
     + groups.map(g=>`<option value="${escAttr(g)}">${escAttr(g)}</option>`).join('');
@@ -8181,7 +8225,17 @@ function selectLinkIcon(icon, el){
 function saveLink(){
   const title=document.getElementById('link-title').value.trim();
   let url=document.getElementById('link-url').value.trim();
-  if(!title||!url) { alert('이름과 URL을 입력해주세요.'); return; }
+  if(!url){
+    // 주소 없이 이름만: 새 그룹 만들기로 처리
+    if(document.getElementById('link-group-select').value==='__new__'){
+      const gname=document.getElementById('link-group-new').value.trim()||title;
+      if(!gname){ alert('그룹 이름을 입력해주세요.'); return; }
+      if(createLinkGroup(gname)) closeModal('modal-add-link');
+      return;
+    }
+    alert('링크 주소를 입력해주세요.'); return;
+  }
+  if(!title) { alert('이름을 입력해주세요.'); return; }
   const localPath=linkLocalPath(url);
   if(localPath) url=localPath;                      // 폴더/파일 경로는 그대로 저장
   else if(!/^https?:\/\//i.test(url)) url='https://'+url;
