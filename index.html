@@ -275,6 +275,7 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 .sf-item button{background:none;border:none;color:#f59e0b;cursor:pointer;font-size:0.78rem;padding:0 2px;opacity:0;flex-shrink:0;}
 .sf-item:hover button{opacity:1;}
 .sf-empty{font-size:0.7rem;color:var(--muted);padding:2px 4px 0;line-height:1.5;}
+.link-group-add:hover{border-color:var(--primary)!important;color:var(--primary-text)!important;background:var(--c-eef2ff);}
 .link-star{background:none;border:none;cursor:pointer;font-size:0.85rem;flex-shrink:0;padding:2px;line-height:1;color:#cbd5e1;}
 .link-star.on{color:#f59e0b;}
 .link-star:hover{color:#f59e0b;}
@@ -7714,9 +7715,9 @@ function wireLinkExternalDrop(){
     const card=e.target.closest&&e.target.closest('.link-group-card'); clear();
     const lk=extDropLink(e);
     if(!lk){ showMiniToast('이 항목은 링크 주소를 읽을 수 없어요'); return; }
-    const group=card?(window._linkGroupNames||[])[+card.dataset.gi]:null;
+    const group=card&&card.dataset.gi!=null?(window._linkGroupNames||[])[+card.dataset.gi]:null;
     if(!group){
-      openAddLinkModal();
+      openAddLinkModal(card&&card.classList.contains('link-group-add')?'__new__':undefined);
       document.getElementById('link-title').value=lk.title;
       document.getElementById('link-url').value=lk.url;
       return;
@@ -7983,6 +7984,11 @@ function renderLinks(){
         ${isCollapsed?'':`<div>${cardsHtml}</div>`}
       </div>`;
     }).join('')
+    + `<div class="link-group-card link-group-add" role="button" tabindex="0" onclick="openAddLinkModal('__new__')" onkeydown="if(event.key==='Enter')openAddLinkModal('__new__')" title="새 그룹을 만들고 링크 추가 (즐겨찾기를 여기에 끌어다 놓아도 돼요)"
+        style="border:1.5px dashed var(--border);border-radius:9px;padding:14px 9px;box-sizing:border-box;margin:0 10px 10px 0;grid-row-end:span 1;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--muted);min-height:74px;">
+        <span style="font-size:1.4rem;line-height:1;font-weight:300;">+</span>
+        <span style="font-size:0.78rem;font-weight:700;">새 그룹 추가</span>
+      </div>`
     + `</div>`;
   layoutLinksMasonry();
 }
@@ -8118,7 +8124,7 @@ function openAddLinkModal(group){
   document.getElementById('link-modal-title').textContent='🔗 링크 추가';
   document.getElementById('link-modal-save-btn').textContent='추가';
   openModal('modal-add-link');
-  setTimeout(()=>document.getElementById('link-title')?.focus(),50);
+  setTimeout(()=>document.getElementById(group==='__new__'?'link-group-new':'link-title')?.focus(),50);
 }
 // 그룹 카드의 + 버튼: 그 그룹이 선택된 상태로 링크 추가 창을 연다
 function openAddLinkToGroup(gi){
