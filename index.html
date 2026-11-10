@@ -7784,7 +7784,24 @@ function onLinkGroupDragOver(e, groupName){
   e.preventDefault();
   if (dragGroupName && dragGroupName !== groupName) {
     e.currentTarget.style.outline = '2px dashed var(--primary)';
+  } else if (dragLinkId) {
+    const l = quickLinks.find(x=>x.id===dragLinkId);
+    if (l && (l.group||'기타') !== groupName) e.currentTarget.style.outline = '2.5px dashed var(--primary)';
   }
+}
+// 링크를 다른 그룹 카드에 놓으면 그 그룹 맨 아래로 옮긴다
+function moveLinkToGroup(linkId, targetGroup){
+  const idx = quickLinks.findIndex(l=>l.id===linkId);
+  if (idx<0) return;
+  const link = quickLinks[idx];
+  if ((link.group||'기타') === targetGroup) return;
+  quickLinks.splice(idx, 1);
+  const moved = {...link, group: targetGroup};
+  let last = -1;
+  quickLinks.forEach((l,i)=>{ if((l.group||'기타')===targetGroup) last=i; });
+  if (last<0) quickLinks.push(moved); else quickLinks.splice(last+1, 0, moved);
+  saveAndRender();
+  showMiniToast(`🔗 <b>${escAttr(link.title)}</b> → <b>${escAttr(targetGroup)}</b>(으)로 옮겼어요`, 2500);
 }
 function onLinkGroupDragLeave(e){
   e.currentTarget.style.outline = 'none';
@@ -7792,6 +7809,7 @@ function onLinkGroupDragLeave(e){
 function onLinkGroupDrop(e, targetGroup){
   e.preventDefault();
   e.currentTarget.style.outline = 'none';
+  if (dragLinkId) { const id=dragLinkId; dragLinkId=null; moveLinkToGroup(id, targetGroup); return; }
   if (!dragGroupName || dragGroupName === targetGroup) return;
 
   const byGroup={};
@@ -7841,7 +7859,10 @@ function onLinkItemDrop(e, targetId){
   const targetIdx = quickLinks.findIndex(l=>l.id===targetId);
   if (dragIdx<0 || targetIdx<0) return;
 
-  const [moved] = quickLinks.splice(dragIdx, 1);
+  // 다른 그룹의 링크 위에 놓으면 그 그룹으로 옮기면서 그 자리에 넣는다
+  const targetGroupName = quickLinks[targetIdx].group||'기타';
+  const [moved0] = quickLinks.splice(dragIdx, 1);
+  const moved = (moved0.group||'기타')===targetGroupName ? moved0 : {...moved0, group:targetGroupName};
   const newTargetIdx = quickLinks.findIndex(l=>l.id===targetId);
   quickLinks.splice(newTargetIdx, 0, moved);
 
