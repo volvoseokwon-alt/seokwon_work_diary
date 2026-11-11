@@ -359,6 +359,39 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 .week-bar-track{flex:1;background:var(--c-f1f5f9);border-radius:10px;height:10px;}
 .week-bar-fill{height:100%;border-radius:10px;}
 .week-bar-val{width:40px;color:var(--muted);font-size:0.73rem;}
+.wt-toggle{display:inline-flex;border:1px solid var(--border);border-radius:7px;overflow:hidden;}
+.wt-toggle button{border:none;background:var(--card);color:var(--muted);font-size:0.72rem;font-weight:700;padding:4px 10px;cursor:pointer;}
+.wt-toggle button.on{background:var(--primary);color:#fff;}
+.wt-wrap{overflow-x:auto;}
+.wt{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;min-width:760px;font-size:0.8rem;}
+.wt th,.wt td{border-right:1px solid var(--border);border-bottom:1px solid var(--border);vertical-align:top;}
+.wt tr>*:first-child{border-left:1px solid var(--border);}
+.wt thead th{border-top:1px solid var(--border);background:var(--bg);padding:7px 8px;text-align:left;}
+.wt thead th:first-child{border-top-left-radius:8px;} .wt thead th:last-child{border-top-right-radius:8px;}
+.wt tbody tr:last-child td:last-child{border-bottom-right-radius:8px;} .wt tbody tr:last-child th{border-bottom-left-radius:8px;}
+.wt .wt-l{width:62px;font-size:0.72rem;font-weight:800;color:var(--muted);background:var(--bg);padding:8px 6px;text-align:center;}
+.wt .wt-wd{font-weight:800;font-size:0.86rem;color:var(--text);display:flex;align-items:center;gap:5px;}
+.wt .wt-wd span{font-weight:600;font-size:0.74rem;color:var(--muted);}
+.wt .wt-wd em{font-style:normal;font-size:0.6rem;font-weight:800;color:#fff;background:var(--primary);border-radius:8px;padding:1px 6px;}
+.wt .wt-sum{font-size:0.7rem;font-weight:700;color:var(--primary-text);margin-top:1px;}
+.wt .wt-sum i{font-style:normal;color:#a855f7;}
+.wt .wt-hol{font-size:0.64rem;font-weight:700;color:var(--x-047857);margin-top:2px;}
+.wt th.today{background:var(--pri-light);}
+.wt td.today{background:color-mix(in srgb,var(--primary) 4%,transparent);}
+.wt th.wkend .wt-wd{color:var(--warn);}
+.wt td{padding:5px;background:var(--card);}
+.wt-i{position:relative;display:flex;gap:6px;align-items:flex-start;padding:4px 6px 4px 8px;border-radius:5px;cursor:pointer;line-height:1.35;border-left:3px solid var(--pc,#a855f7);margin-bottom:3px;}
+.wt-i:hover{background:var(--bg);}
+.wt-i.m{background:#a855f70d;}
+.wt-i.m:hover{background:#a855f71c;}
+.wt-i .wt-t{flex:1;min-width:0;color:var(--text);font-weight:600;word-break:break-word;}
+.wt-i .wt-t b{font-weight:800;color:#a855f7;font-size:0.72rem;margin-right:3px;font-variant-numeric:tabular-nums;}
+.wt-i .wt-t small{display:block;font-size:0.64rem;font-weight:700;margin-top:1px;}
+.wt-i .wt-hr{font-size:0.7rem;font-weight:800;color:var(--primary-text);white-space:nowrap;font-variant-numeric:tabular-nums;}
+.wt-i.m .wt-hr{color:#a855f7;}
+.wt-i .wt-x{position:absolute;right:2px;top:2px;display:none;border:none;background:var(--c-fee2e2);color:var(--warn);border-radius:4px;font-size:0.62rem;width:18px;height:18px;cursor:pointer;padding:0;}
+.wt-i:hover .wt-x{display:block;}
+.wt-i:hover .wt-hr{visibility:hidden;}
 .wlog-item{display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:0.83rem;}
 .wlog-item:last-child{border-bottom:none;}
 /* ── 상세 기록: 날짜별 그룹 ── */
@@ -801,8 +834,8 @@ ZB 교체 둘</textarea>
           <select id="sub-project-select" style="padding:6px 7px;border:1.5px solid var(--border);border-radius:6px;font-size:0.8rem;background:var(--card);min-width:110px;" onchange="onSubProjSelectChange('sub-project-select','sub-project-custom')"></select>
           <input type="text" id="sub-project-custom" placeholder="하위 분류명 입력" style="display:none;padding:6px 8px;border:1.5px solid var(--primary);border-radius:6px;font-size:0.8rem;min-width:110px;">
           <select id="task-priority" style="padding:6px 7px;border:1.5px solid var(--border);border-radius:6px;font-size:0.8rem;background:var(--card);font-weight:700;">
-            <option value="A1" style="color:var(--x-b91c1c)">Critical</option><option value="A2" style="color:var(--x-c026d3)">Critical·Wait</option>
-            <option value="B1" style="color:var(--x-4f46e5)">High</option><option value="B2" style="color:var(--x-0284c7)" selected>High·Wait</option>
+            <option value="A1" style="color:var(--x-b91c1c)" selected>Critical</option><option value="A2" style="color:var(--x-c026d3)">Critical·Wait</option>
+            <option value="B1" style="color:var(--x-4f46e5)">High</option><option value="B2" style="color:var(--x-0284c7)">High·Wait</option>
             <option value="C1" style="color:var(--x-0f766e)">Normal</option><option value="C2" style="color:var(--x-64748b)">Normal·Wait</option>
           </select>
           <div class="date-grp" id="add-date-start-grp"><label>시작</label><input type="date" id="start-date"></div>
@@ -1043,7 +1076,14 @@ ZB 교체 둘</textarea>
           <!-- 선택 주 요약 -->
           <div id="weekly-summary"></div>
           <!-- 상세 로그 -->
-          <div style="font-size:0.82rem;font-weight:700;color:var(--muted);">상세 기록</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="font-size:0.82rem;font-weight:700;color:var(--muted);">상세 기록</div>
+            <span style="flex:1"></span>
+            <div class="wt-toggle" id="wlog-view-toggle">
+              <button type="button" data-v="table" onclick="setWlogView('table')">▦ 요일별 표</button>
+              <button type="button" data-v="list" onclick="setWlogView('list')">☰ 날짜별 목록</button>
+            </div>
+          </div>
           <div id="weekly-log"></div>
         </div>
       </div>
@@ -2141,9 +2181,9 @@ async function saveAndRender() {
 /* ══════════════════════════════════════
    DATA
 ══════════════════════════════════════ */
-const TODAY = new Date();
+let TODAY = new Date();      // 앱을 켜둔 채 날짜가 바뀌면 checkDayRollover()가 갱신
 // 로컬 날짜 기준 (UTC 오프셋 보정 - 한국 KST 등)
-const TODAY_STR = `${TODAY.getFullYear()}-${String(TODAY.getMonth()+1).padStart(2,'0')}-${String(TODAY.getDate()).padStart(2,'0')}`;
+let TODAY_STR = `${TODAY.getFullYear()}-${String(TODAY.getMonth()+1).padStart(2,'0')}-${String(TODAY.getDate()).padStart(2,'0')}`;
 
 let projects = [
   {id:'p_ec560f', name:'[NPD] EC560F ZB', color:'#4f46e5', lastAction:'2026-06-19'},
@@ -2791,7 +2831,7 @@ function updateHeaderWeek(){
 /* ══════════════════════════════════════
    SIDEBAR
 ══════════════════════════════════════ */
-function inactiveDays(p){ return Math.ceil((todayMs - d(p.lastAction).getTime())/86400000); }
+function inactiveDays(p){ return Math.ceil((TODAY.getTime() - d(p.lastAction).getTime())/86400000); }
 
 // 2주(14일)~10주(70일) → 색상 보간 (연한빨간 → 진한빨간)
 function inactiveColor(days){
@@ -4249,6 +4289,9 @@ function renderWeekly(){
 
   if(!logs.length){ document.getElementById('weekly-log').innerHTML='<div style="color:var(--muted);padding:14px 0;text-align:center;font-size:0.83rem;">이 주에 기록이 없습니다.</div>'; return; }
 
+  updateWlogViewToggle();
+  if(wlogView==='table'){ document.getElementById('weekly-log').innerHTML=renderWeeklyTable(logs,dayKeys); return; }
+
   // ── 날짜별로 묶어서 표시 (최신 날짜가 위)
   //    같은 날짜 안에서는 시간대가 지정된 기록을 시작시각 순으로 먼저 놓는다.
   const byDate=new Map();
@@ -4267,7 +4310,7 @@ function renderWeekly(){
       <span class="p-badge" style="background:${p.color}22;color:${readable(p.color)};flex-shrink:0">${p.name}${subProjLabel}</span>
       <div style="flex:1">
         <div style="font-weight:600">${isMeeting?'📅 ':''}${l.task}${isMeeting?' <span style="font-size:0.65rem;color:#a855f7;font-weight:700;background:#a855f718;padding:1px 6px;border-radius:8px;">미팅</span>':''}</div>
-        ${l.memo?`<div style="font-size:0.73rem;color:var(--muted);margin-top:1px">${l.memo}</div>`:''}
+        ${l.memo&&!wlogIsAutoMemo(l.memo)?`<div style="font-size:0.73rem;color:var(--muted);margin-top:1px">${l.memo}</div>`:''}
         ${matchedTask?.memo?`<div style="font-size:0.72rem;color:var(--x-92660d);background:var(--c-fef9c3);border-left:2px solid var(--c-fde68a);padding:2px 7px;border-radius:0 4px 4px 0;margin-top:2px;display:inline-block;">📝 ${matchedTask.memo}</div>`:''}
       </div>
       ${l.startTime&&l.endTime?`<div style="font-size:0.7rem;font-weight:700;color:var(--x-0f766e);background:var(--c-ccfbf1);border-radius:5px;padding:1px 6px;white-space:nowrap;" title="시간대 지정된 기록">⏰ ${l.startTime}~${l.endTime}</div>`:''}
@@ -4316,6 +4359,45 @@ function renderWeekly(){
   }).join('');
 }
 
+/* 상세 기록 "요일별 표": 엑셀처럼 월~금 칸에 미팅 / 업무를 한눈에 */
+let wlogView='table';
+try{ const v=localStorage.getItem('wd-wlog-view'); if(v==='list'||v==='table') wlogView=v; }catch(_){}
+function setWlogView(v){ wlogView=v; try{ localStorage.setItem('wd-wlog-view',v); }catch(_){} renderWeekly(); }
+function updateWlogViewToggle(){ document.querySelectorAll('#wlog-view-toggle button').forEach(b=>b.classList.toggle('on',b.dataset.v===wlogView)); }
+function wlogIsAutoMemo(m){ return /^\s*(✅\s*)?완료 기록\s*$/.test(String(m||'')); }
+function renderWeeklyTable(logs,dayKeys){
+  const WD=['일','월','화','수','목','금','토'];
+  const r2=n=>Math.round(n*100)/100;
+  const dayLogs=dk=>logs.filter(l=>l.date===dk).sort((a,b)=>{
+    const at=a.startTime||'99:99', bt=b.startTime||'99:99';
+    return at!==bt?at.localeCompare(bt):(a.id||0)-(b.id||0);
+  });
+  // 월~금은 항상, 토/일은 기록이 있을 때만
+  const cols=dayKeys.filter((dk,i)=>i<5||logs.some(l=>l.date===dk));
+  const head=cols.map(dk=>{
+    const d=new Date(dk+'T00:00:00'), dl=dayLogs(dk);
+    const h=dl.reduce((s,l)=>s+(+l.hours||0),0), mh=dl.filter(l=>l.type==='meeting').reduce((s,l)=>s+(+l.hours||0),0);
+    const hol=getHolidayLabel(dk), today=dk===TODAY_STR, wk=d.getDay()===0||d.getDay()===6;
+    return `<th class="${today?'today':''}${wk?' wkend':''}"><div class="wt-wd">${WD[d.getDay()]} <span>${d.getMonth()+1}/${d.getDate()}</span>${today?'<em>오늘</em>':''}</div>`
+      +`<div class="wt-sum">${h?r2(h)+'h':'—'}${mh?` <i>· 미팅 ${r2(mh)}h</i>`:''}</div>${hol?`<div class="wt-hol">🏖️ ${escAttr(hol)}</div>`:''}</th>`;
+  }).join('');
+  const item=l=>{
+    const isM=l.type==='meeting', p=proj(l.project);
+    const memo=l.memo&&!wlogIsAutoMemo(l.memo)?l.memo:'';
+    const tip=[(isM?'미팅 · ':'')+(p?p.name:''),l.task,l.startTime&&l.endTime?`${l.startTime}~${l.endTime}`:'',memo,'(클릭: 수정)'].filter(Boolean).join('\n');
+    const pc=isM?'#a855f7':(p?.color||'#64748b');
+    return `<div class="wt-i${isM?' m':''}" style="--pc:${pc}" onclick="openEditWeekly(${l.id})" title="${escAttr(tip)}">`
+      +`<span class="wt-t">${isM&&l.startTime?`<b>${escAttr(l.startTime)}</b>`:''}${escAttr(l.task||'(제목 없음)')}`
+      +`${!isM&&p?`<small style="color:${readable(p.color)}">${escAttr(p.name)}</small>`:''}</span>`
+      +`<span class="wt-hr">${r2(+l.hours||0)}h</span>`
+      +`<button type="button" class="wt-x" title="삭제" onclick="event.stopPropagation();deleteWeekly(${l.id})">✕</button></div>`;
+  };
+  const row=(label,isM)=>`<tr><th class="wt-l">${label}</th>`+cols.map(dk=>{
+    const it=dayLogs(dk).filter(l=>(l.type==='meeting')===isM);
+    return `<td class="${dk===TODAY_STR?'today':''}">${it.map(item).join('')}</td>`;
+  }).join('')+`</tr>`;
+  return `<div class="wt-wrap"><table class="wt"><thead><tr><th class="wt-l"></th>${head}</tr></thead><tbody>${row('📅<br>미팅',true)}${row('🛠️<br>업무',false)}</tbody></table></div>`;
+}
 // 상세 기록에서 접어둔 날짜들 (주차를 옮겨도 유지)
 const wlogCollapsedDays=new Set();
 function toggleWlogDay(dk){
@@ -10197,6 +10279,31 @@ document.getElementById('start-date').value=TODAY_STR;
 const _endDef=new Date(TODAY); _endDef.setDate(TODAY.getDate()+7);
 const _endStr=`${_endDef.getFullYear()}-${String(_endDef.getMonth()+1).padStart(2,'0')}-${String(_endDef.getDate()).padStart(2,'0')}`;
 document.getElementById('end-date').value=_endStr;
+
+/* 앱을 켜둔 채 자정이 지나면 다음날을 자동으로 "오늘"로 */
+function checkDayRollover(){
+  const now=new Date();
+  const key=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  if(key===TODAY_STR) return;
+  const old=TODAY_STR, oldY=TODAY.getFullYear(), oldM=TODAY.getMonth();
+  TODAY=now; TODAY_STR=key;
+  // 어제를 보고 있던 화면만 오늘로 옮긴다 (일부러 다른 날짜를 보고 있으면 그대로)
+  if(!activeLogDate||activeLogDate===old) activeLogDate=key;
+  if(typeof calSelDate!=='undefined'&&calSelDate===old) calSelDate=key;
+  if(calYear===oldY&&calMonth===oldM){ calYear=now.getFullYear(); calMonth=now.getMonth(); }
+  if(monthlyHeatmapYear===oldY&&monthlyHeatmapMonth===oldM){ monthlyHeatmapYear=now.getFullYear(); monthlyHeatmapMonth=now.getMonth(); }
+  const sd=document.getElementById('start-date'), ed=document.getElementById('end-date');
+  if(sd&&(!sd.value||sd.value===old)){
+    sd.value=key;
+    const e=new Date(now); e.setDate(now.getDate()+7);
+    if(ed) ed.value=`${e.getFullYear()}-${String(e.getMonth()+1).padStart(2,'0')}-${String(e.getDate()).padStart(2,'0')}`;
+  }
+  try{ updateHeaderWeek(); }catch(_){}
+  render();
+}
+setInterval(checkDayRollover,30000);
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) checkDayRollover(); });
+window.addEventListener('focus',checkDayRollover);
 
 // 메모 자동 저장
 document.getElementById('sidebar-note')?.addEventListener('input', ()=>{
