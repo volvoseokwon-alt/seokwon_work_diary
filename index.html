@@ -145,7 +145,8 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 .alert-dismiss{margin-left:auto;cursor:pointer;opacity:0.45;font-weight:700;padding:0 6px;border-radius:4px;flex-shrink:0;user-select:none;}
 .alert-dismiss:hover{opacity:1;background:var(--v-dismiss-hover);}
 /* Tabs */
-.tabs{display:flex;gap:2px;border-bottom:2px solid var(--border);flex-wrap:wrap;}
+/* 탭 줄은 화면을 내려도 위에 고정 (main 이 스크롤 영역, 위쪽 여백 14px 만큼 올려서 붙임) */
+.tabs{display:flex;gap:2px;border-bottom:2px solid var(--border);flex-wrap:wrap;position:sticky;top:-14px;z-index:30;background:var(--bg);margin-top:-14px;padding-top:8px;flex-shrink:0;}
 .tab-btn{background:none;border:none;padding:8px 13px;cursor:pointer;font-size:0.85rem;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px;transition:.15s;white-space:nowrap;}
 .tab-btn:hover{color:var(--primary-text);}
 .tab-btn.active{color:var(--primary-text);font-weight:700;border-bottom-color:var(--primary);}
@@ -299,7 +300,7 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 .memo-links a:hover{text-decoration:underline;}
 .cal-layout{display:grid;grid-template-columns:270px minmax(0,1fr);gap:11px;align-items:start;}
 @media(max-width:900px){.cal-layout{grid-template-columns:1fr;}}
-.cal-day-panel{position:sticky;top:8px;gap:8px;padding:12px 12px 14px;}
+.cal-day-panel{position:sticky;top:calc(var(--tabs-h,44px) + 8px);gap:8px;padding:12px 12px 14px;}
 .cdp-head{display:flex;align-items:center;gap:6px;}
 .cdp-head .cdp-title{flex:1;text-align:center;font-weight:800;font-size:0.95rem;}
 .cdp-head .cdp-title small{display:block;font-size:0.66rem;font-weight:600;color:var(--muted);}
@@ -457,7 +458,7 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 .daily-memo-stats span{background:var(--card);border:1px solid var(--border);border-radius:7px;padding:7px 11px;}
 .daily-memo-stats b{color:var(--text);margin-left:8px;}
 .daily-memo-grid{display:grid;grid-template-columns:minmax(270px,340px) minmax(0,1fr);gap:16px;align-items:start;}
-.daily-memo-composer{border-top:3px solid var(--primary);position:sticky;top:0;gap:13px;}
+.daily-memo-composer{border-top:3px solid var(--primary);position:sticky;top:calc(var(--tabs-h,44px) + 4px);gap:13px;}
 .daily-memo-composer-head{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.85rem;}
 .daily-memo-selected-label{font-size:.77rem;color:var(--primary-text);font-weight:600;}
 .daily-memo-label{display:block;font-size:.73rem;font-weight:600;color:var(--muted);margin-bottom:6px;}
@@ -767,9 +768,9 @@ ZB 교체 둘</textarea>
       <button class="tab-btn active" onclick="switchTab('today',this)">📋 할 일</button>
       <button class="tab-btn" onclick="switchTab('home',this)">🏠 홈</button>
       <button class="tab-btn" onclick="switchTab('calendar',this)">📅 캘린더</button>
+      <button class="tab-btn" onclick="switchTab('links',this)">🔗 링크</button>
       <button class="tab-btn" onclick="switchTab('weekly',this)">⏱️ 주간/월간 기록</button>
       <button class="tab-btn" id="notes-tab-btn" onclick="switchTab('notes',this)">📝 메모 모아보기 <span class="daily-memo-count" id="daily-memo-tab-count">0</span></button>
-      <button class="tab-btn" onclick="switchTab('links',this)">🔗 링크</button>
       <button class="tab-btn" onclick="switchTab('search',this)">🔍 검색</button>
       <button class="tab-btn" onclick="switchTab('history',this)">📂 완료 히스토리</button>
       <button class="tab-btn" onclick="switchTab('report',this)">📄 레포트</button>
@@ -3253,6 +3254,11 @@ function toggleOldDailyMemos(){
   document.getElementById('old-memo-toggle').textContent=show?'📅 날짜별 메모 닫기':'📅 이전 날짜별 메모';
   if(show) renderDailyMemoArchive();
 }
+(function(){
+  const t=document.querySelector('main > .tabs'); if(!t) return;
+  const upd=()=>document.documentElement.style.setProperty('--tabs-h',t.offsetHeight+'px');
+  upd(); try{ new ResizeObserver(upd).observe(t); }catch(_){ window.addEventListener('resize',upd); }
+})();
 function switchTab(name,el){
   currentTab=name;
   document.querySelectorAll('.tab-btn:not(.sub-tab-btn)').forEach(b=>b.classList.remove('active'));
