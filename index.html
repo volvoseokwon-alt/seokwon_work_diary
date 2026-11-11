@@ -10051,6 +10051,13 @@ function applyOutlookEvents(raw){
   outlookDetails={};
   list.forEach(e=>{ outlookDetails[e.id]=e.detail; });
   const mine=id=>weeklyLogs.find(l=>l.outlookId===id);
+  // 앱에 먼저 들어간 미팅(반복 미팅 자동 기록, 직접 입력)은 시간이 비어 있을 수 있다 → Outlook 시간으로 채운다
+  const fillTime=(log,e)=>{
+    if(!log||log.startTime||!e.startTime) return false;
+    log.startTime=e.startTime; log.endTime=e.endTime;
+    if(e.hours) log.hours=e.hours;
+    return true;
+  };
   let added=0, updated=0, cancelled=0;
   list.forEach(e=>{
     if(e.date<outlookSync.from) return;
@@ -10061,6 +10068,7 @@ function applyOutlookEvents(raw){
         if(log&&!known.keep){ moveMeetingToCancelled(log); cancelled++; }
         return;
       }
+      if(fillTime(log,e)) updated++;
       if(known.title===e.title&&known.date===e.date&&known.startTime===e.startTime&&known.endTime===e.endTime) return;
       if(log){ Object.assign(log,{task:e.title,date:e.date,hours:e.hours,startTime:e.startTime,endTime:e.endTime}); updated++; }
       Object.assign(known,{title:e.title,date:e.date,startTime:e.startTime,endTime:e.endTime});
@@ -10071,7 +10079,7 @@ function applyOutlookEvents(raw){
     // 같은 날 같은 제목이나 같은 시작 시각의 미팅이 이미 있으면 새로 만들지 않고 연결
     const same=[...weeklyLogs,...cancelledMeetings].find(l=>l.type==='meeting'&&l.date===e.date&&!l.outlookId&&((l.task||'')===e.title||(l.startTime&&l.startTime===e.startTime)));
     seen[e.id]=entry;
-    if(same){ same.outlookId=e.id; return; }
+    if(same){ same.outlookId=e.id; if(fillTime(same,e)) updated++; return; }
     weeklyLogs.push({id:Date.now()+Math.random(),type:'meeting',project:'__meeting__',projName:'미팅',task:e.title,date:e.date,hours:e.hours,memo:'',startTime:e.startTime,endTime:e.endTime,outlookId:e.id});
     added++;
   });
