@@ -735,6 +735,7 @@ if ('serviceWorker' in navigator) {
     </span>
     <button onclick="forceSaveToServer()" title="지금 화면에 보이는 데이터를 저장 폴더에 즉시 기록합니다" style="background:#0ea5e9;border:none;color:white;font-size:0.7rem;font-weight:700;padding:4px 9px;border-radius:5px;cursor:pointer;">⬆️ 지금 저장</button>
     <button id="backup-folder-btn" onclick="connectDataFolder()" title="데이터를 저장할 PC 폴더를 연결하세요 (Chrome/Edge PC 전용). OneDrive 안에 두면 다른 PC와 같은 데이터를 쓸 수 있습니다." style="background:#f59e0b;border:none;color:white;font-size:0.7rem;padding:4px 8px;border-radius:5px;cursor:pointer;">📁 저장 폴더 연결</button>
+    <button id="move-local-btn" onclick="moveDataToLocal()" title="데이터를 OneDrive가 아닌 이 PC 폴더로 옮깁니다 (PC 멈춤 방지). Outlook 파일은 지금 폴더에서 읽기만 합니다" style="display:none;background:#7c3aed;border:none;color:white;font-size:0.7rem;font-weight:700;padding:4px 8px;border-radius:5px;cursor:pointer;">💻 로컬로 옮기기</button>
     <button onclick="document.getElementById('restore-file-input').click()" title="저장 폴더의 백업_날짜.json 등 백업 파일에서 되돌립니다" style="background:rgba(255,255,255,0.15);border:none;color:white;font-size:0.7rem;padding:4px 8px;border-radius:5px;cursor:pointer;">📤 복원</button>
     <input type="file" id="restore-file-input" accept=".json" style="display:none;" onchange="restoreFromFile(this.files[0])">
     <span class="week-badge" id="hdr-week" title="이번 주차와 오늘 날짜">W?</span>
@@ -907,7 +908,7 @@ ZB 교체 둘</textarea>
           <button class="btn-primary" style="font-size:0.74rem;padding:4px 10px;background:#a855f7;" onclick="openMeetingAdd()">+ 미팅 추가</button>
         </div>
         <div id="home-recurring-suggest"></div>
-        <div id="outlook-sync-status" style="font-size:0.68rem;color:var(--muted);margin-bottom:3px;"></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;flex-wrap:wrap;"><div id="outlook-sync-status" style="font-size:0.68rem;color:var(--muted);"></div><button type="button" class="btn-sm outlook-now-btn" style="font-size:0.64rem;padding:1px 8px;"></button><button type="button" class="btn-sm outlook-toggle-btn" onclick="toggleOutlookSync()" style="font-size:0.64rem;padding:1px 8px;"></button></div>
         <div id="home-today-meetings"></div>
         <div id="home-today-done-wrap" style="display:none;">
           <div style="display:flex;align-items:center;gap:8px;margin:10px 0 4px;">
@@ -1043,7 +1044,7 @@ ZB 교체 둘</textarea>
           </div>
         </div>
         <div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px;">📝 날짜 클릭: 왼쪽에 그날 일정 · 더블클릭: 메모 추가 (프로젝트 연결 선택 가능)</div>
-        <div id="cal-outlook-status" style="font-size:0.68rem;color:var(--muted);margin-bottom:4px;"></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;"><div id="cal-outlook-status" style="font-size:0.68rem;color:var(--muted);"></div><button type="button" class="btn-sm outlook-now-btn" style="font-size:0.64rem;padding:1px 8px;"></button><button type="button" class="btn-sm outlook-toggle-btn" onclick="toggleOutlookSync()" style="font-size:0.64rem;padding:1px 8px;"></button></div>
         <div class="cal-grid" id="cal-head-row"></div>
         <div class="cal-grid" id="cal-body"></div>
       </div>
@@ -1679,7 +1680,29 @@ function scheduleSave(){
   _saveTimer=setTimeout(()=>{ doSave(); }, 400);
 }
 
+/* OneDrive 폴더 쓰기 줄이기
+   - 앱을 켠 뒤 1분 동안은 폴더에 쓰지 않는다 (켜자마자 OneDrive와 부딪히지 않도록)
+   - 그 뒤로도 폴더에는 최소 90초 간격으로 모아서 쓴다. 브라우저 백업은 매번 바로 저장된다
+   - 창을 닫거나 다른 창으로 숨길 때는 기다리지 않고 바로 폴더에 쓴다 */
+const FOLDER_WRITE_GAP=90*1000, FOLDER_QUIET_MS=60*1000;
+const _appStartedAt=Date.now();
+let _lastFolderWriteAt=0, _folderFlushTimer=null, _forceFolderWrite=false;
+function folderWriteWait(){
+  return Math.max(0, _appStartedAt+FOLDER_QUIET_MS-Date.now(), _lastFolderWriteAt+FOLDER_WRITE_GAP-Date.now());
+}
+function scheduleFolderFlush(wait){
+  if(_folderFlushTimer) return;
+  _folderFlushTimer=setTimeout(()=>{ _folderFlushTimer=null; scheduleSave(); }, wait+100);
+}
+function flushFolderNow(){
+  if(!_folderFlushTimer||!dataDirHandle) return;
+  clearTimeout(_folderFlushTimer); _folderFlushTimer=null;
+  _forceFolderWrite=true; doSave();
+}
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden') flushFolderNow(); });
+window.addEventListener('pagehide',flushFolderNow);
 async function doSave(){
+  if(typeof SAFE_MODE!=='undefined'&&SAFE_MODE){ setSaveStatus('local'); return; }   // 안전 모드: 어디에도 저장하지 않음 (보기 전용)
   if(_saveInFlight){ _savePending=true; return; }
   _saveInFlight=true;
   setSaveStatus('saving');
@@ -1688,8 +1711,17 @@ async function doSave(){
     const localSaved=saveLocalBackup(payload); // 브라우저 안쪽 안전망은 항상 갱신
     if(!localSaved && !dataDirHandle) throw new Error('브라우저 저장 공간이 부족하거나 저장이 차단되었습니다.');
     if(dataDirHandle){
-      await writeDataFile(payload);
-      setSaveStatus('saved', new Date());
+      const wait=_forceFolderWrite?0:folderWriteWait();
+      if(wait>0){
+        // 브라우저에는 이미 저장됨. OneDrive 폴더에는 잠시 뒤 한 번에 모아서 쓴다
+        scheduleFolderFlush(wait);
+        setSaveStatus('pending');
+      } else {
+        _forceFolderWrite=false;
+        await writeDataFile(payload);
+        _lastFolderWriteAt=Date.now();
+        setSaveStatus('saved', new Date());
+      }
     } else {
       setSaveStatus('local');                 // 폴더 미연결 — 브라우저에만 보관 중
     }
@@ -1703,18 +1735,27 @@ async function doSave(){
   }
 }
 
+/* OneDrive 폴더에 쓰는 횟수를 줄인다
+   - 내용이 지난번 저장과 같으면 쓰지 않는다 (시각만 바뀐 저장)
+   - 날짜별 백업은 앱을 켠 뒤 그날 처음 한 번만, 그 뒤로는 30분에 한 번만 갱신 */
+let _lastWrittenKey='', _lastSnapAt=0, _lastSnapDay='';
 async function writeDataFile(payload){
+  const key=JSON.stringify({...payload, updatedAt:0});
+  if(key===_lastWrittenKey) return;
   const fh=await dataDirHandle.getFileHandle(DATA_FILE_NAME, {create:true});
   const w=await fh.createWritable();
-  await w.write(JSON.stringify(payload, null, 2));
+  await w.write(JSON.stringify(payload));        // 줄바꿈/들여쓰기 없이 → 파일이 작아져 OneDrive 부담이 줄어듦
   await w.close();
+  _lastWrittenKey=key;
   // 날짜별 스냅샷도 하나 남긴다 (실수로 지웠을 때 되돌리기 위한 보관본)
   try{
     const d=new Date();
     const ds=`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+    if(_lastSnapDay===ds && Date.now()-_lastSnapAt<30*60*1000) return;
+    _lastSnapDay=ds; _lastSnapAt=Date.now();
     const bh=await dataDirHandle.getFileHandle(`백업_${ds}.json`, {create:true});
     const bw=await bh.createWritable();
-    await bw.write(JSON.stringify(payload, null, 2));
+    await bw.write(JSON.stringify(payload));
     await bw.close();
   }catch(e){ /* 스냅샷 실패는 무시 — 본 파일 저장이 우선 */ }
 }
@@ -1865,6 +1906,8 @@ function setSaveStatus(state, time){
     timeEl.textContent=`${hh}:${mm} 저장됨`;
   } else if(state==='local'){
     icon.textContent='💾'; timeEl.textContent='브라우저에만 저장됨';
+  } else if(state==='pending'){
+    icon.textContent='🕒'; timeEl.textContent='곧 폴더에 저장';
   } else if(state==='nofolder'){
     icon.textContent='📁'; timeEl.textContent='저장 폴더 미연결';
   } else {
@@ -1921,22 +1964,23 @@ function openHandleDB(){
     req.onerror = () => reject(req.error);
   });
 }
-async function saveDirHandleToDB(handle){
+async function saveDirHandleToDB(handle, key){
   try{
     const db = await openHandleDB();
     await new Promise((resolve, reject)=>{
       const tx = db.transaction('handles', 'readwrite');
-      tx.objectStore('handles').put(handle, 'backupDir');
+      if(handle) tx.objectStore('handles').put(handle, key||'backupDir');
+      else tx.objectStore('handles').delete(key||'backupDir');
       tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
     });
   }catch(e){ console.warn('핸들 저장 실패:', e); }
 }
-async function loadDirHandleFromDB(){
+async function loadDirHandleFromDB(key){
   try{
     const db = await openHandleDB();
     return await new Promise((resolve, reject)=>{
       const tx = db.transaction('handles', 'readonly');
-      const req = tx.objectStore('handles').get('backupDir');
+      const req = tx.objectStore('handles').get(key||'backupDir');
       req.onsuccess = () => resolve(req.result || null);
       req.onerror = () => reject(req.error);
     });
@@ -1997,7 +2041,136 @@ const connectBackupFolder = connectDataFolder;
 // 앱 시작 시 호출: 이전에 저장해둔 폴더 핸들이 있으면 권한 상태를 확인해서
 // - 권한이 이미 허용된 상태면 폴더 선택 없이 조용히 자동 재연결
 // - 권한이 끊겼으면(브라우저 재시작 등) 버튼을 눌렀을 때 "권한 허용"만 다시 받도록 안내
+/* 안전 모드: 주소 끝에 ?safe=1 → 폴더(OneDrive)를 전혀 읽거나 쓰지 않고 브라우저 백업으로만 연다.
+   PC가 멈출 때 원인이 폴더 쪽인지 확인하는 용도 */
+const SAFE_MODE=/[?&]safe=1\b/i.test(location.search);
+/* ══════════════════════════════════════
+   데이터는 로컬 폴더, Outlook 파일은 OneDrive 폴더(읽기만)
+   - outlookDirHandle: Power Automate가 파일을 만드는 OneDrive WorkDiary 폴더. 앱은 읽기만 한다
+   - 없으면(옮기기 전) 예전처럼 데이터 폴더에서 Outlook 파일을 읽는다
+══════════════════════════════════════ */
+let outlookDirHandle=null, outlookDirNeedsPerm=false;
+function outlookDir(){ return outlookDirHandle||dataDirHandle; }
+async function restoreOutlookFolder(){
+  const h=await loadDirHandleFromDB('outlookDir'); if(!h) return;
+  outlookDirHandle=h;
+  try{ outlookDirNeedsPerm=(await h.queryPermission({mode:'read'}))!=='granted'; }catch(_){ outlookDirNeedsPerm=true; }
+}
+async function allowOutlookFolder(){
+  if(!outlookDirHandle) return;
+  try{ outlookDirNeedsPerm=(await outlookDirHandle.requestPermission({mode:'read'}))!=='granted'; }catch(_){}
+  if(!outlookDirNeedsPerm){ outlookSyncAt=0; outlookFileStamp=''; syncOutlookMeetings(); }
+  else setOutlookStatus('☁️ Outlook 폴더 읽기 권한이 필요합니다');
+}
+async function pickOutlookFolder(){
+  try{
+    const h=await window.showDirectoryPicker({id:'workdiary-outlook',mode:'read'});
+    outlookDirHandle=h; outlookDirNeedsPerm=false;
+    await saveDirHandleToDB(h,'outlookDir');
+    outlookSyncAt=0; outlookFileStamp=''; syncOutlookMeetings(); updateBackupFolderUI(!!dataDirHandle);
+  }catch(e){ if(e.name!=='AbortError') console.warn(e); }
+}
+async function copyDirFiles(fromDir,toDir,onEach){
+  let n=0;
+  for await(const [name,h] of fromDir.entries()){
+    if(h.kind!=='file') continue;
+    const f=await h.getFile();
+    const th=await toDir.getFileHandle(name,{create:true});
+    const w=await th.createWritable(); await w.write(f); await w.close();
+    n++; onEach&&onEach(n);
+  }
+  return n;
+}
+function moveDataToLocal(){
+  if(!isFileSystemAccessSupported()){ alert('Chrome 또는 Edge(PC)에서만 할 수 있어요.'); return; }
+  document.getElementById('move-local-modal')?.remove();
+  const m=document.createElement('div'); m.id='move-local-modal';
+  m.style.cssText='position:fixed;inset:0;z-index:100003;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;';
+  m.innerHTML=`<div style="background:var(--card);color:var(--text);border-radius:12px;padding:20px 22px;width:min(440px,92vw);box-shadow:0 20px 50px rgba(0,0,0,.3);font-size:0.84rem;line-height:1.65;">
+    <div style="font-weight:800;font-size:1rem;margin-bottom:8px;">💻 데이터를 이 PC(로컬)로 옮기기</div>
+    <div>아래 <b>폴더 고르기</b>를 누르면 폴더 선택 창이 열려요.</div>
+    <ol style="margin:8px 0 8px 18px;padding:0;">
+      <li>왼쪽에서 <b>내 PC → 로컬 디스크 (C:)</b> 클릭</li>
+      <li>위쪽 <b>새 폴더</b> → 이름을 <b>WorkDiaryLocal</b> 로</li>
+      <li>그 폴더를 누르고 <b>폴더 선택</b> → <b>파일 편집 허용</b></li>
+    </ol>
+    <div style="font-size:0.76rem;color:var(--muted);">⚠️ 바탕화면·문서 폴더는 회사 PC에서 OneDrive와 연결된 경우가 많아요. 꼭 C: 아래에 만들어 주세요.<br>${dataDirHandle?`지금 폴더(<b>${escAttr(dataDirHandle.name)}</b>)는 Outlook 파일을 읽는 용도로만 남겨요.`:''}</div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">
+      <button type="button" class="btn-sm" id="ml-cancel">취소</button>
+      <button type="button" class="btn-sm" id="ml-go" style="background:#7c3aed;color:#fff;font-weight:700;padding:6px 14px;">📁 폴더 고르기</button>
+    </div></div>`;
+  document.body.appendChild(m);
+  m.querySelector('#ml-cancel').onclick=()=>m.remove();
+  m.querySelector('#ml-go').onclick=()=>{ m.remove(); moveDataToLocalPick(); };
+}
+async function moveDataToLocalPick(){
+  const oldDir=dataDirHandle;
+  let newDir;
+  try{ newDir=await window.showDirectoryPicker({id:'workdiary-local',mode:'readwrite'}); }
+  catch(e){ if(e.name!=='AbortError') alert('폴더를 열지 못했습니다: '+(e.message||e)); return; }
+  if(oldDir){ try{ if(await newDir.isSameEntry(oldDir)){ alert('지금 쓰는 폴더와 같은 폴더예요. 다른 폴더(예: C:\\WorkDiaryLocal)를 골라 주세요.'); return; } }catch(_){} }
+  try{ await newDir.getFileHandle(OUTLOOK_FILE_NAME); 
+    if(!confirm(`고른 폴더 안에 ${OUTLOOK_FILE_NAME} 이 있어요. OneDrive 폴더일 수 있습니다.\n그래도 이 폴더로 옮길까요?`)) return;
+  }catch(_){}
+  try{
+    const ex=await newDir.getFileHandle(DATA_FILE_NAME);
+    if(ex && !confirm(`고른 폴더에 이미 ${DATA_FILE_NAME} 이 있어요.\n지금 화면의 데이터로 덮어쓸까요?`)) return;
+  }catch(_){}
+  showMiniToast('💻 로컬 폴더로 옮기는 중…',60000);
+  // 메모 첨부 이미지 복사 (한 번만 OneDrive에서 읽음)
+  let imgs=0, imgFail=0;
+  if(oldDir){
+    try{
+      const src=await oldDir.getDirectoryHandle(IMAGE_DIR_NAME);
+      const dst=await newDir.getDirectoryHandle(IMAGE_DIR_NAME,{create:true});
+      try{ imgs=await copyDirFiles(src,dst,n=>showMiniToast(`💻 로컬 폴더로 옮기는 중… 이미지 ${n}개`,60000)); }
+      catch(e){ imgFail++; console.warn('이미지 복사 중 오류:',e); }
+    }catch(_){ /* 이미지 폴더 없음 */ }
+  }
+  // 데이터 파일 쓰기
+  dataDirHandle=newDir;
+  _lastWrittenKey=''; _lastSnapDay='';
+  try{ await writeDataFile(buildPayload()); _lastFolderWriteAt=Date.now(); }
+  catch(e){ dataDirHandle=oldDir; alert('❌ 로컬 폴더에 저장하지 못했습니다. 아무것도 바뀌지 않았어요.\n'+(e.message||e)); return; }
+  await saveDirHandleToDB(newDir,'backupDir');
+  localStorage.setItem('backupFolderConnected','true');
+  if(oldDir){ outlookDirHandle=oldDir; outlookDirNeedsPerm=false; await saveDirHandleToDB(oldDir,'outlookDir'); }
+  _imgUrlCache.clear();
+  updateBackupFolderUI(true);
+  setSaveStatus('saved',new Date());
+  document.getElementById('mini-toast')?.style && (document.getElementById('mini-toast').style.display='none');
+  alert(`✅ 로컬 폴더로 옮겼습니다: ${newDir.name}\n\n`+
+    `· 업무/메모/링크 등 데이터는 이제 ${newDir.name} 에 저장됩니다\n`+
+    (imgs?`· 메모 이미지 ${imgs}개를 함께 옮겼습니다\n`:'')+
+    (imgFail?`· ⚠️ 일부 이미지를 옮기지 못했습니다 (원래 폴더에 그대로 있음)\n`:'')+
+    (oldDir?`· ${oldDir.name} (OneDrive) 는 Outlook 파일을 30분에 한 번 읽기만 합니다\n· 하루 한 번 ${oldDir.name}\\${CLOUD_BACKUP_DIR} 에 백업 사본을 남깁니다`:''));
+  syncOutlookMeetings();
+}
+/* 로컬로 옮긴 뒤: 하루 한 번만 OneDrive 폴더에 백업 사본 (PC 고장 대비) */
+const CLOUD_BACKUP_DIR='로컬데이터_백업';
+let _cloudBackupDay='';
+async function cloudDailyBackup(){
+  if(!outlookDirHandle||!dataDirHandle||SAFE_MODE) return;
+  const d=new Date(), ds=`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+  if(_cloudBackupDay===ds) return;
+  try{
+    if((await outlookDirHandle.queryPermission({mode:'readwrite'}))!=='granted') return;   // 쓰기 권한이 없으면 건너뜀 (묻지 않음)
+    const dir=await outlookDirHandle.getDirectoryHandle(CLOUD_BACKUP_DIR,{create:true});
+    try{ await dir.getFileHandle(`백업_${ds}.json`); _cloudBackupDay=ds; return; }catch(_){}
+    const fh=await dir.getFileHandle(`백업_${ds}.json`,{create:true});
+    const w=await fh.createWritable(); await w.write(JSON.stringify(buildPayload())); await w.close();
+    _cloudBackupDay=ds;
+  }catch(e){ console.warn('OneDrive 하루 백업 실패:',e); }
+}
 async function tryReconnectBackupFolder(){
+  if (SAFE_MODE) {
+    outlookSyncOff=true;
+    const bar=document.createElement('div');
+    bar.style.cssText='position:fixed;left:50%;top:6px;transform:translateX(-50%);z-index:100002;background:#b45309;color:#fff;font-size:0.78rem;font-weight:700;padding:6px 14px;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.25);';
+    bar.textContent='🛟 안전 모드 (보기 전용) · 폴더(OneDrive)를 읽지 않아요 · 여기서 바꾼 내용은 저장되지 않아요';
+    document.body.appendChild(bar);
+    return;
+  }
   if (!isFileSystemAccessSupported()) return;
   if (localStorage.getItem('backupFolderConnected') !== 'true') return;
   const handle = await loadDirHandleFromDB();
@@ -2008,6 +2181,7 @@ async function tryReconnectBackupFolder(){
     return;
   }
   try{
+    await restoreOutlookFolder();
     const perm = await handle.queryPermission({ mode: 'readwrite' });
     if (perm === 'granted') {
       // 이미 허용된 상태 → 폴더 선택/권한 팝업 없이 바로 재연결
@@ -2062,7 +2236,9 @@ function markFolderPermissionNeeded(){
 function updateBackupFolderUI(connected){
   const btn = document.getElementById('backup-folder-btn');
   if (!btn) return;
-  btn.textContent = connected ? `📁 ${dataDirHandle?dataDirHandle.name:'폴더'} 저장중` : '📁 저장 폴더 연결';
+  btn.textContent = connected ? `${outlookDirHandle?'💻':'📁'} ${dataDirHandle?dataDirHandle.name:'폴더'} 저장중` : '📁 저장 폴더 연결';
+  const mv=document.getElementById('move-local-btn');
+  if(mv) mv.style.display = (connected && !outlookDirHandle) ? '' : 'none';
   btn.style.background = connected ? '#10b981' : '#f59e0b';
   btn.title = connected
     ? `이 폴더의 ${DATA_FILE_NAME} 에 저장됩니다. 클릭하면 다른 폴더로 바꿀 수 있습니다.`
@@ -2517,7 +2693,7 @@ function dailyMemoEntries(){
   return Object.entries(dailyMemos).filter(([date,memo])=>validDailyMemoDate(date)&&memo.text?.trim());
 }
 function updateDailyMemoSaveStatus(state){
-  const labels={saving:'저장 중…',saved:dataDirHandle?'✓ 폴더에 저장됨':'✓ 저장된 메모',local:'✓ 브라우저에 저장됨',error:'저장 실패 · 내용을 복사해 보관해주세요',nofolder:'입력하면 자동 저장',loaded:'저장된 메모'};
+  const labels={saving:'저장 중…',saved:dataDirHandle?'✓ 폴더에 저장됨':'✓ 저장된 메모',local:'✓ 브라우저에 저장됨',pending:'✓ 저장됨 · 곧 폴더에도 저장',error:'저장 실패 · 내용을 복사해 보관해주세요',nofolder:'입력하면 자동 저장',loaded:'저장된 메모'};
   document.querySelectorAll('.daily-memo-status').forEach(el=>{
     el.textContent=labels[state]||'입력하면 자동 저장';
     el.dataset.state=state;
@@ -10051,6 +10227,13 @@ function applyOutlookEvents(raw){
   outlookDetails={};
   list.forEach(e=>{ outlookDetails[e.id]=e.detail; });
   const mine=id=>weeklyLogs.find(l=>l.outlookId===id);
+  // 앱에 먼저 들어간 미팅(반복 미팅 자동 기록, 직접 입력)은 시간이 비어 있을 수 있다 → Outlook 시간으로 채운다
+  const fillTime=(log,e)=>{
+    if(!log||log.startTime||!e.startTime) return false;
+    log.startTime=e.startTime; log.endTime=e.endTime;
+    if(e.hours) log.hours=e.hours;
+    return true;
+  };
   let added=0, updated=0, cancelled=0;
   list.forEach(e=>{
     if(e.date<outlookSync.from) return;
@@ -10061,6 +10244,7 @@ function applyOutlookEvents(raw){
         if(log&&!known.keep){ moveMeetingToCancelled(log); cancelled++; }
         return;
       }
+      if(fillTime(log,e)) updated++;
       if(known.title===e.title&&known.date===e.date&&known.startTime===e.startTime&&known.endTime===e.endTime) return;
       if(log){ Object.assign(log,{task:e.title,date:e.date,hours:e.hours,startTime:e.startTime,endTime:e.endTime}); updated++; }
       Object.assign(known,{title:e.title,date:e.date,startTime:e.startTime,endTime:e.endTime});
@@ -10071,7 +10255,7 @@ function applyOutlookEvents(raw){
     // 같은 날 같은 제목이나 같은 시작 시각의 미팅이 이미 있으면 새로 만들지 않고 연결
     const same=[...weeklyLogs,...cancelledMeetings].find(l=>l.type==='meeting'&&l.date===e.date&&!l.outlookId&&((l.task||'')===e.title||(l.startTime&&l.startTime===e.startTime)));
     seen[e.id]=entry;
-    if(same){ same.outlookId=e.id; return; }
+    if(same){ same.outlookId=e.id; if(fillTime(same,e)) updated++; return; }
     weeklyLogs.push({id:Date.now()+Math.random(),type:'meeting',project:'__meeting__',projName:'미팅',task:e.title,date:e.date,hours:e.hours,memo:'',startTime:e.startTime,endTime:e.endTime,outlookId:e.id});
     added++;
   });
@@ -10094,7 +10278,32 @@ function applyOutlookEvents(raw){
   return {added,updated,cancelled,upcomingChanged,total:list.length};
 }
 function setOutlookStatus(text){
-  ['outlook-sync-status','cal-outlook-status'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=text+outlookFlagStatus; });
+  ['outlook-sync-status','cal-outlook-status'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=text+(outlookSyncOff?'':outlookFlagStatus); });
+  document.querySelectorAll('.outlook-now-btn').forEach(b=>{
+    const needPerm=!!(outlookDirHandle&&outlookDirNeedsPerm);
+    b.style.display=outlookSyncOff?'none':'';
+    b.textContent=needPerm?'☁️ Outlook 폴더 권한 허용':'📨 지금 가져오기';
+    b.onclick=needPerm?allowOutlookFolder:outlookSyncNow;
+  });
+  document.querySelectorAll('.outlook-toggle-btn').forEach(b=>{
+    b.textContent=outlookSyncOff?'▶ Outlook 연동 켜기':'⏸ 연동 끄기';
+    b.title=outlookSyncOff?'Outlook 일정·플래그 메일 파일 읽기를 다시 시작':'Outlook 일정·플래그 메일 파일을 읽지 않음 (PC가 멈출 때 확인용)';
+  });
+}
+/* Outlook 연동 끄기: 켜져 있으면 OneDrive의 outlook 파일을 전혀 읽지 않는다.
+   주소 뒤에 ?outlook=off 를 붙여 열면 앱이 뜨자마자 꺼진 상태로 시작한다. */
+let outlookSyncOff=false;
+try{
+  if(/[?&]outlook=off\b/i.test(location.search)) localStorage.setItem('wd-outlook-off','1');
+  if(/[?&]outlook=on\b/i.test(location.search)) localStorage.removeItem('wd-outlook-off');
+  outlookSyncOff=localStorage.getItem('wd-outlook-off')==='1';
+}catch(_){}
+function outlookSyncNow(){ outlookSyncAt=0; outlookFileStamp=''; setOutlookStatus('📨 Outlook 파일 읽는 중…'); syncOutlookMeetings(); }
+function toggleOutlookSync(){
+  outlookSyncOff=!outlookSyncOff;
+  try{ outlookSyncOff?localStorage.setItem('wd-outlook-off','1'):localStorage.removeItem('wd-outlook-off'); }catch(_){}
+  if(outlookSyncOff) setOutlookStatus('⏸ Outlook 연동 꺼짐 · Outlook 파일을 읽지 않습니다');
+  else { outlookSyncAt=0; outlookFileStamp=''; setOutlookStatus('Outlook 연동 켜는 중…'); syncOutlookMeetings(); }
 }
 /* ══════════════════════════════════════
    플래그 메일 → 할 일
@@ -10147,13 +10356,19 @@ let outlookFlagStatus='', flagMemoUpdated=false;
 async function syncOutlookFlags(){
   outlookFlagStatus='';
   let dir;
-  try{ dir=await dataDirHandle.getDirectoryHandle(OUTLOOK_FLAG_DIR); }
+  try{ dir=await outlookDir().getDirectoryHandle(OUTLOOK_FLAG_DIR); }
   catch(e){ return 0; }                            // 폴더가 없으면 아직 연동 전
   let added=0, skipped=0, failed=0, keptFiles=0, lastError='';
   const names=[];
   try{
     for await(const [name,h] of dir.entries()){ if(h.kind==='file'&&/\.json$/i.test(name)) names.push(name); }
-    for(const name of names.slice(0,OUTLOOK_FLAG_BATCH)){
+    // 처리한 파일은 지우지 않고 이름만 기억한다 (OneDrive에는 읽기만)
+    const done=new Set(Array.isArray(outlookSync.flagDone)?outlookSync.flagDone:[]);
+    const nameSet=new Set(names);
+    const pruned=[...done].filter(n=>nameSet.has(n));
+    if(pruned.length!==done.size){ outlookSync.flagDone=pruned; flagMemoUpdated=true; }
+    const todo=names.filter(n=>!done.has(n));
+    for(const name of todo.slice(0,OUTLOOK_FLAG_BATCH)){
       let mail;
       try{
         const fh=await dir.getFileHandle(name);
@@ -10162,12 +10377,12 @@ async function syncOutlookFlags(){
         mail=JSON.parse(await flagFile.text());
       }catch(e){ failed++; lastError=e&&e.name||'오류'; console.warn('플래그 메일 파일 읽기 실패:',name,e); continue; }   // 동기화 중이면 다음에 다시 시도
       if(addFlaggedMailTask(mail)) added++; else skipped++;
-      try{ await dir.removeEntry(name); }
-      catch(e){ keptFiles++; lastError=e&&e.name||'오류'; console.warn('플래그 메일 파일 삭제 실패:',name,e); }   // 파일이 남아도 id로 중복을 막는다
+      outlookSync.flagDone=[...(outlookSync.flagDone||[]),name].slice(-3000);
+      flagMemoUpdated=true;
     }
   }catch(e){ failed++; lastError=e&&e.name||'오류'; console.warn('플래그 메일 폴더 읽기 실패:',e); }
-  if(names.length||failed){
-    outlookFlagStatus=` · 플래그 메일 파일 ${names.length}개: 추가 ${added}건, 중복 ${skipped}건`+(failed?`, 읽기 실패 ${failed}건`:'')+(keptFiles?`, 파일 남음 ${keptFiles}개`:'')+(lastError?` (${lastError})`:'');
+  if(added||skipped||failed){
+    outlookFlagStatus=` · 플래그 메일 새 파일: 추가 ${added}건, 중복 ${skipped}건`+(failed?`, 읽기 실패 ${failed}건`:'')+(keptFiles?`, 파일 남음 ${keptFiles}개`:'')+(lastError?` (${lastError})`:'');
   }
   if(added||flagMemoUpdated){ flagMemoUpdated=false; await saveAndRender(); }
   return added;
@@ -10179,6 +10394,7 @@ function requestOutlookSync(){
   syncOutlookMeetings();
 }
 async function syncOutlookMeetings(){
+  if(outlookSyncOff){ setOutlookStatus('⏸ Outlook 연동 꺼짐 · Outlook 파일을 읽지 않습니다'); return; }
   if(outlookSyncBusy) return;
   outlookSyncBusy=true;
   outlookSyncAt=Date.now();
@@ -10186,10 +10402,11 @@ async function syncOutlookMeetings(){
   finally{ outlookSyncBusy=false; }
 }
 async function runOutlookSync(){
-  if(!dataDirHandle){ setOutlookStatus('Outlook 연동: 저장 폴더가 연결되어 있지 않습니다'); return; }
+  if(!outlookDir()){ setOutlookStatus('Outlook 연동: 저장 폴더가 연결되어 있지 않습니다'); return; }
+  if(outlookDirHandle&&outlookDirNeedsPerm){ setOutlookStatus('☁️ Outlook 폴더 읽기 권한이 필요합니다 → 오른쪽 버튼을 눌러 주세요'); return; }
   await syncOutlookFlags();
   try{
-    const fh=await dataDirHandle.getFileHandle(OUTLOOK_FILE_NAME);
+    const fh=await outlookDir().getFileHandle(OUTLOOK_FILE_NAME);
     const file=await fh.getFile();
     if(file.size>OUTLOOK_MAX_FILE_MB*1048576){
       setOutlookStatus(`⚠️ ${OUTLOOK_FILE_NAME} 파일이 ${(file.size/1048576).toFixed(1)}MB로 너무 커서 읽지 않았습니다. 흐름에서 본문을 줄여 주세요`);
@@ -10206,7 +10423,7 @@ async function runOutlookSync(){
     }
     setOutlookStatus(`📨 Outlook 일정 ${stamp} 기준 · 읽은 일정 ${r.total}건 · 예정 ${(outlookSync.upcoming||[]).length}건`);
   }catch(e){
-    if(e&&e.name==='NotFoundError'){ setOutlookStatus(`Outlook 연동: ${dataDirHandle.name} 폴더에 ${OUTLOOK_FILE_NAME} 파일이 없습니다`); return; }
+    if(e&&e.name==='NotFoundError'){ setOutlookStatus(`Outlook 연동: ${outlookDir().name} 폴더에 ${OUTLOOK_FILE_NAME} 파일이 없습니다`+(outlookDirHandle?'':' (Outlook 파일이 있는 OneDrive 폴더를 연결해 주세요)')); return; }
     console.warn('Outlook 일정 읽기 실패:',e);
     setOutlookStatus(`⚠️ Outlook 일정 파일을 읽지 못했습니다 (${e&&e.name||'오류'})`);
   }
@@ -10335,10 +10552,12 @@ setInterval(checkDeadlineSignalDay,60000);
   updateSubProjToggleVisibility();
   // 주간 자동 보관은 render 후 안전하게 실행
   setTimeout(()=>{ if(tasks.length>0) autoArchiveCompletedTasks(); }, 500);
-  setTimeout(syncOutlookMeetings, 8000);   // 화면이 뜬 뒤에 읽는다
-  setInterval(syncOutlookMeetings, 5*60*1000);
-  window.addEventListener('focus',requestOutlookSync);
-  document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') requestOutlookSync(); });
+  setTimeout(syncOutlookMeetings, 20000);  // 화면이 뜨고 PC가 한숨 돌린 뒤에 읽는다
+  setInterval(syncOutlookMeetings, 30*60*1000);   // 미팅 흐름도 30분마다 파일을 만든다
+  setTimeout(cloudDailyBackup, 3*60*1000);         // 로컬로 옮긴 경우: 하루 한 번 OneDrive에 백업 사본
+  setInterval(cloudDailyBackup, 60*60*1000);
+  // 다른 창(Outlook)에서 돌아올 때마다 OneDrive 파일을 읽지 않는다. 30분 주기 + "지금 가져오기" 버튼
+  setOutlookStatus(outlookSyncOff?'⏸ Outlook 연동 꺼짐 · Outlook 파일을 읽지 않습니다':'Outlook 연동: 잠시 후 읽습니다');
   setTimeout(checkDeadlineAlert, 1500);
   setTimeout(checkWorklogAlerts, 3000);
   setInterval(checkWorklogAlerts, 5*60*1000); // 탭을 계속 켜둔 경우를 위해 5분마다 재검사
