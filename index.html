@@ -907,7 +907,7 @@ ZB 교체 둘</textarea>
           <button class="btn-primary" style="font-size:0.74rem;padding:4px 10px;background:#a855f7;" onclick="openMeetingAdd()">+ 미팅 추가</button>
         </div>
         <div id="home-recurring-suggest"></div>
-        <div id="outlook-sync-status" style="font-size:0.68rem;color:var(--muted);margin-bottom:3px;"></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;flex-wrap:wrap;"><div id="outlook-sync-status" style="font-size:0.68rem;color:var(--muted);"></div><button type="button" class="btn-sm outlook-toggle-btn" onclick="toggleOutlookSync()" style="font-size:0.64rem;padding:1px 8px;"></button></div>
         <div id="home-today-meetings"></div>
         <div id="home-today-done-wrap" style="display:none;">
           <div style="display:flex;align-items:center;gap:8px;margin:10px 0 4px;">
@@ -1043,7 +1043,7 @@ ZB 교체 둘</textarea>
           </div>
         </div>
         <div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px;">📝 날짜 클릭: 왼쪽에 그날 일정 · 더블클릭: 메모 추가 (프로젝트 연결 선택 가능)</div>
-        <div id="cal-outlook-status" style="font-size:0.68rem;color:var(--muted);margin-bottom:4px;"></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;"><div id="cal-outlook-status" style="font-size:0.68rem;color:var(--muted);"></div><button type="button" class="btn-sm outlook-toggle-btn" onclick="toggleOutlookSync()" style="font-size:0.64rem;padding:1px 8px;"></button></div>
         <div class="cal-grid" id="cal-head-row"></div>
         <div class="cal-grid" id="cal-body"></div>
       </div>
@@ -10102,7 +10102,25 @@ function applyOutlookEvents(raw){
   return {added,updated,cancelled,upcomingChanged,total:list.length};
 }
 function setOutlookStatus(text){
-  ['outlook-sync-status','cal-outlook-status'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=text+outlookFlagStatus; });
+  ['outlook-sync-status','cal-outlook-status'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=text+(outlookSyncOff?'':outlookFlagStatus); });
+  document.querySelectorAll('.outlook-toggle-btn').forEach(b=>{
+    b.textContent=outlookSyncOff?'▶ Outlook 연동 켜기':'⏸ 연동 끄기';
+    b.title=outlookSyncOff?'Outlook 일정·플래그 메일 파일 읽기를 다시 시작':'Outlook 일정·플래그 메일 파일을 읽지 않음 (PC가 멈출 때 확인용)';
+  });
+}
+/* Outlook 연동 끄기: 켜져 있으면 OneDrive의 outlook 파일을 전혀 읽지 않는다.
+   주소 뒤에 ?outlook=off 를 붙여 열면 앱이 뜨자마자 꺼진 상태로 시작한다. */
+let outlookSyncOff=false;
+try{
+  if(/[?&]outlook=off\b/i.test(location.search)) localStorage.setItem('wd-outlook-off','1');
+  if(/[?&]outlook=on\b/i.test(location.search)) localStorage.removeItem('wd-outlook-off');
+  outlookSyncOff=localStorage.getItem('wd-outlook-off')==='1';
+}catch(_){}
+function toggleOutlookSync(){
+  outlookSyncOff=!outlookSyncOff;
+  try{ outlookSyncOff?localStorage.setItem('wd-outlook-off','1'):localStorage.removeItem('wd-outlook-off'); }catch(_){}
+  if(outlookSyncOff) setOutlookStatus('⏸ Outlook 연동 꺼짐 · Outlook 파일을 읽지 않습니다');
+  else { outlookSyncAt=0; outlookFileStamp=''; setOutlookStatus('Outlook 연동 켜는 중…'); syncOutlookMeetings(); }
 }
 /* ══════════════════════════════════════
    플래그 메일 → 할 일
@@ -10187,6 +10205,7 @@ function requestOutlookSync(){
   syncOutlookMeetings();
 }
 async function syncOutlookMeetings(){
+  if(outlookSyncOff){ setOutlookStatus('⏸ Outlook 연동 꺼짐 · Outlook 파일을 읽지 않습니다'); return; }
   if(outlookSyncBusy) return;
   outlookSyncBusy=true;
   outlookSyncAt=Date.now();
@@ -10343,10 +10362,10 @@ setInterval(checkDeadlineSignalDay,60000);
   updateSubProjToggleVisibility();
   // 주간 자동 보관은 render 후 안전하게 실행
   setTimeout(()=>{ if(tasks.length>0) autoArchiveCompletedTasks(); }, 500);
-  setTimeout(syncOutlookMeetings, 8000);   // 화면이 뜬 뒤에 읽는다
+  setTimeout(syncOutlookMeetings, 20000);  // 화면이 뜨고 PC가 한숨 돌린 뒤에 읽는다
   setInterval(syncOutlookMeetings, 5*60*1000);
-  window.addEventListener('focus',requestOutlookSync);
-  document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') requestOutlookSync(); });
+  // 다른 창(Outlook)에서 돌아올 때마다 OneDrive 파일을 읽지 않는다. 5분 주기로만 읽음
+  setOutlookStatus(outlookSyncOff?'⏸ Outlook 연동 꺼짐 · Outlook 파일을 읽지 않습니다':'Outlook 연동: 잠시 후 읽습니다');
   setTimeout(checkDeadlineAlert, 1500);
   setTimeout(checkWorklogAlerts, 3000);
   setInterval(checkWorklogAlerts, 5*60*1000); // 탭을 계속 켜둔 경우를 위해 5분마다 재검사
