@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>석원이의 업무 다이어리 · V1.0</title>
+<title>석원이의 업무 다이어리 · V1.02</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#4f46e5">
 <meta name="mobile-web-app-capable" content="yes">
@@ -365,6 +365,39 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 .hdr-menu button{display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);font-size:0.78rem;padding:7px 10px;border-radius:6px;cursor:pointer;white-space:nowrap;}
 .hdr-menu button:hover{background:var(--bg);}
 .hdr-menu #hdr-folder-item small{display:block;font-size:0.66rem;color:var(--muted);margin-top:1px;}
+.wt-i .wt-t .wt-note{white-space:pre-wrap;-webkit-line-clamp:3;}
+.wt-i .wt-t .wt-memo{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;font-size:0.68rem;font-weight:500;color:var(--muted);margin-top:2px;white-space:pre-wrap;word-break:break-word;cursor:zoom-in;border-radius:3px;}
+.wt-i .wt-t .wt-memo:hover{background:var(--bg);}
+.wt-i .wt-t .wt-memo.open{display:block;-webkit-line-clamp:unset;cursor:zoom-out;background:var(--bg);padding:3px 5px;}
+.wl-done-note{font-size:0.74rem;color:var(--x-047857);margin-top:2px;white-space:pre-wrap;word-break:break-word;}
+.wl-memo-note{font-size:0.72rem;color:var(--muted);margin-top:2px;white-space:pre-wrap;word-break:break-word;}
+.ph-head{cursor:pointer;border-radius:8px;padding:4px 6px;margin:0 -6px;}
+.ph-head:hover{background:var(--bg);}
+.ph-caret{display:inline-block;transition:transform .15s;color:var(--muted);font-size:0.75rem;}
+.ph-item.open .ph-caret{transform:rotate(90deg);}
+.ph-list{margin:8px 0 14px 8px;border-left:2px solid var(--border);padding-left:8px;display:flex;flex-direction:column;gap:2px;max-height:460px;overflow-y:auto;}
+.ph-row{display:flex;gap:10px;align-items:flex-start;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:0.8rem;}
+.ph-row:hover{background:var(--bg);}
+.ph-row .ph-date{flex-shrink:0;width:52px;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums;}
+.ph-row .ph-date small{font-weight:600;color:var(--muted);font-size:0.68rem;}
+.ph-row .ph-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.ph-row .ph-title{font-weight:600;color:var(--text);word-break:break-word;}
+.ph-row .ph-title b{color:#a855f7;font-size:0.74rem;font-variant-numeric:tabular-nums;}
+.ph-row .ph-n{display:block;font-size:0.72rem;color:var(--x-047857);white-space:pre-wrap;word-break:break-word;}
+.ph-row .ph-memo{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:0.72rem;color:var(--muted);white-space:pre-wrap;word-break:break-word;cursor:zoom-in;border-radius:3px;}
+.ph-row .ph-memo.open{display:block;-webkit-line-clamp:unset;background:var(--card);padding:3px 5px;cursor:zoom-out;}
+.ph-row .ph-h{flex-shrink:0;font-weight:800;color:var(--primary-text);font-size:0.76rem;font-variant-numeric:tabular-nums;}
+.ph-row.m .ph-h{color:#a855f7;}
+.ver-item{border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-top:10px;background:var(--card);}
+.ver-item.cur{border-color:var(--primary);box-shadow:0 0 0 2px color-mix(in srgb,var(--primary) 15%,transparent);}
+.ver-head{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.ver-v{font-weight:800;font-size:0.95rem;color:var(--primary-text);}
+.ver-now{font-size:0.62rem;font-weight:800;color:#fff;background:var(--primary);border-radius:8px;padding:1px 7px;}
+.ver-date{margin-left:auto;font-size:0.72rem;color:var(--muted);}
+.ver-item ul{margin:0;padding-left:18px;font-size:0.82rem;line-height:1.7;color:var(--text);}
+.search-done-note{margin-top:5px;font-size:0.78rem;color:var(--x-047857);padding:4px 8px;background:#10b9810f;border-left:3px solid #10b981;border-radius:4px;white-space:pre-wrap;word-break:break-word;}
+.hist-done-note{margin-top:4px;font-size:0.78rem;line-height:1.5;color:var(--x-047857);background:#10b9810f;border-left:3px solid #10b981;border-radius:4px;padding:4px 8px;white-space:pre-wrap;word-break:break-word;}
+.wt-i .wt-t .wt-note{display:block;font-size:0.68rem;font-weight:500;color:var(--x-047857);margin-top:2px;white-space:normal;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
 .wt-toggle{display:inline-flex;border:1px solid var(--border);border-radius:7px;overflow:hidden;}
 .wt-toggle button{border:none;background:var(--card);color:var(--muted);font-size:0.72rem;font-weight:700;padding:4px 10px;cursor:pointer;}
 .wt-toggle button.on{background:var(--primary);color:#fff;}
@@ -700,7 +733,7 @@ if ('serviceWorker' in navigator) {
     <img src="data:image/png;base64,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" alt="Wonder Diary" style="width:32px;height:32px;border-radius:8px;flex-shrink:0;">
     <span style="display:flex;flex-direction:column;line-height:1.1;">
       <span style="font-size:1.05rem;font-weight:800;letter-spacing:0.01em;">Wonder Diary</span>
-      <span style="font-size:0.62rem;font-weight:400;color:rgba(255,255,255,0.65);">developed by seokwon · V1.0</span>
+      <span style="font-size:0.62rem;font-weight:400;color:rgba(255,255,255,0.65);">developed by seokwon · <span id="app-version-label" onclick="switchTab('version',document.querySelector('.tab-btn[onclick*=&quot;version&quot;]'))" style="cursor:pointer;text-decoration:underline dotted;" title="버전 기록 보기">V1.02</span></span>
     </span>
   </h1>
   <div style="display:flex;align-items:center;justify-content:center;gap:24px;flex:1;flex-wrap:wrap;min-width:0;">
@@ -818,9 +851,9 @@ ZB 교체 둘</textarea>
       <button class="tab-btn" onclick="switchTab('weekly',this)">⏱️ 주간/월간 기록</button>
       <button class="tab-btn" id="notes-tab-btn" onclick="switchTab('notes',this)">📝 메모 모아보기 <span class="daily-memo-count" id="daily-memo-tab-count">0</span></button>
       <button class="tab-btn" onclick="switchTab('search',this)">🔍 검색</button>
-      <button class="tab-btn" onclick="switchTab('history',this)">📂 완료 히스토리</button>
       <button class="tab-btn" onclick="switchTab('report',this)">📄 레포트</button>
       <button class="tab-btn" onclick="switchTab('trash',this)">🗑️ 휴지통 <span id="trash-badge" style="display:none;background:var(--warn);color:white;font-size:0.65rem;border-radius:10px;padding:1px 5px;margin-left:2px;"></span></button>
+      <button class="tab-btn" onclick="switchTab('version',this)">🏷️ Version</button>
     </div>
 
     <!-- 할 일 & 간트 -->
@@ -966,10 +999,11 @@ ZB 교체 둘</textarea>
     <div id="tab-search" style="display:none;">
       <div class="card">
         <div style="display:flex;gap:8px;margin-bottom:4px;">
-          <input type="text" id="search-input" placeholder="업무명, 메모, 프로젝트명으로 검색..." style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:0.88rem;" oninput="renderSearch()">
+          <input type="text" id="search-input" placeholder="업무명, 메모, 마무리 메모, 프로젝트명으로 검색 (완료된 업무 포함)..." style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:0.88rem;" oninput="renderSearch()">
           <select id="search-proj" style="padding:8px;border:1.5px solid var(--border);border-radius:7px;" onchange="renderSearch()">
             <option value="all">전체 프로젝트</option>
           </select>
+          <label style="display:flex;align-items:center;gap:5px;font-size:0.8rem;color:var(--muted);white-space:nowrap;cursor:pointer;"><input type="checkbox" id="search-include-done" checked onchange="renderSearch()"> 완료 포함</label>
         </div>
         <div id="search-results"><div style="color:var(--muted);font-size:0.85rem;padding:16px 0;text-align:center;">키워드를 입력하세요.</div></div>
       </div>
@@ -1234,6 +1268,16 @@ ZB 교체 둘</textarea>
           <button onclick="emptyTrash()" class="btn-sm" style="margin-left:auto;background:var(--c-fee2e2);color:var(--warn);">전체 비우기</button>
         </div>
         <div id="trash-list"></div>
+      </div>
+    </div>
+
+    <div id="tab-version" style="display:none;">
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <span style="font-weight:800;font-size:1rem;">🏷️ 버전 기록</span>
+          <span style="font-size:0.76rem;color:var(--muted);">버전마다 바뀐 점을 간단히 정리했어요</span>
+        </div>
+        <div id="version-list"></div>
       </div>
     </div>
   </main>
@@ -1606,9 +1650,15 @@ ZB 교체 둘</textarea>
 </div>
 
 <div class="modal" id="modal-complete-date">
-  <div class="modal-box" style="max-width:340px;">
+  <div class="modal-box" style="max-width:380px;">
     <h3 id="complete-date-title">✅ 완료 처리</h3>
     <div style="font-size:0.84rem;color:var(--muted);margin:-4px 0 6px;" id="complete-date-tasktext"></div>
+    <div>
+      <label for="complete-note-input" style="font-size:0.8rem;font-weight:700;color:var(--muted);">📝 어떻게 마무리했나요? <span style="font-weight:500;">(선택)</span></label>
+      <textarea id="complete-note-input" rows="3" placeholder="예: 수정 SW 전달 후 현장 확인 완료 / 재현 안 돼서 종료 / 담당자에게 넘김"
+        onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();confirmCompleteDate();}"
+        style="width:100%;margin-top:4px;padding:8px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:0.84rem;resize:vertical;font-family:inherit;box-sizing:border-box;background:var(--card);color:var(--text);"></textarea>
+    </div>
     <div class="date-grp"><label>완료일</label><input type="date" id="complete-date-input" onchange="syncCompleteHours()" style="flex:1;padding:8px;border:1.5px solid var(--border);border-radius:6px;font-size:0.9rem;"></div>
     <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:-4px;">
       <button type="button" class="btn-sm" style="background:var(--bg);color:var(--muted);" onclick="cdQuickDate(0)">오늘</button>
@@ -3201,7 +3251,8 @@ function dismissAlert(pid){
 /* ══════════════════════════════════════
    TABS
 ══════════════════════════════════════ */
-const TAB_IDS=['today','home','weekly','calendar','notes','links','search','history','report','trash'];
+// 완료 히스토리 탭은 V1.02에서 화면에서 뺐다 (데이터는 그대로 두고 주간/월간 기록·검색에서 사용)
+const TAB_IDS=['today','home','weekly','calendar','notes','links','search','report','trash','version'];
 /* ══════════════════════════════════════
    메모 보드: 포스트잇을 자유롭게 붙이고 옮기는 보드
    stickyNotes = [{id,text,x,y,color,z,updatedAt}]
@@ -4501,6 +4552,7 @@ function renderWeekly(){
 
   updateWlogViewToggle();
   if(wlogView==='table'){ document.getElementById('weekly-log').innerHTML=renderWeeklyTable(logs,dayKeys); return; }
+  const _wlIdx=buildLogTaskIndex();
 
   // ── 날짜별로 묶어서 표시 (최신 날짜가 위)
   //    같은 날짜 안에서는 시간대가 지정된 기록을 시작시각 순으로 먼저 놓는다.
@@ -4520,7 +4572,7 @@ function renderWeekly(){
       <span class="p-badge" style="background:${p.color}22;color:${readable(p.color)};flex-shrink:0">${p.name}${subProjLabel}</span>
       <div style="flex:1">
         <div style="font-weight:600">${isMeeting?'📅 ':''}${l.task}${isMeeting?' <span style="font-size:0.65rem;color:#a855f7;font-weight:700;background:#a855f718;padding:1px 6px;border-radius:8px;">미팅</span>':''}</div>
-        ${l.memo&&!wlogIsAutoMemo(l.memo)?`<div style="font-size:0.73rem;color:var(--muted);margin-top:1px">${l.memo}</div>`:''}
+        ${(()=>{ const nt=logNotes(l,_wlIdx); return (nt.done?`<div class="wl-done-note">✅ ${escAttr(nt.done)}</div>`:'')+(nt.memo?`<div class="wl-memo-note">📝 ${escAttr(nt.memo)}</div>`:''); })()}
         ${matchedTask?.memo?`<div style="font-size:0.72rem;color:var(--x-92660d);background:var(--c-fef9c3);border-left:2px solid var(--c-fde68a);padding:2px 7px;border-radius:0 4px 4px 0;margin-top:2px;display:inline-block;">📝 ${matchedTask.memo}</div>`:''}
       </div>
       ${l.startTime&&l.endTime?`<div style="font-size:0.7rem;font-weight:700;color:var(--x-0f766e);background:var(--c-ccfbf1);border-radius:5px;padding:1px 6px;white-space:nowrap;" title="시간대 지정된 기록">⏰ ${l.startTime}~${l.endTime}</div>`:''}
@@ -4575,7 +4627,29 @@ try{ const v=localStorage.getItem('wd-wlog-view'); if(v==='list'||v==='table') w
 function setWlogView(v){ wlogView=v; try{ localStorage.setItem('wd-wlog-view',v); }catch(_){} renderWeekly(); }
 function updateWlogViewToggle(){ document.querySelectorAll('#wlog-view-toggle button').forEach(b=>b.classList.toggle('on',b.dataset.v===wlogView)); }
 function wlogIsAutoMemo(m){ return /^\s*(✅\s*)?완료 기록\s*$/.test(String(m||'')); }
+/* 주간 기록 한 줄에 딸린 "업무 메모"와 "어떻게 마무리했는지"를 찾는다.
+   기록에는 업무 이름·프로젝트만 있으므로, 같은 프로젝트+이름의 업무(진행 중 / 완료 히스토리)를 찾아 붙인다. */
+function buildLogTaskIndex(){
+  const m=new Map();
+  const put=t=>{ if(!t||t.text==null) return; const k=String(t.project)+'|'+t.text; const o=m.get(k);
+    if(!o||(!o.doneNote&&t.doneNote)||(!(o.memo||'').trim()&&(t.memo||'').trim())) m.set(k,t); };
+  (completedProjects||[]).forEach(cp=>(cp.tasks||[]).forEach(put));
+  tasks.forEach(put);                       // 지금 목록에 있는 업무가 가장 최신
+  return m;
+}
+function logNotes(l,idx){
+  const t=l.type==='meeting'?null:idx.get(String(l.project)+'|'+l.task);
+  const own=l.memo&&!wlogIsAutoMemo(l.memo)?String(l.memo):'';
+  let done=(t&&t.doneNote)||'';
+  if(!done&&own.startsWith('✅')) done=own.replace(/^✅\s*/,'');
+  const ownMemo=own.startsWith('✅')?'':own;
+  const taskMemo=(t&&String(t.memo||'').trim())||'';
+  const memo=[ownMemo,taskMemo].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i).join('\n');
+  return {done:done.trim(), memo:memo.trim()};
+}
+function toggleWtMemo(e,el){ e.stopPropagation(); el.classList.toggle('open'); }
 function renderWeeklyTable(logs,dayKeys){
+  const _idx=buildLogTaskIndex();
   const WD=['일','월','화','수','목','금','토'];
   const r2=n=>Math.round(n*100)/100;
   const dayLogs=dk=>logs.filter(l=>l.date===dk).sort((a,b)=>{
@@ -4593,12 +4667,14 @@ function renderWeeklyTable(logs,dayKeys){
   }).join('');
   const item=l=>{
     const isM=l.type==='meeting', p=proj(l.project);
-    const memo=l.memo&&!wlogIsAutoMemo(l.memo)?l.memo:'';
-    const tip=[(isM?'미팅 · ':'')+(p?p.name:''),l.task,l.startTime&&l.endTime?`${l.startTime}~${l.endTime}`:'',memo,'(클릭: 수정)'].filter(Boolean).join('\n');
+    const nt=logNotes(l,_idx);
+    const tip=[(isM?'미팅 · ':'')+(p?p.name:''),l.task,l.startTime&&l.endTime?`${l.startTime}~${l.endTime}`:'',nt.done?'✅ '+nt.done:'',nt.memo?'📝 '+nt.memo:'','(클릭: 수정)'].filter(Boolean).join('\n');
     const pc=isM?'#a855f7':(p?.color||'#64748b');
     return `<div class="wt-i${isM?' m':''}" style="--pc:${pc}" onclick="openEditWeekly(${l.id})" title="${escAttr(tip)}">`
       +`<span class="wt-t">${isM&&l.startTime?`<b>${escAttr(l.startTime)}</b>`:''}${escAttr(l.task||'(제목 없음)')}`
-      +`${!isM&&p?`<small style="color:${readable(p.color)}">${escAttr(p.name)}</small>`:''}</span>`
+      +`${!isM&&p?`<small style="color:${readable(p.color)}">${escAttr(p.name)}</small>`:''}`
+      +`${nt.done?`<span class="wt-note">✅ ${escAttr(nt.done)}</span>`:''}`
+      +`${nt.memo?`<span class="wt-memo" onclick="toggleWtMemo(event,this)" title="눌러서 메모 전체 보기/접기">📝 ${escAttr(nt.memo)}</span>`:''}</span>`
       +`<span class="wt-hr">${r2(+l.hours||0)}h</span>`
       +`<button type="button" class="wt-x" title="삭제" onclick="event.stopPropagation();deleteWeekly(${l.id})">✕</button></div>`;
   };
@@ -4801,7 +4877,7 @@ function collectCompletedTasks(){
     const key=task.id!=null?'id:'+String(task.id):'task:'+JSON.stringify([projId,text,date]);
     const item={key,id:task.id,text,date,projId,projName:String(info.name||'기타'),projColor:histColor(info.color),
       priority:String(task.priority||''),subProject:String(task.subProject||''),memo:String(task.memo||''),
-      memoStyle:task.memoStyle||null,memoUpdatedAt:task.memoUpdatedAt||null,note:note||'',rank,archiveIndices:[]};
+      memoStyle:task.memoStyle||null,memoUpdatedAt:task.memoUpdatedAt||null,doneNote:String(task.doneNote||''),note:note||'',rank,archiveIndices:[]};
     const old=map.get(key);
     const refs=[...(old?.archiveIndices||[])];
     if(archiveIndex!=null&&!refs.includes(archiveIndex)) refs.push(archiveIndex);
@@ -4836,7 +4912,7 @@ function histFilterItems(items,ignorePeriod=false,ignoreProject=false){
   const project=document.getElementById('hist-project')?.value||'all';
   return items.filter(item=>(ignorePeriod||historyPeriodMode==='all'||item.date.startsWith(historySelectedMonth))
     &&(ignoreProject||project==='all'||item.projId===project)
-    &&(!query||[item.text,item.memo,item.projName,item.subProject,item.date].join(' ').toLocaleLowerCase().includes(query)));
+    &&(!query||[item.text,item.memo,item.doneNote,item.projName,item.subProject,item.date].join(' ').toLocaleLowerCase().includes(query)));
 }
 function histSortItems(items){
   const asc=(document.getElementById('hist-sort')?.value||'desc')==='asc';
@@ -4938,7 +5014,7 @@ function histTaskRow(item){
   const memo=item.memo.trim();
   const memoOpen=historyQuery()&&memo.toLocaleLowerCase().includes(historyQuery().toLocaleLowerCase());
   const stamp=item.memoUpdatedAt&&!Number.isNaN(new Date(item.memoUpdatedAt).getTime())?fmtMemoStamp(item.memoUpdatedAt,true):'';
-  return `<article class="hist-task"><span class="hist-task-check" aria-hidden="true">✓</span><div class="hist-task-body"><div class="hist-task-tags"><span class="hist-task-project" style="--hist-color:${item.projColor}"><span class="hist-dot"></span>${histHighlight(item.projName)}</span>${historyViewMode==='project'?`<time datetime="${item.date}">${item.date||'날짜 미지정'}</time>`:''}${item.priority?`<span class="hist-priority" style="color:${readable(histColor(prioColor(item.priority)))}">${escAttr(prioLabel(item.priority))}</span>`:''}${item.subProject?`<span class="hist-task-subproject">${histHighlight(item.subProject)}</span>`:''}</div><div class="hist-task-title">${histHighlight(item.text||'제목 없는 업무')}</div>${memo?`<details class="hist-task-memo"${memoOpen?' open':''}><summary>메모 보기<span>${escAttr(memo.split('\n')[0].slice(0,80))}</span></summary><div class="hist-memo-body" style="color:${readable(histColor(item.memoStyle?.color||'var(--x-64748b)'))};font-weight:${item.memoStyle?.bold?'700':'400'}">${histHighlight(item.memo)}${stamp?`<span class="hist-memo-stamp">${escAttr(stamp)} 작성</span>`:''}</div></details>`:''}</div></article>`;
+  return `<article class="hist-task"><span class="hist-task-check" aria-hidden="true">✓</span><div class="hist-task-body"><div class="hist-task-tags"><span class="hist-task-project" style="--hist-color:${item.projColor}"><span class="hist-dot"></span>${histHighlight(item.projName)}</span>${historyViewMode==='project'?`<time datetime="${item.date}">${item.date||'날짜 미지정'}</time>`:''}${item.priority?`<span class="hist-priority" style="color:${readable(histColor(prioColor(item.priority)))}">${escAttr(prioLabel(item.priority))}</span>`:''}${item.subProject?`<span class="hist-task-subproject">${histHighlight(item.subProject)}</span>`:''}</div><div class="hist-task-title">${histHighlight(item.text||'제목 없는 업무')}</div>${item.doneNote?`<div class="hist-done-note">✅ ${histHighlight(item.doneNote)}</div>`:''}${memo?`<details class="hist-task-memo"${memoOpen?' open':''}><summary>메모 보기<span>${escAttr(memo.split('\n')[0].slice(0,80))}</span></summary><div class="hist-memo-body" style="color:${readable(histColor(item.memoStyle?.color||'var(--x-64748b)'))};font-weight:${item.memoStyle?.bold?'700':'400'}">${histHighlight(item.memo)}${stamp?`<span class="hist-memo-stamp">${escAttr(stamp)} 작성</span>`:''}</div></details>`:''}</div></article>`;
 }
 function renderHistoryDetails(all,items){
   const groups=histDetailsGroups(items);
@@ -7080,26 +7156,81 @@ function renderProjHours(){
     return;
   }
 
-  el.innerHTML=`<div style="font-size:0.78rem;color:var(--muted);margin-bottom:10px;">${monthLabel} 총 <strong style="color:var(--primary-text);">${totalH}시간</strong> 기록됨</div>`
+  const idx=buildLogTaskIndex();
+  const WD='일월화수목금토';
+  const r2=n=>Math.round(n*100)/100;
+  el.innerHTML=`<div style="font-size:0.78rem;color:var(--muted);margin-bottom:10px;">${monthLabel} 총 <strong style="color:var(--primary-text);">${r2(totalH)}시간</strong> 기록됨 <span style="font-size:0.72rem;">· 항목을 누르면 기록 목록이 펼쳐져요</span></div>`
     + entries.map(([pid,h])=>{
       const p=proj(pid);
       const pct=Math.round(h/totalH*100);
       const barW=Math.round(h/maxH*100);
-      return `<div style="margin-bottom:9px;">
-        <div style="display:flex;justify-content:space-between;font-size:0.82rem;margin-bottom:3px;">
-          <span style="font-weight:600;color:${readable(p.color)};">${p.name}</span>
-          <span style="color:var(--muted);">${h}시간 (${pct}%)</span>
-        </div>
-        <div style="background:var(--bg);border-radius:20px;height:10px;overflow:hidden;">
-          <div style="height:100%;width:${barW}%;background:${p.color};border-radius:20px;transition:width .5s;"></div>
-        </div>
+      const open=projHoursOpen.has(String(pid));
+      const logs=open?monthLogs.filter(l=>String(l.project)===String(pid)).sort((a,b)=>
+        (b.date||'').localeCompare(a.date||'')||(b.startTime||'').localeCompare(a.startTime||'')||(b.id||0)-(a.id||0)):[];
+      const list=open?`<div class="ph-list">`+logs.map(l=>{
+        const d=new Date(l.date+'T00:00:00'), nt=logNotes(l,idx), isM=l.type==='meeting';
+        return `<div class="ph-row${isM?' m':''}" onclick="openEditWeekly(${l.id})" title="클릭: 수정">
+          <span class="ph-date">${d.getMonth()+1}/${d.getDate()} <small>${WD[d.getDay()]}</small></span>
+          <span class="ph-body"><span class="ph-title">${isM&&l.startTime?`<b>${escAttr(l.startTime)}</b> `:''}${escAttr(l.task||'(제목 없음)')}</span>${nt.done?`<span class="wt-note ph-n">✅ ${escAttr(nt.done)}</span>`:''}${nt.memo?`<span class="ph-memo" onclick="toggleWtMemo(event,this)" title="눌러서 메모 전체 보기/접기">📝 ${escAttr(nt.memo)}</span>`:''}</span>
+          <span class="ph-h">${r2(+l.hours||0)}h</span>
+        </div>`;
+      }).join('')+`</div>`:'';
+      return `<div class="ph-item${open?' open':''}" style="margin-bottom:9px;">
+        <div class="ph-head" role="button" tabindex="0" onclick="toggleProjHours('${escAttr(String(pid))}')" onkeydown="if(event.key==='Enter')toggleProjHours('${escAttr(String(pid))}')">
+          <div style="display:flex;justify-content:space-between;font-size:0.82rem;margin-bottom:3px;">
+            <span style="font-weight:600;color:${readable(p.color)};"><span class="ph-caret">▸</span> ${escAttr(p.name)} <span style="font-weight:500;color:var(--muted);font-size:0.72rem;">${monthLogs.filter(l=>String(l.project)===String(pid)).length}건</span></span>
+            <span style="color:var(--muted);">${r2(h)}시간 (${pct}%)</span>
+          </div>
+          <div style="background:var(--bg);border-radius:20px;height:10px;overflow:hidden;">
+            <div style="height:100%;width:${barW}%;background:${p.color};border-radius:20px;transition:width .5s;"></div>
+          </div>
+        </div>${list}
       </div>`;
     }).join('');
+}
+// 펼쳐 둔 항목 (달을 바꿔도 유지)
+var projHoursOpen=projHoursOpen||new Set();
+function toggleProjHours(pid){
+  pid=String(pid);
+  projHoursOpen.has(pid)?projHoursOpen.delete(pid):projHoursOpen.add(pid);
+  renderProjHours();
 }
 
 /* ══════════════════════════════════════
    검색
 ══════════════════════════════════════ */
+/* ══════════════════════════════════════
+   🏷️ 버전 기록 — 새 버전을 낼 때 맨 위에 한 줄씩 추가
+══════════════════════════════════════ */
+const APP_VERSION='V1.02';
+const APP_CHANGELOG=[
+  {v:'V1.02', date:'2026-11-16', items:[
+    '완료 히스토리 탭 삭제 (완료한 업무는 주간/월간 기록과 검색에서 확인, 기존 완료 기록 데이터는 그대로 보관)',
+  ]},
+  {v:'V1.01', date:'2026-11-16', items:[
+    '검색: 완료된 업무와 예전에 완료해서 보관된 업무도 검색 (마무리 메모 포함, "완료 포함" 체크로 끄고 켜기)',
+    'Version 탭 추가: 버전마다 바뀐 점 기록',
+  ]},
+  {v:'V1.0', date:'2026-11-16', items:[
+    '완료 처리할 때 "어떻게 마무리했나요?" 메모 입력 → 주간/월간 기록에 표시',
+    '주간 기록: 요일별 표(미팅/업무)로 보기, 업무 메모·마무리 메모 함께 표시',
+    '월간 기록: 프로젝트(미팅·메일답변 등)를 누르면 그달 기록을 최신순으로 펼쳐 보기',
+    '데이터를 로컬 폴더(C:\\WorkDiaryLocal)에 저장, OneDrive는 Outlook 파일 읽기만 (PC 멈춤 대책)',
+    '위쪽 버튼 정리 (⚙️ 메뉴), Outlook 연동 끄기/지금 가져오기, 안전 모드',
+    '앱을 켜둔 채 날짜가 바뀌면 자동으로 오늘 갱신, 새 업무 우선순위 기본 Critical',
+    '탭 줄 화면 위 고정, 탭 순서 변경 (캘린더 → 링크)',
+    '링크: 즐겨찾기(왼쪽 사이드바), 폴더 경로 링크, 그룹별 + 추가·새 그룹·넓이/색 조절, 브라우저 즐겨찾기 끌어다 추가, 그룹 간 이동',
+    '캘린더: 왼쪽에 선택한 날 07~19시 일정, Outlook 미팅 시간 자동 채우기',
+    '메모 보드: 포스트잇, 확대/축소, 화살표 연결 / 업무 메모 속 링크 열기',
+    '메일 업무 제목 복사 버튼, 홈 요약(미팅/업무 시간), Outlook 미팅·플래그 메일 연동',
+  ]},
+];
+function renderVersionTab(){
+  const el=document.getElementById('version-list'); if(!el) return;
+  el.innerHTML=APP_CHANGELOG.map((r,i)=>`<div class="ver-item${i===0?' cur':''}">
+    <div class="ver-head"><span class="ver-v">${escAttr(r.v)}</span>${i===0?'<span class="ver-now">사용 중</span>':''}<span class="ver-date">${escAttr(r.date)}</span></div>
+    <ul>${r.items.map(t=>`<li>${escAttr(t)}</li>`).join('')}</ul></div>`).join('');
+}
 function renderSearch(){
   // 검색탭 열릴 때 프로젝트 셀렉트 동기화
   const pSel=document.getElementById('search-proj');
@@ -7113,26 +7244,49 @@ function renderSearch(){
   if(!el) return;
   if(!q){ el.innerHTML='<div style="color:var(--muted);font-size:0.85rem;padding:16px 0;text-align:center;">키워드를 입력하세요.</div>'; return; }
 
-  const hl=(txt)=>{ try{ const r=new RegExp(q,'gi'); return txt.replace(r,m=>'<mark class="search-hl">'+m+'</mark>'); }catch(e){return txt;} }
-  const matches=tasks.filter(t=>{
-    const pMatch=pid==='all'||t.project===pid;
-    const tMatch=t.text.toLowerCase().includes(q)||(t.memo||'').toLowerCase().includes(q)||proj(t.project).name.toLowerCase().includes(q);
-    return pMatch&&tMatch;
-  });
+  const incDone=document.getElementById('search-include-done')?.checked!==false;
+  const reQ=q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const hl=(txt)=>{ const safe=escAttr(String(txt||'')); try{ return safe.replace(new RegExp(reQ,'gi'),m=>'<mark class="search-hl">'+m+'</mark>'); }catch(e){ return safe; } };
+  // 진행 중 + 완료(목록에 남아 있는 것) + 완료 히스토리로 넘어간 것
+  const seen=new Set(), pool=[];
+  tasks.forEach(t=>{ if(t.done&&!incDone) return; seen.add(String(t.id)); pool.push({t,date:t.actualEnd||'',hist:false}); });
+  if(incDone) (completedProjects||[]).forEach(cp=>(cp.tasks||[]).forEach(t=>{
+    if(!t||seen.has(String(t.id))) return; seen.add(String(t.id));
+    pool.push({t:{...t,done:true,project:t.project??cp.project?.id},date:t._completedAt||t.actualEnd||cp.completedAt||'',hist:true,cpProj:cp.project});
+  }));
+  const pName=x=>(proj(x.t.project)?.name&&proj(x.t.project).id!=null?proj(x.t.project).name:(x.cpProj?.name||proj(x.t.project).name||''));
+  const matches=pool.filter(x=>{
+    const t=x.t;
+    const pMatch=pid==='all'||String(t.project)===String(pid);
+    const hay=[t.text,t.memo,t.doneNote,pName(x),t.subProject].map(v=>String(v||'').toLowerCase()).join('\n');
+    return pMatch&&hay.includes(q);
+  }).sort((a,b)=>(a.t.done?1:0)-(b.t.done?1:0)||String(b.date).localeCompare(String(a.date)));
 
   if(!matches.length){ el.innerHTML='<div style="color:var(--muted);font-size:0.85rem;padding:16px 0;text-align:center;">검색 결과 없음</div>'; return; }
-  el.innerHTML=`<div style="font-size:0.8rem;color:var(--muted);padding:8px 0;">${matches.length}건 발견</div>`+
-  matches.map(t=>{
-    const p=proj(t.project);
-    const st=getTaskStatus(t); const stI=TASK_STATUS[st]||TASK_STATUS['not_started'];
-    return `<div style="padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--card);margin-bottom:7px;">
+  const nDone=matches.filter(x=>x.t.done).length;
+  el.innerHTML=`<div style="font-size:0.8rem;color:var(--muted);padding:8px 0;">${matches.length}건 발견${nDone?` · 진행 중 ${matches.length-nDone}건, 완료 ${nDone}건`:''}</div>`+
+  matches.map(x=>{
+    const t=x.t, p=proj(t.project), pc=p?.color||x.cpProj?.color||'#64748b', pn=pName(x);
+    let chip;
+    if(t.done){
+      const d=x.date?new Date(x.date+'T00:00:00'):null;
+      const ds=d&&!isNaN(d)?`${d.getMonth()+1}/${d.getDate()}`:'';
+      chip=x.hist
+        ? `<span class="status-chip" style="background:#10b981;font-size:0.7rem;" title="예전에 완료해서 보관된 업무">✅ 완료${ds?' '+ds:''}</span>`
+        : `<span class="status-chip" onclick="editCompleteDate(${t.id})" title="클릭하여 완료일·마무리 메모 변경" style="background:#10b981;font-size:0.7rem;cursor:pointer;">✅ 완료${ds?' '+ds:''}</span>`;
+    } else {
+      const st=getTaskStatus(t); const stI=TASK_STATUS[st]||TASK_STATUS['not_started'];
+      chip=`<span class="status-chip" style="background:${stI.color};font-size:0.7rem;">${stI.icon} ${stI.label}</span>`;
+    }
+    return `<div style="padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--card);margin-bottom:7px;${t.done?'opacity:.92;':''}">
       <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
-        <span style="background:${p.color}22;color:${readable(p.color)};font-size:0.72rem;font-weight:700;padding:2px 7px;border-radius:4px;">${p.name}</span>
-        <span style="font-size:0.85rem;flex:1;">${hl(t.text)}</span>
-        <span class="status-chip" ${t.done?`onclick="editCompleteDate(${t.id})" title="클릭하여 완료일 변경" style="background:${stI.color};font-size:0.7rem;cursor:pointer;"`:`style="background:${stI.color};font-size:0.7rem;"`}>${stI.icon} ${stI.label}</span>
-        ${t.parked?`<span class="date-badge" style="background:var(--c-f5f3ff);color:var(--x-7c3aed);border-color:var(--c-ddd6fe);">📥 보류함</span>`:`<span class="date-badge">${fmt(t.start)}~${fmt(t.end)}</span>`}
+        <span style="background:${pc}22;color:${readable(pc)};font-size:0.72rem;font-weight:700;padding:2px 7px;border-radius:4px;">${escAttr(pn)}</span>
+        <span style="font-size:0.85rem;flex:1;${t.done?'color:var(--muted);':''}">${hl(t.text)}</span>
+        ${chip}
+        ${t.parked?`<span class="date-badge" style="background:var(--c-f5f3ff);color:var(--x-7c3aed);border-color:var(--c-ddd6fe);">📥 보류함</span>`:(t.start||t.end?`<span class="date-badge">${fmt(t.start)}~${fmt(t.end)}</span>`:'')}
       </div>
-      ${t.memo?`<div style="margin-top:5px;font-size:0.78rem;color:var(--muted);padding:4px 8px;background:var(--c-f8fafc);border-radius:4px;">📝 ${hl(t.memo)}</div>`:''}
+      ${t.doneNote?`<div class="search-done-note">✅ ${hl(t.doneNote)}</div>`:''}
+      ${t.memo?`<div style="margin-top:5px;font-size:0.78rem;color:var(--muted);padding:4px 8px;background:var(--c-f8fafc);border-radius:4px;white-space:pre-wrap;word-break:break-word;">📝 ${hl(t.memo)}</div>`:''}
     </div>`;
   }).join('');
 }
@@ -7694,7 +7848,7 @@ function setCompletionHours(t, dateStr, hours, timeRange){
   }
   const base={
     type:'task', project:t.project, projName:proj(t.project).name,
-    task:t.text, date:dateStr, hours:Math.round(hours*100)/100, memo:'✅ 완료 기록'
+    task:t.text, date:dateStr, hours:Math.round(hours*100)/100, memo:t.doneNote?('✅ '+t.doneNote):'✅ 완료 기록'
   };
   if(timeRange){ base.startTime=timeRange.startTime; base.endTime=timeRange.endTime; }
   if(same.length){
@@ -9399,6 +9553,7 @@ function render(){
   else if(currentTab==='report'){ renderReport(); }
   else if(currentTab==='links'){ renderLinks(); }
   else if(currentTab==='trash'){ renderTrash(); }
+  else if(currentTab==='version'){ renderVersionTab(); }
 }
 
 /* ══════════════════════════════════════
@@ -9679,9 +9834,11 @@ function openCompleteDateModal(id){
   document.getElementById('complete-date-tasktext').textContent=t.text;
   // 할 일 탭에서 '기록 날짜'를 지난 날짜로 맞춰뒀다면 완료일도 그 날짜를 기본값으로
   document.getElementById('complete-date-input').value = (currentTab==='today' ? activeLogDate : TODAY_STR) || TODAY_STR;
+  document.getElementById('complete-note-input').value = t.doneNote||'';
   resetCompleteTimeFields();
   syncCompleteHours();
   openModal('modal-complete-date');
+  setTimeout(()=>document.getElementById('complete-note-input')?.focus(),60);
 }
 
 /* ── 완료 모달의 투입시간/시간대 보조 함수 ── */
@@ -9762,11 +9919,13 @@ function confirmCompleteDate(){
   const wasAlreadyDone=existing.done;
   const oldDate=existing.actualEnd;
   const statusToSet=pendingStatusOnComplete==='on_track' ? 'on_track' : (existing.status==='early_done'?'early_done':'done');
+  const doneNote=(document.getElementById('complete-note-input')?.value||'').trim().slice(0,2000);
   let completedTask=null;
   tasks=tasks.map(t=>{
     if(t.id!==id) return t;
     touchProject(t.project);
     completedTask={...t, done:true, actualEnd:dateVal, status:statusToSet};
+    if(doneNote) completedTask.doneNote=doneNote; else delete completedTask.doneNote;
     if(t.parked){ // 보류함 업무를 완료하면 완료일을 시작/종료일로 확정해 일반 완료 업무처럼 다룬다
       delete completedTask.parked;
       completedTask.start=t.start||t._prevStart||dateVal;
@@ -9778,6 +9937,8 @@ function confirmCompleteDate(){
     if(wasAlreadyDone){
       // 완료일만 변경하는 경우: 기존 기록을 새 날짜로 이동 (중복 생성 방지)
       moveCompletionDate(completedTask, oldDate, dateVal);
+      // 히스토리에 들어간 사본의 마무리 메모도 맞춰 준다
+      completedProjects.forEach(cp=>(cp.tasks||[]).forEach(x=>{ if(x.id===completedTask.id){ if(doneNote) x.doneNote=doneNote; else delete x.doneNote; } }));
     } else {
       addToHistory(completedTask, dateVal);
     }
@@ -9802,6 +9963,7 @@ function editCompleteDate(id){
   document.getElementById('complete-date-title').textContent='📅 완료일 변경';
   document.getElementById('complete-date-tasktext').textContent=t.text;
   document.getElementById('complete-date-input').value=t.actualEnd||TODAY_STR;
+  document.getElementById('complete-note-input').value=t.doneNote||'';
   resetCompleteTimeFields();
   syncCompleteHours();
   openModal('modal-complete-date');
