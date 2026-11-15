@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>석원이의 업무 다이어리 · V1.02</title>
+<title>석원이의 업무 다이어리 · V1.03</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#4f46e5">
 <meta name="mobile-web-app-capable" content="yes">
@@ -396,6 +396,24 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 .ver-date{margin-left:auto;font-size:0.72rem;color:var(--muted);}
 .ver-item ul{margin:0;padding-left:18px;font-size:0.82rem;line-height:1.7;color:var(--text);}
 .search-done-note{margin-top:5px;font-size:0.78rem;color:var(--x-047857);padding:4px 8px;background:#10b9810f;border-left:3px solid #10b981;border-radius:4px;white-space:pre-wrap;word-break:break-word;}
+.memo-peek.done-peek{background:#10b98114;border-color:#10b98155;color:var(--x-047857);font-weight:600;}
+.memo-peek.done-peek:hover{background:#10b98126;}
+.memo-peek.done-peek .dp-ico{margin-right:4px;}
+.dv-back{position:fixed;inset:0;z-index:100004;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;padding:16px;}
+.dv-box{background:var(--card);color:var(--text);border-radius:14px;width:min(620px,100%);max-height:86vh;overflow-y:auto;padding:18px 22px 16px;box-shadow:0 24px 60px rgba(0,0,0,.35);}
+.dv-top{display:flex;align-items:center;gap:8px;}
+.dv-badge{font-size:0.72rem;font-weight:800;color:#fff;background:#10b981;border-radius:10px;padding:2px 9px;}
+.dv-date{font-size:0.78rem;color:var(--muted);font-weight:600;}
+.dv-x{margin-left:auto;border:none;background:none;color:var(--muted);font-size:1rem;cursor:pointer;}
+.dv-title{font-size:1.05rem;font-weight:800;margin:10px 0 3px;line-height:1.4;word-break:break-word;}
+.dv-meta{font-size:0.76rem;color:var(--muted);font-weight:600;}
+.dv-sec{margin-top:14px;}
+.dv-h{font-size:0.78rem;font-weight:800;color:var(--muted);margin-bottom:5px;}
+.dv-done{font-size:0.9rem;line-height:1.65;white-space:pre-wrap;word-break:break-word;background:#10b98110;border-left:4px solid #10b981;border-radius:6px;padding:10px 12px;color:var(--text);}
+.dv-memo{font-size:0.84rem;line-height:1.6;white-space:pre-wrap;word-break:break-word;background:var(--bg);border-radius:6px;padding:10px 12px;color:var(--text);max-height:40vh;overflow-y:auto;}
+.dv-done a,.dv-memo a{color:var(--primary-text);}
+.dv-empty{font-size:0.8rem;color:var(--muted);padding:6px 0;}
+.dv-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;}
 .hist-done-note{margin-top:4px;font-size:0.78rem;line-height:1.5;color:var(--x-047857);background:#10b9810f;border-left:3px solid #10b981;border-radius:4px;padding:4px 8px;white-space:pre-wrap;word-break:break-word;}
 .wt-i .wt-t .wt-note{display:block;font-size:0.68rem;font-weight:500;color:var(--x-047857);margin-top:2px;white-space:normal;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
 .wt-toggle{display:inline-flex;border:1px solid var(--border);border-radius:7px;overflow:hidden;}
@@ -733,7 +751,7 @@ if ('serviceWorker' in navigator) {
     <img src="data:image/png;base64,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" alt="Wonder Diary" style="width:32px;height:32px;border-radius:8px;flex-shrink:0;">
     <span style="display:flex;flex-direction:column;line-height:1.1;">
       <span style="font-size:1.05rem;font-weight:800;letter-spacing:0.01em;">Wonder Diary</span>
-      <span style="font-size:0.62rem;font-weight:400;color:rgba(255,255,255,0.65);">developed by seokwon · <span id="app-version-label" onclick="switchTab('version',document.querySelector('.tab-btn[onclick*=&quot;version&quot;]'))" style="cursor:pointer;text-decoration:underline dotted;" title="버전 기록 보기">V1.02</span></span>
+      <span style="font-size:0.62rem;font-weight:400;color:rgba(255,255,255,0.65);">developed by seokwon · <span id="app-version-label" onclick="switchTab('version',document.querySelector('.tab-btn[onclick*=&quot;version&quot;]'))" style="cursor:pointer;text-decoration:underline dotted;" title="버전 기록 보기">V1.03</span></span>
     </span>
   </h1>
   <div style="display:flex;align-items:center;justify-content:center;gap:24px;flex:1;flex-wrap:wrap;min-width:0;">
@@ -4639,13 +4657,14 @@ function buildLogTaskIndex(){
 }
 function logNotes(l,idx){
   const t=l.type==='meeting'?null:idx.get(String(l.project)+'|'+l.task);
+  const tid=t&&t.id!=null?t.id:null;
   const own=l.memo&&!wlogIsAutoMemo(l.memo)?String(l.memo):'';
   let done=(t&&t.doneNote)||'';
   if(!done&&own.startsWith('✅')) done=own.replace(/^✅\s*/,'');
   const ownMemo=own.startsWith('✅')?'':own;
   const taskMemo=(t&&String(t.memo||'').trim())||'';
   const memo=[ownMemo,taskMemo].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i).join('\n');
-  return {done:done.trim(), memo:memo.trim()};
+  return {done:done.trim(), memo:memo.trim(), tid};
 }
 function toggleWtMemo(e,el){ e.stopPropagation(); el.classList.toggle('open'); }
 function renderWeeklyTable(logs,dayKeys){
@@ -4673,7 +4692,7 @@ function renderWeeklyTable(logs,dayKeys){
     return `<div class="wt-i${isM?' m':''}" style="--pc:${pc}" onclick="openEditWeekly(${l.id})" title="${escAttr(tip)}">`
       +`<span class="wt-t">${isM&&l.startTime?`<b>${escAttr(l.startTime)}</b>`:''}${escAttr(l.task||'(제목 없음)')}`
       +`${!isM&&p?`<small style="color:${readable(p.color)}">${escAttr(p.name)}</small>`:''}`
-      +`${nt.done?`<span class="wt-note">✅ ${escAttr(nt.done)}</span>`:''}`
+      +`${nt.done?`<span class="wt-note"${nt.tid!=null?` onclick="event.stopPropagation();showDoneView('${escAttr(String(nt.tid))}')" title="눌러서 완료 기록 크게 보기" style="cursor:zoom-in;"`:''}>✅ ${escAttr(nt.done)}</span>`:''}`
       +`${nt.memo?`<span class="wt-memo" onclick="toggleWtMemo(event,this)" title="눌러서 메모 전체 보기/접기">📝 ${escAttr(nt.memo)}</span>`:''}</span>`
       +`<span class="wt-hr">${r2(+l.hours||0)}h</span>`
       +`<button type="button" class="wt-x" title="삭제" onclick="event.stopPropagation();deleteWeekly(${l.id})">✕</button></div>`;
@@ -5541,6 +5560,13 @@ async function copyTaskTitle(id,btn){
   if(btn){ const old=btn.textContent; btn.textContent=ok?'복사됨':'실패'; setTimeout(()=>{ btn.textContent=old; },1200); }
 }
 function memoPeekHTML(t, ns){
+  // 완료한 업무에 마무리 메모가 있으면: 초록색 칸으로 마무리 내용을 보여주고, 누르면 읽기 전용 창
+  if(t.done && t.doneNote){
+    const first=String(t.doneNote).split('\n').find(x=>x.trim())||'';
+    const more=String(t.doneNote).split('\n').filter(x=>x.trim()).length-1;
+    return `<span class="memo-peek done-peek" onclick="event.stopPropagation();showDoneView(${t.id})" onmousedown="event.stopPropagation()" title="${escAttr('✅ 어떻게 마무리했나\n'+t.doneNote+(t.memo?'\n\n📝 메모\n'+t.memo:'')+'\n\n(클릭: 크게 보기)')}">`
+      +`<span class="dp-ico">✅</span>${escAttr(first)}${more>0?`<span style="opacity:.6;font-weight:600;"> +${more}</span>`:''}</span>`;
+  }
   const pk=memoPeekParts(t.memo);
   const nImg=(t.memoImages||[]).length;
   const imgBadge=nImg?`<span style="color:var(--x-1d4ed8);font-weight:700;margin-right:4px;">🖼️${nImg>1?nImg:''}</span>`:'';
@@ -5557,6 +5583,45 @@ function memoPeekHTML(t, ns){
     + `</span>`;
 }
 
+/* ── 완료 기록 보기 (읽기 전용) ── */
+function findTaskAnywhere(id){
+  let t=tasks.find(x=>String(x.id)===String(id)); if(t) return {t,live:true};
+  for(const cp of (completedProjects||[])) for(const x of (cp.tasks||[])) if(String(x.id)===String(id)) return {t:{...x,project:x.project??cp.project?.id},live:false,cp};
+  return null;
+}
+function linkifyText(txt){
+  return escAttr(String(txt||'')).replace(/https?:\/\/[^\s<]+/g,u=>{
+    const clean=u.replace(/[.,;:!?)\]]+$/,''), tail=u.slice(clean.length);
+    return `<a href="${clean}" target="_blank" rel="noopener noreferrer">${clean}</a>${tail}`;
+  });
+}
+function showDoneView(id){
+  const f=findTaskAnywhere(id); if(!f) return;
+  const t=f.t, p=proj(t.project), pName=(p&&p.id!=null?p.name:(f.cp?.project?.name||p.name||''));
+  const date=t.actualEnd||t._completedAt||f.cp?.completedAt||'';
+  const d=date?new Date(date+'T00:00:00'):null;
+  const ds=d&&!isNaN(d)?`${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()} (${'일월화수목금토'[d.getDay()]})`:'';
+  document.getElementById('done-view-modal')?.remove();
+  const m=document.createElement('div'); m.id='done-view-modal'; m.className='dv-back';
+  m.innerHTML=`<div class="dv-box" role="dialog" aria-label="완료 기록">
+    <div class="dv-top"><span class="dv-badge">✅ 완료</span>${ds?`<span class="dv-date">${ds}</span>`:''}<button type="button" class="dv-x" title="닫기 (Esc)">✕</button></div>
+    <div class="dv-title">${escAttr(t.text||'')}</div>
+    <div class="dv-meta"><span style="color:${readable(p.color||'#64748b')}">● ${escAttr(pName)}</span>${t.start||t.end?` · 기간 ${fmt(t.start)}~${fmt(t.end)}`:''}</div>
+    <div class="dv-sec"><div class="dv-h">🏁 어떻게 마무리했나</div>${t.doneNote?`<div class="dv-done">${linkifyText(t.doneNote)}</div>`:`<div class="dv-empty">마무리 메모가 없어요${f.live?' · 아래 수정에서 적을 수 있어요':''}</div>`}</div>
+    ${t.memo&&String(t.memo).trim()?`<div class="dv-sec"><div class="dv-h">📝 업무 메모</div><div class="dv-memo">${linkifyText(t.memo)}</div></div>`:''}
+    <div class="dv-actions">${f.live&&t.done?`<button type="button" class="btn-sm" id="dv-edit">✏️ 수정</button>`:''}<button type="button" class="btn-sm" id="dv-close" style="background:var(--primary);color:#fff;">닫기</button></div>
+  </div>`;
+  document.body.appendChild(m);
+  const close=()=>{ m.remove(); document.removeEventListener('keydown',esc,true); };
+  const esc=e=>{ if(e.key==='Escape'){ e.stopPropagation(); close(); } };
+  document.addEventListener('keydown',esc,true);
+  let downBack=false;
+  m.addEventListener('pointerdown',e=>{ downBack=e.target===m; });
+  m.addEventListener('click',e=>{ if(e.target===m&&downBack) close(); });
+  m.querySelector('.dv-x').onclick=close;
+  m.querySelector('#dv-close').onclick=close;
+  const ed=m.querySelector('#dv-edit'); if(ed) ed.onclick=()=>{ close(); editCompleteDate(t.id); };
+}
 function memoStampLabel(t){
   if(!t || !t.memo || !t.memo.trim() || !t.memoUpdatedAt) return '';
   return `✏️ ${fmtMemoStamp(t.memoUpdatedAt, true)} 작성`;
@@ -7171,7 +7236,7 @@ function renderProjHours(){
         const d=new Date(l.date+'T00:00:00'), nt=logNotes(l,idx), isM=l.type==='meeting';
         return `<div class="ph-row${isM?' m':''}" onclick="openEditWeekly(${l.id})" title="클릭: 수정">
           <span class="ph-date">${d.getMonth()+1}/${d.getDate()} <small>${WD[d.getDay()]}</small></span>
-          <span class="ph-body"><span class="ph-title">${isM&&l.startTime?`<b>${escAttr(l.startTime)}</b> `:''}${escAttr(l.task||'(제목 없음)')}</span>${nt.done?`<span class="wt-note ph-n">✅ ${escAttr(nt.done)}</span>`:''}${nt.memo?`<span class="ph-memo" onclick="toggleWtMemo(event,this)" title="눌러서 메모 전체 보기/접기">📝 ${escAttr(nt.memo)}</span>`:''}</span>
+          <span class="ph-body"><span class="ph-title">${isM&&l.startTime?`<b>${escAttr(l.startTime)}</b> `:''}${escAttr(l.task||'(제목 없음)')}</span>${nt.done?`<span class="wt-note ph-n"${nt.tid!=null?` onclick="event.stopPropagation();showDoneView('${escAttr(String(nt.tid))}')" title="눌러서 완료 기록 크게 보기" style="cursor:zoom-in;"`:''}>✅ ${escAttr(nt.done)}</span>`:''}${nt.memo?`<span class="ph-memo" onclick="toggleWtMemo(event,this)" title="눌러서 메모 전체 보기/접기">📝 ${escAttr(nt.memo)}</span>`:''}</span>
           <span class="ph-h">${r2(+l.hours||0)}h</span>
         </div>`;
       }).join('')+`</div>`:'';
@@ -7202,8 +7267,12 @@ function toggleProjHours(pid){
 /* ══════════════════════════════════════
    🏷️ 버전 기록 — 새 버전을 낼 때 맨 위에 한 줄씩 추가
 ══════════════════════════════════════ */
-const APP_VERSION='V1.02';
+const APP_VERSION='V1.03';
 const APP_CHANGELOG=[
+  {v:'V1.03', date:'2026-11-16', items:[
+    '완료한 업무: 메모 칸 자리에 마무리 메모(초록)를 보여주고, 누르면 "완료 기록" 읽기 창 (마무리 내용 + 업무 메모, 링크 클릭 가능)',
+    '주간/월간 기록의 ✅ 마무리 줄을 눌러도 같은 읽기 창이 열림',
+  ]},
   {v:'V1.02', date:'2026-11-16', items:[
     '완료 히스토리 탭 삭제 (완료한 업무는 주간/월간 기록과 검색에서 확인, 기존 완료 기록 데이터는 그대로 보관)',
   ]},
