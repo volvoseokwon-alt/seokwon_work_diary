@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>석원이의 업무 다이어리 · V1.04</title>
+<title>석원이의 업무 다이어리 · V1.05</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#4f46e5">
 <meta name="mobile-web-app-capable" content="yes">
@@ -422,6 +422,20 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 .sr-caret{display:inline-block;color:var(--muted);font-size:0.72rem;transition:transform .15s;}
 .sr-item.open .sr-caret{transform:rotate(90deg);}
 .sr-where{font-size:0.66rem;font-weight:700;color:var(--muted);background:var(--bg);border-radius:6px;padding:1px 6px;margin-left:4px;white-space:nowrap;}
+.flag-pend{flex-shrink:0;border:none;border-radius:6px;padding:1px 7px;font-size:0.68rem;font-weight:800;color:#fff;background:#ef4444;cursor:pointer;animation:flagPulse 2s ease-in-out infinite;}
+@keyframes flagPulse{0%,100%{box-shadow:0 0 0 0 #ef444455}50%{box-shadow:0 0 0 4px #ef444422}}
+.ft-box{width:min(680px,100%);}
+.ft-body{max-height:30vh;margin-top:10px;font-size:0.8rem;}
+.ft-sec{margin-top:12px;}
+.ft-row{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;}
+.ft-prio,.ft-days{display:flex;gap:6px;flex-wrap:wrap;}
+.ft-prio button,.ft-days button{border:1.5px solid var(--border);background:var(--card);color:var(--text);border-radius:7px;padding:6px 11px;font-size:0.78rem;font-weight:700;cursor:pointer;}
+.ft-prio button{color:var(--pc);border-color:color-mix(in srgb,var(--pc) 40%,var(--border));}
+.ft-prio button.on{background:var(--pc);color:#fff;border-color:var(--pc);}
+.ft-days button.on{background:var(--primary);color:#fff;border-color:var(--primary);}
+#ft-proj{width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:7px;background:var(--card);color:var(--text);font-size:0.82rem;}
+.ft-actions{display:flex;gap:7px;align-items:center;margin-top:16px;flex-wrap:wrap;}
+.ft-actions .ft-ok{background:var(--primary);color:#fff;font-weight:800;padding:7px 16px;}
 .hist-done-note{margin-top:4px;font-size:0.78rem;line-height:1.5;color:var(--x-047857);background:#10b9810f;border-left:3px solid #10b981;border-radius:4px;padding:4px 8px;white-space:pre-wrap;word-break:break-word;}
 .wt-i .wt-t .wt-note{display:block;font-size:0.68rem;font-weight:500;color:var(--x-047857);margin-top:2px;white-space:normal;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
 .wt-toggle{display:inline-flex;border:1px solid var(--border);border-radius:7px;overflow:hidden;}
@@ -759,7 +773,7 @@ if ('serviceWorker' in navigator) {
     <img src="data:image/png;base64,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" alt="Wonder Diary" style="width:32px;height:32px;border-radius:8px;flex-shrink:0;">
     <span style="display:flex;flex-direction:column;line-height:1.1;">
       <span style="font-size:1.05rem;font-weight:800;letter-spacing:0.01em;">Wonder Diary</span>
-      <span style="font-size:0.62rem;font-weight:400;color:rgba(255,255,255,0.65);">developed by seokwon · <span id="app-version-label" onclick="switchTab('version',document.querySelector('.tab-btn[onclick*=&quot;version&quot;]'))" style="cursor:pointer;text-decoration:underline dotted;" title="버전 기록 보기">V1.04</span></span>
+      <span style="font-size:0.62rem;font-weight:400;color:rgba(255,255,255,0.65);">developed by seokwon · <span id="app-version-label" onclick="switchTab('version',document.querySelector('.tab-btn[onclick*=&quot;version&quot;]'))" style="cursor:pointer;text-decoration:underline dotted;" title="버전 기록 보기">V1.05</span></span>
     </span>
   </h1>
   <div style="display:flex;align-items:center;justify-content:center;gap:24px;flex:1;flex-wrap:wrap;min-width:0;">
@@ -5557,7 +5571,8 @@ function isMailTask(t){
 }
 function copyTitleBtnHTML(t){
   if(!isMailTask(t)) return '';
-  return `<button type="button" class="btn-sm" draggable="false" title="메일 검색용으로 제목 복사" onmousedown="event.stopPropagation()" onclick="event.stopPropagation();copyTaskTitle(${t.id},this)" style="flex-shrink:0;padding:1px 7px;background:var(--c-eef2ff);color:var(--primary-text);font-weight:700;">복사</button>`;
+  const pend=t.flagPending&&!t.done?`<button type="button" class="flag-pend" draggable="false" title="플래그 메일 분류하기 (우선순위·프로젝트 정하기)" onmousedown="event.stopPropagation()" onclick="event.stopPropagation();showFlagTriage(true,${t.id})">📨 분류 대기</button>`:'';
+  return pend+`<button type="button" class="btn-sm" draggable="false" title="메일 검색용으로 제목 복사" onmousedown="event.stopPropagation()" onclick="event.stopPropagation();copyTaskTitle(${t.id},this)" style="flex-shrink:0;padding:1px 7px;background:var(--c-eef2ff);color:var(--primary-text);font-weight:700;">복사</button>`;
 }
 async function copyTaskTitle(id,btn){
   const t=tasks.find(x=>x.id===id); if(!t) return;
@@ -7279,8 +7294,12 @@ function toggleProjHours(pid){
 /* ══════════════════════════════════════
    🏷️ 버전 기록 — 새 버전을 낼 때 맨 위에 한 줄씩 추가
 ══════════════════════════════════════ */
-const APP_VERSION='V1.04';
+const APP_VERSION='V1.05';
 const APP_CHANGELOG=[
+  {v:'V1.05', date:'2026-11-16', items:[
+    '플래그 메일이 들어오면 분류 창: 우선순위(기본 Critical)·프로젝트·마감 선택 → 할 일 추가 / 보류함 / 할 일 아님',
+    '분류하지 않으면 10분마다 다시 알림, 목록에는 "📨 분류 대기" 표시 (누르면 분류 창)',
+  ]},
   {v:'V1.04', date:'2026-11-16', items:[
     '검색 결과 보기 선택: ☰ 제목만(줄을 누르면 펼침, 메모에서 찾은 건 표시) / ▤ 자세히(메모까지 전부)',
   ]},
@@ -10605,6 +10624,79 @@ function toggleOutlookSync(){
 ══════════════════════════════════════ */
 const OUTLOOK_FLAG_DIR='outlook-flags';
 function cleanExternalText(v){ return String(v||'').replace(/[<>"`\\]/g,'').replace(/'/g,'’').trim(); }
+/* ══════════════════════════════════════
+   📨 플래그 메일 분류 창
+   - 새로 들어온 플래그 메일은 "분류 대기"로 할 일에 들어가고, 이 창에서 우선순위·프로젝트·마감을 고른다
+   - 고르지 않고 닫거나 "나중에"를 누르면 10분마다 다시 뜬다
+══════════════════════════════════════ */
+const FLAG_TRIAGE_EVERY=10*60*1000;
+let flagTriageSnoozeUntil=0, flagTriagePick={};
+function pendingFlagTasks(){ return tasks.filter(t=>t.flagPending&&!t.done); }
+function closeFlagTriage(snooze){
+  document.getElementById('flag-triage')?.remove();
+  if(snooze) flagTriageSnoozeUntil=Date.now()+FLAG_TRIAGE_EVERY;
+}
+function showFlagTriage(force,focusId){
+  const list=pendingFlagTasks();
+  if(!list.length){ closeFlagTriage(false); return; }
+  if(!force&&Date.now()<flagTriageSnoozeUntil) return;
+  if(!force&&document.querySelector('.modal.open, #done-view-modal, #move-local-modal')) return;   // 다른 창을 쓰는 중이면 다음 기회에
+  let t=(focusId!=null&&list.find(x=>x.id===focusId))||list[0];
+  const idx=list.indexOf(t);
+  const pick=flagTriagePick[t.id]||(flagTriagePick[t.id]={prio:'A1',proj:t.project,days:3});
+  const projOpts=projects.filter(p=>!p.archived).map(p=>`<option value="${escAttr(p.id)}"${String(p.id)===String(pick.proj)?' selected':''}>${escAttr(p.name)}</option>`).join('')
+    +(String(pick.proj).startsWith('__ext__')?`<option value="${escAttr(pick.proj)}" selected>${escAttr(String(pick.proj).replace('__ext__',''))}</option>`:'');
+  const body=String(t.memo||'').replace(/^보낸 사람:.*\n?/,'').replace(/^받은 날짜:.*\n?/,'');
+  document.getElementById('flag-triage')?.remove();
+  const m=document.createElement('div'); m.id='flag-triage'; m.className='dv-back';
+  m.innerHTML=`<div class="dv-box ft-box" role="dialog" aria-label="플래그 메일 분류">
+    <div class="dv-top"><span class="dv-badge" style="background:#ef4444;">🚩 플래그 메일</span><span class="dv-date">${list.length>1?`${idx+1} / ${list.length}건 대기`:'1건 대기'}</span><button type="button" class="dv-x" data-act="later" title="나중에 (10분 뒤 다시)">✕</button></div>
+    <div class="dv-title">${escAttr(t.text)}</div>
+    <div class="dv-meta">${t.flagFrom?`✉️ ${escAttr(t.flagFrom)}`:''}${t.flagReceived?` · ${escAttr(t.flagReceived.replace('T',' '))}`:''}</div>
+    ${body.trim()?`<div class="dv-memo ft-body">${linkifyText(body.trim())}</div>`:''}
+    <div class="ft-sec"><div class="dv-h">우선순위</div><div class="ft-prio">${PRIORITY_ORDER.map(k=>`<button type="button" data-prio="${k}" class="${k===pick.prio?'on':''}" style="--pc:${PRIORITY_COLOR[k]}">${PRIORITY_LABEL[k]}</button>`).join('')}</div></div>
+    <div class="ft-row">
+      <div class="ft-sec" style="flex:1;min-width:180px;"><div class="dv-h">프로젝트</div><select id="ft-proj">${projOpts}</select></div>
+      <div class="ft-sec"><div class="dv-h">마감</div><div class="ft-days">${[[0,'오늘'],[1,'내일'],[3,'3일 뒤'],[7,'1주 뒤']].map(([d,l])=>`<button type="button" data-days="${d}" class="${d===pick.days?'on':''}">${l}</button>`).join('')}</div></div>
+    </div>
+    <div class="ft-actions">
+      <button type="button" class="btn-sm" data-act="delete" title="할 일이 아니면 휴지통으로">🗑 할 일 아님</button>
+      <button type="button" class="btn-sm" data-act="park" title="일정 없이 보류함으로">📥 보류함</button>
+      <span style="flex:1"></span>
+      ${list.length>1?`<button type="button" class="btn-sm" data-act="next">다음 메일 ▶</button>`:''}
+      <button type="button" class="btn-sm" data-act="later">⏰ 나중에</button>
+      <button type="button" class="btn-sm ft-ok" data-act="ok">할 일에 추가</button>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+  const box=m.querySelector('.ft-box');
+  box.querySelectorAll('[data-prio]').forEach(b=>b.onclick=()=>{ pick.prio=b.dataset.prio; box.querySelectorAll('[data-prio]').forEach(x=>x.classList.toggle('on',x===b)); });
+  box.querySelectorAll('[data-days]').forEach(b=>b.onclick=()=>{ pick.days=+b.dataset.days; box.querySelectorAll('[data-days]').forEach(x=>x.classList.toggle('on',x===b)); });
+  box.querySelector('#ft-proj').onchange=e=>{ pick.proj=e.target.value; };
+  const next=()=>{ const l=pendingFlagTasks(); if(l.length) showFlagTriage(true,(l[(l.findIndex(x=>x.id===t.id)+1)%l.length]||l[0]).id); else closeFlagTriage(false); };
+  box.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{
+    const act=b.dataset.act;
+    if(act==='later'){ closeFlagTriage(true); return; }
+    if(act==='next'){ next(); return; }
+    if(act==='delete'){ if(!confirm('이 메일은 할 일이 아닌가요? 휴지통으로 보냅니다.')) return; delete flagTriagePick[t.id]; deleteTask(t.id); }
+    else if(act==='park'){ tasks=tasks.map(x=>x.id===t.id?{...x,flagPending:false,project:pick.proj,priority:pick.prio}:x); delete flagTriagePick[t.id]; parkTask(t.id); }
+    else if(act==='ok'){
+      const s0=new Date(), e0=new Date(); e0.setDate(e0.getDate()+pick.days);
+      tasks=tasks.map(x=>x.id===t.id?{...x,flagPending:false,priority:pick.prio,project:pick.proj,start:dailyMemoDateKey(s0),end:dailyMemoDateKey(e0)}:x);
+      delete flagTriagePick[t.id];
+      saveAndRender();
+      showMiniToast(`✅ <b>${escAttr(PRIORITY_LABEL[pick.prio])}</b>로 할 일에 추가했어요`,2200);
+    }
+    const l=pendingFlagTasks();
+    if(l.length) showFlagTriage(true,l[0].id); else closeFlagTriage(false);
+  });
+  let downBack=false;
+  m.addEventListener('pointerdown',e=>{ downBack=e.target===m; });
+  m.addEventListener('click',e=>{ if(e.target===m&&downBack) closeFlagTriage(true); });
+}
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&document.getElementById('flag-triage')){ e.stopPropagation(); closeFlagTriage(true); } },true);
+setInterval(()=>showFlagTriage(false),60*1000);          // 1분마다 확인 → 나중에 누른 뒤 10분 지나면 다시
+setTimeout(()=>showFlagTriage(false),25*1000);           // 앱을 켜고 남아 있는 분류 대기 메일
 function flagTaskProject(){
   const p=projects.find(x=>x.name==='메일답변');
   return p?p.id:'__ext__메일답변';
@@ -10638,7 +10730,8 @@ function addFlaggedMailTask(mail){
   due.setDate(due.getDate()+3);
   const projectId=flagTaskProject();
   const task={id:Date.now()+Object.keys(outlookSync.flagged).length,text:cleanExternalText(mail.subject)||'(제목 없는 메일)',project:projectId,done:false,
-    start:dailyMemoDateKey(today),end:dailyMemoDateKey(due),actualEnd:null,priority:'B1',status:'not_started',outlookMailId:id,outlookMemoLen:memo.length};
+    start:dailyMemoDateKey(today),end:dailyMemoDateKey(due),actualEnd:null,priority:'A1',status:'not_started',outlookMailId:id,outlookMemoLen:memo.length,
+    flagPending:true, flagFrom:cleanExternalText(mail.from||''), flagReceived:(()=>{ const r=parseOutlookTime(mail.received); return r?`${dailyMemoDateKey(r)} ${String(r.getHours()).padStart(2,'0')}:${String(r.getMinutes()).padStart(2,'0')}`:''; })()};
   if(memo) task.memo=memo;
   tasks.push(task);
   outlookSync.flagged[id]=task.start;
@@ -10677,6 +10770,7 @@ async function syncOutlookFlags(){
     outlookFlagStatus=` · 플래그 메일 새 파일: 추가 ${added}건, 중복 ${skipped}건`+(failed?`, 읽기 실패 ${failed}건`:'')+(keptFiles?`, 파일 남음 ${keptFiles}개`:'')+(lastError?` (${lastError})`:'');
   }
   if(added||flagMemoUpdated){ flagMemoUpdated=false; await saveAndRender(); }
+  if(added) setTimeout(()=>showFlagTriage(true),300);   // 새 플래그 메일 → 바로 분류 창
   return added;
 }
 // 앱으로 돌아올 때마다 OneDrive 파일을 읽지 않도록 1분에 한 번으로 제한
