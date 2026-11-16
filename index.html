@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>석원이의 업무 다이어리 · V1.03</title>
+<title>석원이의 업무 다이어리 · V1.04</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#4f46e5">
 <meta name="mobile-web-app-capable" content="yes">
@@ -414,6 +414,14 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 .dv-done a,.dv-memo a{color:var(--primary-text);}
 .dv-empty{font-size:0.8rem;color:var(--muted);padding:6px 0;}
 .dv-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;}
+.sr-item{padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--card);margin-bottom:7px;}
+.sr-list.compact .sr-item{padding:7px 12px;margin-bottom:4px;}
+.sr-list.compact .sr-item:not(.open) .sr-detail{display:none;}
+.sr-head.can-open{cursor:pointer;}
+.sr-list.compact .sr-item:hover{border-color:color-mix(in srgb,var(--primary) 40%,var(--border));}
+.sr-caret{display:inline-block;color:var(--muted);font-size:0.72rem;transition:transform .15s;}
+.sr-item.open .sr-caret{transform:rotate(90deg);}
+.sr-where{font-size:0.66rem;font-weight:700;color:var(--muted);background:var(--bg);border-radius:6px;padding:1px 6px;margin-left:4px;white-space:nowrap;}
 .hist-done-note{margin-top:4px;font-size:0.78rem;line-height:1.5;color:var(--x-047857);background:#10b9810f;border-left:3px solid #10b981;border-radius:4px;padding:4px 8px;white-space:pre-wrap;word-break:break-word;}
 .wt-i .wt-t .wt-note{display:block;font-size:0.68rem;font-weight:500;color:var(--x-047857);margin-top:2px;white-space:normal;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
 .wt-toggle{display:inline-flex;border:1px solid var(--border);border-radius:7px;overflow:hidden;}
@@ -751,7 +759,7 @@ if ('serviceWorker' in navigator) {
     <img src="data:image/png;base64,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" alt="Wonder Diary" style="width:32px;height:32px;border-radius:8px;flex-shrink:0;">
     <span style="display:flex;flex-direction:column;line-height:1.1;">
       <span style="font-size:1.05rem;font-weight:800;letter-spacing:0.01em;">Wonder Diary</span>
-      <span style="font-size:0.62rem;font-weight:400;color:rgba(255,255,255,0.65);">developed by seokwon · <span id="app-version-label" onclick="switchTab('version',document.querySelector('.tab-btn[onclick*=&quot;version&quot;]'))" style="cursor:pointer;text-decoration:underline dotted;" title="버전 기록 보기">V1.03</span></span>
+      <span style="font-size:0.62rem;font-weight:400;color:rgba(255,255,255,0.65);">developed by seokwon · <span id="app-version-label" onclick="switchTab('version',document.querySelector('.tab-btn[onclick*=&quot;version&quot;]'))" style="cursor:pointer;text-decoration:underline dotted;" title="버전 기록 보기">V1.04</span></span>
     </span>
   </h1>
   <div style="display:flex;align-items:center;justify-content:center;gap:24px;flex:1;flex-wrap:wrap;min-width:0;">
@@ -1022,6 +1030,10 @@ ZB 교체 둘</textarea>
             <option value="all">전체 프로젝트</option>
           </select>
           <label style="display:flex;align-items:center;gap:5px;font-size:0.8rem;color:var(--muted);white-space:nowrap;cursor:pointer;"><input type="checkbox" id="search-include-done" checked onchange="renderSearch()"> 완료 포함</label>
+          <div class="wt-toggle" id="search-view-toggle" style="align-self:center;">
+            <button type="button" data-v="compact" onclick="setSearchView('compact')">☰ 제목만</button>
+            <button type="button" data-v="full" onclick="setSearchView('full')">▤ 자세히</button>
+          </div>
         </div>
         <div id="search-results"><div style="color:var(--muted);font-size:0.85rem;padding:16px 0;text-align:center;">키워드를 입력하세요.</div></div>
       </div>
@@ -7267,8 +7279,11 @@ function toggleProjHours(pid){
 /* ══════════════════════════════════════
    🏷️ 버전 기록 — 새 버전을 낼 때 맨 위에 한 줄씩 추가
 ══════════════════════════════════════ */
-const APP_VERSION='V1.03';
+const APP_VERSION='V1.04';
 const APP_CHANGELOG=[
+  {v:'V1.04', date:'2026-11-16', items:[
+    '검색 결과 보기 선택: ☰ 제목만(줄을 누르면 펼침, 메모에서 찾은 건 표시) / ▤ 자세히(메모까지 전부)',
+  ]},
   {v:'V1.03', date:'2026-11-16', items:[
     '완료한 업무: 메모 칸 자리에 마무리 메모(초록)를 보여주고, 누르면 "완료 기록" 읽기 창 (마무리 내용 + 업무 메모, 링크 클릭 가능)',
     '주간/월간 기록의 ✅ 마무리 줄을 눌러도 같은 읽기 창이 열림',
@@ -7300,7 +7315,12 @@ function renderVersionTab(){
     <div class="ver-head"><span class="ver-v">${escAttr(r.v)}</span>${i===0?'<span class="ver-now">사용 중</span>':''}<span class="ver-date">${escAttr(r.date)}</span></div>
     <ul>${r.items.map(t=>`<li>${escAttr(t)}</li>`).join('')}</ul></div>`).join('');
 }
+let searchView='compact';
+try{ const v=localStorage.getItem('wd-search-view'); if(v==='full'||v==='compact') searchView=v; }catch(_){}
+function setSearchView(v){ searchView=v; try{ localStorage.setItem('wd-search-view',v); }catch(_){} renderSearch(); }
+function toggleSearchItem(el){ if(searchView!=='compact') return; el.closest('.sr-item')?.classList.toggle('open'); }
 function renderSearch(){
+  document.querySelectorAll('#search-view-toggle button').forEach(b=>b.classList.toggle('on',b.dataset.v===searchView));
   // 검색탭 열릴 때 프로젝트 셀렉트 동기화
   const pSel=document.getElementById('search-proj');
   if(pSel&&pSel.options.length<=1){
@@ -7333,7 +7353,8 @@ function renderSearch(){
 
   if(!matches.length){ el.innerHTML='<div style="color:var(--muted);font-size:0.85rem;padding:16px 0;text-align:center;">검색 결과 없음</div>'; return; }
   const nDone=matches.filter(x=>x.t.done).length;
-  el.innerHTML=`<div style="font-size:0.8rem;color:var(--muted);padding:8px 0;">${matches.length}건 발견${nDone?` · 진행 중 ${matches.length-nDone}건, 완료 ${nDone}건`:''}</div>`+
+  const compact=searchView==='compact';
+  el.innerHTML=`<div style="font-size:0.8rem;color:var(--muted);padding:8px 0;">${matches.length}건 발견${nDone?` · 진행 중 ${matches.length-nDone}건, 완료 ${nDone}건`:''}${compact?' · 줄을 누르면 내용이 펼쳐져요':''}</div><div class="sr-list${compact?' compact':''}">`+
   matches.map(x=>{
     const t=x.t, p=proj(t.project), pc=p?.color||x.cpProj?.color||'#64748b', pn=pName(x);
     let chip;
@@ -7342,22 +7363,28 @@ function renderSearch(){
       const ds=d&&!isNaN(d)?`${d.getMonth()+1}/${d.getDate()}`:'';
       chip=x.hist
         ? `<span class="status-chip" style="background:#10b981;font-size:0.7rem;" title="예전에 완료해서 보관된 업무">✅ 완료${ds?' '+ds:''}</span>`
-        : `<span class="status-chip" onclick="editCompleteDate(${t.id})" title="클릭하여 완료일·마무리 메모 변경" style="background:#10b981;font-size:0.7rem;cursor:pointer;">✅ 완료${ds?' '+ds:''}</span>`;
+        : `<span class="status-chip" onclick="event.stopPropagation();editCompleteDate(${t.id})" title="클릭하여 완료일·마무리 메모 변경" style="background:#10b981;font-size:0.7rem;cursor:pointer;">✅ 완료${ds?' '+ds:''}</span>`;
     } else {
       const st=getTaskStatus(t); const stI=TASK_STATUS[st]||TASK_STATUS['not_started'];
       chip=`<span class="status-chip" style="background:${stI.color};font-size:0.7rem;">${stI.icon} ${stI.label}</span>`;
     }
-    return `<div style="padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--card);margin-bottom:7px;${t.done?'opacity:.92;':''}">
-      <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
+    const inTitle=[t.text,pn,t.subProject].map(v=>String(v||'').toLowerCase()).join('\n').includes(q);
+    const hasDetail=!!(t.doneNote||t.memo);
+    const where=!inTitle?(String(t.doneNote||'').toLowerCase().includes(q)?'✅ 마무리에서 찾음':'📝 메모에서 찾음'):'';
+    return `<div class="sr-item" style="${t.done?'opacity:.92;':''}">
+      <div class="sr-head${compact&&hasDetail?' can-open':''}" onclick="toggleSearchItem(this)" style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
+        ${compact&&hasDetail?'<span class="sr-caret">▸</span>':''}
         <span style="background:${pc}22;color:${readable(pc)};font-size:0.72rem;font-weight:700;padding:2px 7px;border-radius:4px;">${escAttr(pn)}</span>
-        <span style="font-size:0.85rem;flex:1;${t.done?'color:var(--muted);':''}">${hl(t.text)}</span>
+        <span style="font-size:0.85rem;flex:1;min-width:120px;${t.done?'color:var(--muted);':''}">${hl(t.text)}${compact&&where?` <span class="sr-where">${where}</span>`:''}</span>
         ${chip}
         ${t.parked?`<span class="date-badge" style="background:var(--c-f5f3ff);color:var(--x-7c3aed);border-color:var(--c-ddd6fe);">📥 보류함</span>`:(t.start||t.end?`<span class="date-badge">${fmt(t.start)}~${fmt(t.end)}</span>`:'')}
       </div>
+      ${hasDetail?`<div class="sr-detail">
       ${t.doneNote?`<div class="search-done-note">✅ ${hl(t.doneNote)}</div>`:''}
       ${t.memo?`<div style="margin-top:5px;font-size:0.78rem;color:var(--muted);padding:4px 8px;background:var(--c-f8fafc);border-radius:4px;white-space:pre-wrap;word-break:break-word;">📝 ${hl(t.memo)}</div>`:''}
+      </div>`:''}
     </div>`;
-  }).join('');
+  }).join('')+`</div>`;
 }
 
 /* ══════════════════════════════════════
