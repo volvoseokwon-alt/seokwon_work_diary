@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>석원이의 업무 다이어리 · V1.06</title>
+<title>석원이의 업무 다이어리 · V1.08</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#4f46e5">
 <meta name="mobile-web-app-capable" content="yes">
@@ -449,6 +449,12 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 .act-pop .ap-btns{display:flex;gap:6px;margin-top:8px;align-items:center;}
 .act-pop .ap-ok{background:#f97316;color:#fff;font-weight:800;}
 .act-pop .ap-hint{font-size:0.64rem;color:var(--muted);margin-top:5px;text-align:right;}
+.sticky-note.sticky-img{min-height:0;background:var(--card);padding:0;border-radius:6px;overflow:visible;}
+.sticky-note.sticky-img img{display:block;width:100%;object-fit:contain;border-radius:0 0 6px 6px;cursor:grab;user-select:none;background:#fff;}
+.sticky-note.sticky-img .sticky-grip{height:16px;background:var(--bg);border-radius:6px 6px 0 0;}
+.sticky-resize{position:absolute;right:-6px;bottom:-6px;width:16px;height:16px;border-radius:4px;background:var(--primary);border:2px solid #fff;cursor:nwse-resize;opacity:0;transition:opacity .12s;box-shadow:0 1px 4px rgba(0,0,0,.3);touch-action:none;z-index:3;}
+.sticky-note.sticky-img:hover .sticky-resize{opacity:1;}
+.sticky-board.img-drop{outline:3px dashed var(--primary);outline-offset:-6px;}
 .hist-done-note{margin-top:4px;font-size:0.78rem;line-height:1.5;color:var(--x-047857);background:#10b9810f;border-left:3px solid #10b981;border-radius:4px;padding:4px 8px;white-space:pre-wrap;word-break:break-word;}
 .wt-i .wt-t .wt-note{display:block;font-size:0.68rem;font-weight:500;color:var(--x-047857);margin-top:2px;white-space:normal;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
 .wt-toggle{display:inline-flex;border:1px solid var(--border);border-radius:7px;overflow:hidden;}
@@ -786,7 +792,7 @@ if ('serviceWorker' in navigator) {
     <img src="data:image/png;base64,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" alt="Wonder Diary" style="width:32px;height:32px;border-radius:8px;flex-shrink:0;">
     <span style="display:flex;flex-direction:column;line-height:1.1;">
       <span style="font-size:1.05rem;font-weight:800;letter-spacing:0.01em;">Wonder Diary</span>
-      <span style="font-size:0.62rem;font-weight:400;color:rgba(255,255,255,0.65);">developed by seokwon · <span id="app-version-label" onclick="switchTab('version',document.querySelector('.tab-btn[onclick*=&quot;version&quot;]'))" style="cursor:pointer;text-decoration:underline dotted;" title="버전 기록 보기">V1.06</span></span>
+      <span style="font-size:0.62rem;font-weight:400;color:rgba(255,255,255,0.65);">developed by seokwon · <span id="app-version-label" onclick="switchTab('version',document.querySelector('.tab-btn[onclick*=&quot;version&quot;]'))" style="cursor:pointer;text-decoration:underline dotted;" title="버전 기록 보기">V1.08</span></span>
     </span>
   </h1>
   <div style="display:flex;align-items:center;justify-content:center;gap:24px;flex:1;flex-wrap:wrap;min-width:0;">
@@ -1071,11 +1077,12 @@ ZB 교체 둘</textarea>
       <div class="sticky-wrap">
         <div class="sticky-toolbar">
           <strong style="font-size:1.05rem;">🗒️ 메모 보드</strong>
-          <span class="sticky-hint" title="더블클릭: 추가 · 휠: 확대/축소 · 빈 곳 드래그: 화면 이동 · 윗부분 드래그: 옮기기 · 오른쪽 ● 끌어서 다른 포스트잇에 놓기: 화살표 · 화살표 클릭 후 Delete: 삭제">더블클릭 추가 · 휠 확대/축소 · ● 끌어서 화살표</span>
+          <span class="sticky-hint" title="사진: 캡처 후 Ctrl+V · 파일 끌어다 놓기 · 더블클릭: 추가 · 휠: 확대/축소 · 빈 곳 드래그: 화면 이동 · 윗부분 드래그: 옮기기 · 오른쪽 ● 끌어서 다른 포스트잇에 놓기: 화살표 · 화살표 클릭 후 Delete: 삭제">더블클릭 추가 · Ctrl+V 사진 · 휠 확대/축소 · ● 끌어서 화살표</span>
           <span style="flex:1"></span>
           <span class="sticky-zoom"><button class="btn-sm" onclick="stickyZoomBy(1/1.2)" title="축소">−</button><button class="btn-sm" id="sticky-zoom-label" onclick="stickyZoomReset()" title="100%로">100%</button><button class="btn-sm" onclick="stickyZoomBy(1.2)" title="확대">+</button><button class="btn-sm" onclick="stickyFitAll()" title="모든 포스트잇이 보이게">전체 보기</button></span>
           <button class="btn-sm" id="sticky-link-btn" onclick="toggleStickyLinkMode()" title="포스트잇 두 개를 차례로 클릭해서 화살표 연결 (Esc로 끝)">↗ 화살표 연결</button>
           <span id="sticky-palette" class="sticky-palette"></span>
+          <button class="btn-sm" onclick="pickStickyImage()" title="사진 붙이기 (캡처 후 이 화면에서 Ctrl+V 해도 돼요)">🖼️ 사진</button>
           <button class="btn-sm sticky-add" onclick="addStickyNote()">+ 포스트잇</button>
           <button class="btn-sm" style="background:var(--bg);color:var(--muted);" onclick="toggleOldDailyMemos()" id="old-memo-toggle">📅 이전 날짜별 메모</button>
         </div>
@@ -3372,6 +3379,17 @@ function wireStickyBoard(){
   const board=document.getElementById('sticky-board'); if(!board||board.dataset.wired) return;
   board.dataset.wired='1';
   board.addEventListener('pointerdown',stickyLinkModeClick,true);
+  board.addEventListener('pointermove',e=>{ stickyLastPoint={x:e.clientX,y:e.clientY,t:Date.now()}; });
+  board.addEventListener('dragover',e=>{ if([...(e.dataTransfer?.types||[])].includes('Files')){ e.preventDefault(); e.dataTransfer.dropEffect='copy'; board.classList.add('img-drop'); } });
+  board.addEventListener('dragleave',e=>{ if(!board.contains(e.relatedTarget)) board.classList.remove('img-drop'); });
+  board.addEventListener('drop',e=>{
+    const files=[...(e.dataTransfer?.files||[])].filter(f=>f.type&&f.type.startsWith('image/'));
+    board.classList.remove('img-drop');
+    if(!files.length) return;
+    e.preventDefault(); e.stopPropagation();
+    const p=stickyScreenToBoard(e.clientX,e.clientY);
+    files.forEach((f,i)=>addStickyImage(f,p.x+i*30,p.y+i*30));
+  });
   board.addEventListener('wheel',e=>{
     e.preventDefault();
     const r=board.getBoundingClientRect();
@@ -3530,9 +3548,114 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){ if(stickyLinkMode) toggleStickyLinkMode(false); if(stickyLinkSel!=null){ stickyLinkSel=null; drawStickyLinks(); } }
   else if((e.key==='Delete'||e.key==='Backspace')&&stickyLinkSel!=null&&!typing){ e.preventDefault(); deleteStickyLink(stickyLinkSel); }
 });
+/* ══════════════════════════════════════
+   🖼️ 메모 보드 사진: 캡처 후 Ctrl+V / 끌어다 놓기 / 🖼️ 사진 버튼
+   - 오른쪽 아래 모서리를 끌면 비율을 유지한 채 크기 조절
+   - 파일은 데이터 폴더의 images 폴더에 저장 (board_*.png/jpg)
+══════════════════════════════════════ */
+let stickyLastPoint=null;
+const BOARD_IMG_MAX_PX=2400, BOARD_IMG_PNG_MAX=1.5*1024*1024;
+function encodeBoardImage(file){
+  return new Promise((resolve,reject)=>{
+    const url=URL.createObjectURL(file), img=new Image();
+    img.onerror=()=>{ URL.revokeObjectURL(url); reject(new Error('이미지를 열지 못했습니다.')); };
+    img.onload=()=>{
+      URL.revokeObjectURL(url);
+      let w=img.naturalWidth, h=img.naturalHeight;
+      const sc=Math.min(1,BOARD_IMG_MAX_PX/Math.max(w,h)); w=Math.round(w*sc); h=Math.round(h*sc);
+      const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+      const ctx=cv.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,w,h); ctx.drawImage(img,0,0,w,h);
+      // 캡처(글자)는 선명하게 PNG, 너무 크면 JPEG
+      cv.toBlob(png=>{
+        if(png&&png.size<=BOARD_IMG_PNG_MAX) return resolve({blob:png,ext:'png',w,h,cv});
+        cv.toBlob(jpg=>jpg?resolve({blob:jpg,ext:'jpg',w,h,cv}):reject(new Error('이미지 변환에 실패했습니다.')),'image/jpeg',0.9);
+      },'image/png');
+    };
+    img.src=url;
+  });
+}
+async function addStickyImage(file,x,y){
+  let enc;
+  try{ enc=await encodeBoardImage(file); }catch(e){ alert(e.message||'이미지를 처리하지 못했습니다.'); return; }
+  const id=Date.now()+Math.floor(Math.random()*1000);
+  const w0=Math.min(420,enc.w), n={id,type:'image',w:w0,ratio:enc.h/enc.w,iw:enc.w,ih:enc.h,z:stickyTopZ()+1,updatedAt:new Date().toISOString()};
+  if(x==null){
+    const board=document.getElementById('sticky-board');
+    const lp=stickyLastPoint&&Date.now()-stickyLastPoint.t<15000?stickyLastPoint:null;
+    if(lp){ const p=stickyScreenToBoard(lp.x,lp.y); x=p.x-w0/2; y=p.y-w0*n.ratio/2; }
+    else { x=((board?.clientWidth||800)/2-stickyView.x)/stickyView.zoom-w0/2; y=((board?.clientHeight||500)/2-stickyView.y)/stickyView.zoom-w0*n.ratio/2; }
+  }
+  n.x=Math.round(x); n.y=Math.round(y);
+  const dir=await getImageDir(true);
+  if(dir){
+    try{
+      const fname=`board_${id}.${enc.ext}`;
+      const fh=await dir.getFileHandle(fname,{create:true}); const wr=await fh.createWritable(); await wr.write(enc.blob); await wr.close();
+      n.file=fname; _imgUrlCache.set(fname,URL.createObjectURL(enc.blob));
+    }catch(e){ console.warn('보드 사진 저장 실패:',e); }
+  }
+  if(!n.file){
+    const small=enc.cv.toDataURL('image/jpeg',0.8);
+    if(small.length>MEMO_IMG_INLINE_MAX*3){ alert('사진을 저장하지 못했습니다. 저장 폴더가 연결되어 있는지 확인해 주세요.'); return; }
+    n.dataUrl=small;
+  }
+  stickyNotes.push(n);
+  saveData(); renderStickyBoard(true);
+  showMiniToast('🖼️ 사진을 붙였어요 · 오른쪽 아래 모서리를 끌면 크기 조절',2500);
+}
+function pickStickyImage(){
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*'; inp.multiple=true;
+  inp.onchange=()=>[...inp.files].forEach((f,i)=>addStickyImage(f, i?undefined:undefined, undefined));
+  inp.click();
+}
+document.addEventListener('paste',e=>{
+  if(currentTab!=='notes') return;
+  const files=[...(e.clipboardData?.items||[])].filter(it=>it.kind==='file'&&it.type.startsWith('image/')).map(it=>it.getAsFile()).filter(Boolean);
+  if(!files.length) return;                 // 글자 붙여넣기는 그대로
+  e.preventDefault();
+  files.forEach(f=>addStickyImage(f));
+});
+function buildStickyImage(n){
+  const el=document.createElement('div');
+  el.className='sticky-note sticky-img'; el.dataset.id=n.id;
+  el.style.cssText=`left:${n.x}px;top:${n.y}px;width:${n.w}px;z-index:${n.z||1};`;
+  const grip=document.createElement('div'); grip.className='sticky-grip'; grip.title='끌어서 이동 · 더블클릭: 원본 크기로 보기';
+  grip.addEventListener('pointerdown',e=>startStickyDrag(e,n.id));
+  const del=document.createElement('button'); del.type='button'; del.textContent='✕'; del.title='삭제'; del.onclick=()=>deleteStickyNote(n.id);
+  grip.append(del);
+  const img=document.createElement('img'); img.alt=''; img.draggable=false;
+  img.style.height=Math.round(n.w*(n.ratio||0.6))+'px';
+  if(n.dataUrl) img.src=n.dataUrl; else if(n.file) resolveImageUrl({file:n.file}).then(u=>{ if(u) img.src=u; else el.title='사진 파일을 찾을 수 없습니다: '+n.file; });
+  img.addEventListener('pointerdown',e=>startStickyDrag(e,n.id));       // 사진 어디를 잡아도 이동
+  el.addEventListener('dblclick',e=>{ e.stopPropagation(); if(img.src) window.open(img.src,'_blank'); });
+  const rs=document.createElement('div'); rs.className='sticky-resize'; rs.title='끌어서 크기 조절 (비율 유지)';
+  rs.addEventListener('pointerdown',e=>startStickyImgResize(e,n,el,img));
+  const hd=document.createElement('div'); hd.className='sticky-link-handle'; hd.title='끌어서 다른 포스트잇에 놓으면 화살표 연결';
+  hd.addEventListener('pointerdown',e=>startStickyLinkDrag(e,n.id));
+  el.append(grip,img,rs,hd);
+  return el;
+}
+function startStickyImgResize(e,n,el,img){
+  if(e.button!==0) return;
+  e.preventDefault(); e.stopPropagation();
+  const h=e.currentTarget, sx=e.clientX, sy=e.clientY, w0=n.w, r=n.ratio||0.6;
+  n.z=stickyTopZ()+1; el.style.zIndex=n.z;
+  try{ h.setPointerCapture(e.pointerId); }catch(_){}
+  const move=ev=>{
+    // 가로/세로 중 많이 움직인 쪽 기준으로, 비율은 그대로
+    const dx=(ev.clientX-sx)/stickyView.zoom, dy=(ev.clientY-sy)/stickyView.zoom/r;
+    const w=Math.round(Math.max(60,Math.min(3000,w0+(Math.abs(dx)>Math.abs(dy)?dx:dy))));
+    n.w=w; el.style.width=w+'px'; img.style.height=Math.round(w*r)+'px'; drawStickyLinks();
+  };
+  const up=()=>{ h.removeEventListener('pointermove',move); h.removeEventListener('pointerup',up); h.removeEventListener('pointercancel',up); n.updatedAt=new Date().toISOString(); saveData(); };
+  h.addEventListener('pointermove',move); h.addEventListener('pointerup',up); h.addEventListener('pointercancel',up);
+}
 function deleteStickyNote(id){
   const n=stickyNotes.find(x=>x.id===id); if(!n) return;
-  if(n.text.trim()&&!confirm('이 포스트잇을 삭제할까요?')) return;
+  if(n.type==='image'){
+    if(!confirm('이 사진을 보드에서 삭제할까요?')) return;
+    if(n.file){ getImageDir(false).then(dir=>dir&&dir.removeEntry(n.file).catch(()=>{})); const u=_imgUrlCache.get(n.file); if(u){ URL.revokeObjectURL(u); _imgUrlCache.delete(n.file); } }
+  } else if(String(n.text||'').trim()&&!confirm('이 포스트잇을 삭제할까요?')) return;
   stickyNotes=stickyNotes.filter(x=>x.id!==id);
   stickyLinks=stickyLinks.filter(l=>!sameId(l.from,id)&&!sameId(l.to,id));
   saveData();
@@ -3584,6 +3707,7 @@ function renderStickyBoard(force){
     board.appendChild(em);
   }
   stickyNotes.forEach(n=>{
+    if(n.type==='image'){ cv.appendChild(buildStickyImage(n)); return; }
     const el=document.createElement('div');
     el.className='sticky-note'; el.dataset.id=n.id;
     el.style.cssText=`left:${n.x}px;top:${n.y}px;background:${n.color};z-index:${n.z||1};`;
@@ -7340,8 +7464,15 @@ function toggleProjHours(pid){
 /* ══════════════════════════════════════
    🏷️ 버전 기록 — 새 버전을 낼 때 맨 위에 한 줄씩 추가
 ══════════════════════════════════════ */
-const APP_VERSION='V1.06';
+const APP_VERSION='V1.08';
 const APP_CHANGELOG=[
+  {v:'V1.08', date:'2026-11-17', items:[
+    '메모 보드에 사진 붙이기: 캡처 후 Ctrl+V / 파일 끌어다 놓기 / 🖼️ 사진 버튼',
+    '사진 오른쪽 아래 모서리를 끌면 비율 유지하며 크기 조절, 더블클릭하면 원본 크기로 보기, 화살표 연결도 가능',
+  ]},
+  {v:'V1.07', date:'2026-11-17', items:[
+    '플래그 메일을 앱을 켜둔 채로도 받음: 2분마다 + 앱 창으로 돌아올 때 확인 (예전엔 30분마다/앱 다시 켤 때만)',
+  ]},
   {v:'V1.06', date:'2026-11-16', items:[
     '업무 줄에 ▶ Action 칸: 다음에 해야 할 일을 한 줄로 적기 (＋ Action 눌러 입력, 주황색으로 표시, 검색에도 포함)',
   ]},
@@ -10658,7 +10789,7 @@ try{
   if(/[?&]outlook=on\b/i.test(location.search)) localStorage.removeItem('wd-outlook-off');
   outlookSyncOff=localStorage.getItem('wd-outlook-off')==='1';
 }catch(_){}
-function outlookSyncNow(){ outlookSyncAt=0; outlookFileStamp=''; setOutlookStatus('📨 Outlook 파일 읽는 중…'); syncOutlookMeetings(); }
+function outlookSyncNow(){ outlookSyncAt=0; outlookFileStamp=''; flagPollAt=0; setOutlookStatus('📨 Outlook 파일 읽는 중…'); syncOutlookMeetings(); }
 function toggleOutlookSync(){
   outlookSyncOff=!outlookSyncOff;
   try{ outlookSyncOff?localStorage.setItem('wd-outlook-off','1'):localStorage.removeItem('wd-outlook-off'); }catch(_){}
@@ -10787,7 +10918,26 @@ function addFlaggedMailTask(mail){
   return true;
 }
 let outlookFlagStatus='', flagMemoUpdated=false;
+let _flagSyncRunning=false;
 async function syncOutlookFlags(){
+  if(_flagSyncRunning) return 0;            // 주기 확인과 30분 동기화가 겹치지 않게
+  _flagSyncRunning=true;
+  try{ return await _syncOutlookFlags(); } finally{ _flagSyncRunning=false; }
+}
+/* 플래그 메일만 따로 자주 확인: 2분마다 + 앱 창으로 돌아올 때(1분에 한 번까지)
+   폴더 안 파일 이름만 훑고, 새 파일만 읽는다 (OneDrive에는 읽기만) */
+let flagPollAt=0;
+async function pollOutlookFlags(force){
+  if(outlookSyncOff||(typeof SAFE_MODE!=='undefined'&&SAFE_MODE)||!outlookDir()) return;
+  if(outlookDirHandle&&outlookDirNeedsPerm) return;
+  if(outlookSyncBusy) return;
+  if(!force&&Date.now()-flagPollAt<60*1000) return;
+  flagPollAt=Date.now();
+  try{ await syncOutlookFlags(); }catch(e){ console.warn('플래그 메일 확인 실패:',e); }
+}
+setInterval(()=>pollOutlookFlags(false),2*60*1000);
+window.addEventListener('focus',()=>setTimeout(()=>pollOutlookFlags(false),1500));
+async function _syncOutlookFlags(){
   outlookFlagStatus='';
   let dir;
   try{ dir=await outlookDir().getDirectoryHandle(OUTLOOK_FLAG_DIR); }
