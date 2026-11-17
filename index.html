@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>석원이의 업무 다이어리 · V1.10</title>
+<title>석원이의 업무 다이어리 · V1.11</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#4f46e5">
 <meta name="mobile-web-app-capable" content="yes">
@@ -325,7 +325,7 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 :root{--cdp-mt:#7e22ce;--cdp-free:#047857;}
 [data-theme="dark"]{--cdp-mt:#e9d5ff;--cdp-free:#6ee7b7;}
 .cal-head{text-align:center;font-size:0.7rem;font-weight:700;color:var(--muted);padding:3px 0;}
-.cal-cell{min-height:74px;border:1px solid var(--border);border-radius:4px;padding:3px 4px;background:var(--card);overflow:hidden;}
+.cal-cell{min-height:var(--cal-row-h,74px);border:1px solid var(--border);border-radius:4px;padding:3px 4px;background:var(--card);overflow:hidden;}
 .cal-cell.other{background:var(--c-f8fafc);}
 .cal-cell.today-cell{background:var(--c-fffbeb);border-color:#f59e0b;}
 .cal-day{font-size:0.73rem;font-weight:700;margin-bottom:2px;}
@@ -467,8 +467,8 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 .ss-next span{color:var(--muted);}
 .ss-grid{position:relative;}
 .ss-hour{position:absolute;left:0;right:0;border-top:1px solid var(--border);}
-.ss-hour span{position:absolute;left:0;top:-7px;font-size:0.6rem;color:var(--muted);background:var(--sidebar-bg,var(--card));padding-right:3px;font-variant-numeric:tabular-nums;}
-.ss-mt{position:absolute;border-radius:4px;background:#a855f72a;border-left:3px solid #a855f7;color:var(--cdp-mt);padding:0 4px;font-size:0.64rem;line-height:1.35;overflow:hidden;cursor:pointer;box-sizing:border-box;white-space:nowrap;text-overflow:ellipsis;}
+.ss-hour span{position:absolute;left:0;top:-7px;font-size:0.64rem;color:var(--muted);background:var(--sidebar-bg,var(--card));padding-right:3px;font-variant-numeric:tabular-nums;}
+.ss-mt{position:absolute;border-radius:4px;background:#a855f72a;border-left:3px solid #a855f7;color:var(--cdp-mt);padding:1px 5px;font-size:0.7rem;line-height:1.35;overflow:hidden;cursor:pointer;box-sizing:border-box;text-overflow:ellipsis;word-break:break-word;}
 .ss-mt b{font-weight:800;font-variant-numeric:tabular-nums;}
 .ss-mt:hover{background:#a855f744;}
 .ss-mt.past{opacity:.45;}
@@ -820,7 +820,7 @@ if ('serviceWorker' in navigator) {
     <img src="data:image/png;base64,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" alt="Wonder Diary" style="width:32px;height:32px;border-radius:8px;flex-shrink:0;">
     <span style="display:flex;flex-direction:column;line-height:1.1;">
       <span style="font-size:1.05rem;font-weight:800;letter-spacing:0.01em;">Wonder Diary</span>
-      <span style="font-size:0.62rem;font-weight:400;color:rgba(255,255,255,0.65);">developed by seokwon · <span id="app-version-label" onclick="switchTab('version',document.querySelector('.tab-btn[onclick*=&quot;version&quot;]'))" style="cursor:pointer;text-decoration:underline dotted;" title="버전 기록 보기">V1.10</span></span>
+      <span style="font-size:0.62rem;font-weight:400;color:rgba(255,255,255,0.65);">developed by seokwon · <span id="app-version-label" onclick="switchTab('version',document.querySelector('.tab-btn[onclick*=&quot;version&quot;]'))" style="cursor:pointer;text-decoration:underline dotted;" title="버전 기록 보기">V1.11</span></span>
     </span>
   </h1>
   <div style="display:flex;align-items:center;justify-content:center;gap:24px;flex:1;flex-wrap:wrap;min-width:0;">
@@ -3194,6 +3194,7 @@ function toggleProjList(){
   projListCollapsed=!projListCollapsed;
   try{ projListCollapsed?localStorage.setItem('wd-proj-collapsed','1'):localStorage.removeItem('wd-proj-collapsed'); }catch(_){}
   applyProjCollapse();
+  try{ renderSideSchedule(); }catch(_){}
 }
 function renderSidebar(){
   setTimeout(applyProjCollapse,0);
@@ -4218,7 +4219,8 @@ function calDayStep(n){
 }
 function calDayToday(){ calSelDate=TODAY_STR; calYear=TODAY.getFullYear(); calMonth=TODAY.getMonth(); renderCalendar(); }
 /* 왼쪽 사이드바 "📅 오늘 일정": 07~19시 미니 타임라인 (캘린더 왼쪽 패널과 같은 데이터) */
-const SS_START=7, SS_END=19, SS_HOUR_PX=24, SS_LABEL_W=36;
+const SS_START=7, SS_END=19, SS_LABEL_W=36;
+let SS_HOUR_PX=24;
 function renderSideSchedule(){
   const box=document.getElementById('side-sched'); if(!box) return;
   const day=(typeof calSelDate!=='undefined'&&calSelDate)||TODAY_STR, isToday=day===TODAY_STR;
@@ -4255,6 +4257,16 @@ function renderSideSchedule(){
     out.forEach(m=>{ const r=mk('div','',`${hh(m._s)} ${m.title}`); r.title=m.title; r.onclick=()=>openCalDayMeeting(m); ex.appendChild(r); });
     untimed.forEach(m=>{ const r=mk('div','',`시간 미정 · ${m.title}`); r.title=m.title; r.onclick=()=>openCalDayMeeting(m); ex.appendChild(r); });
     box.appendChild(ex);
+  }
+  // 사이드바 남은 높이에 맞춰 한 시간 칸 높이를 정한다 (24~70px)
+  {
+    const aside=document.getElementById('sidebar');
+    if(aside){
+      const used=box.getBoundingClientRect().bottom-aside.getBoundingClientRect().top+aside.scrollTop;   // 타임라인 위쪽까지 쓴 높이
+      const legacy=document.querySelector('#sidebar .sidebar-note')?.offsetHeight||0;
+      const avail=aside.clientHeight-used-legacy-30;
+      SS_HOUR_PX=Math.max(24,Math.min(70,Math.floor(avail/(SS_END-SS_START))));
+    }
   }
   const grid=mk('div','ss-grid'); grid.style.height=((SS_END-SS_START)*SS_HOUR_PX+8)+'px';
   for(let h=SS_START;h<=SS_END;h++){
@@ -4378,6 +4390,18 @@ function renderCalendar(){
   const first=new Date(calYear,calMonth,1).getDay();
   const last=new Date(calYear,calMonth+1,0).getDate();
   const prevLast=new Date(calYear,calMonth,0).getDate();
+  // 화면 아래 끝까지 칸을 늘리고, 칸이 커진 만큼 미팅 줄도 더 보여준다
+  {
+    const body=document.getElementById('cal-body');
+    const weeks=Math.ceil((first+last)/7);
+    const top=body?body.getBoundingClientRect().top:0;
+    if(body&&top>0){
+      const avail=window.innerHeight-top-34;                 // 카드 아래 여백
+      const rowH=Math.max(74,Math.floor((avail-(weeks-1)*2)/weeks));
+      body.style.setProperty('--cal-row-h',rowH+'px');
+      calMaxItems=Math.max(3,Math.min(14,Math.floor((rowH-36)/17)));
+    } else calMaxItems=3;
+  }
   let html='';
   for(let i=0;i<first;i++) html+=`<div class="cal-cell other"><div class="cal-day" style="color:#cbd5e1">${prevLast-first+1+i}</div></div>`;
   for(let day=1;day<=last;day++){
@@ -4436,16 +4460,20 @@ function toggleCalDay(dateKey){
   if(calExpandedDays.has(dateKey)) calExpandedDays.delete(dateKey); else calExpandedDays.add(dateKey);
   renderCalendar();
 }
+let calMaxItems=3;
+let _calResizeT=null;
+window.addEventListener('resize',()=>{ clearTimeout(_calResizeT); _calResizeT=setTimeout(()=>{ if(currentTab==='calendar') renderCalendar(); try{ renderSideSchedule(); }catch(_){} },150); });
 function calMeetingsHTML(dateKey){
   const list=calMeetingsForDate(dateKey);
   if(!list.length) return '';
   const line=m=>`${m.startTime?m.startTime+' ':''}${m.title}`;
   const open=calExpandedDays.has(dateKey);
-  const shown=(open?list:list.slice(0,3)).map(m=>{
+  const lim=list.length>calMaxItems?calMaxItems-1:calMaxItems;      // "외 N건" 줄 자리 남김
+  const shown=(open?list:list.slice(0,lim)).map(m=>{
     const n=calMeetingRefs.push(m)-1;
     return `<div onclick="event.stopPropagation();openCalMeeting(${n})" title="${line(m)}" style="border-radius:3px;padding:1px 4px;margin-top:2px;font-size:0.62rem;background:#a855f71f;color:${readable('#7e22ce')};border-left:2px solid #a855f7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;">${line(m)}</div>`;
   }).join('');
-  const more=list.length>3?`<div onclick="event.stopPropagation();toggleCalDay('${dateKey}')" style="font-size:0.6rem;color:var(--muted);margin-top:1px;cursor:pointer;">${open?'접기':`외 ${list.length-3}건`}</div>`:'';
+  const more=list.length>calMaxItems?`<div onclick="event.stopPropagation();toggleCalDay('${dateKey}')" style="font-size:0.6rem;color:var(--muted);margin-top:1px;cursor:pointer;">${open?'접기':`외 ${list.length-lim}건`}</div>`:'';
   return `<div>${shown}${more}</div>`;
 }
 function calMove(dir){ calMonth+=dir; if(calMonth>11){calMonth=0;calYear++;}else if(calMonth<0){calMonth=11;calYear--;} renderCalendar(); }
@@ -7581,8 +7609,12 @@ function toggleProjHours(pid){
 /* ══════════════════════════════════════
    🏷️ 버전 기록 — 새 버전을 낼 때 맨 위에 한 줄씩 추가
 ══════════════════════════════════════ */
-const APP_VERSION='V1.10';
+const APP_VERSION='V1.11';
 const APP_CHANGELOG=[
+  {v:'V1.11', date:'2026-11-17', items:[
+    '캘린더: 화면 아래 끝까지 칸을 늘리고, 칸이 커진 만큼 미팅을 더 많이 표시',
+    '사이드바 오늘 일정: 남은 높이에 맞춰 타임라인을 크게 (창 크기 바꾸면 자동 조절)',
+  ]},
   {v:'V1.10', date:'2026-11-17', items:[
     '왼쪽 사이드바의 "매일 메모" 삭제 → "📅 오늘 일정"(07~19시 미니 타임라인, 지금/다음 미팅, 미팅·빈 시간) 표시',
     '캘린더 탭의 왼쪽 하루 일정 칸과 "이번 달 메모 목록" 삭제 → 날짜를 누르면 사이드바 일정이 그날로 바뀜',
