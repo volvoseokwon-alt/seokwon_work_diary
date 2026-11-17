@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>석원이의 업무 다이어리 · V1.09</title>
+<title>석원이의 업무 다이어리 · V1.10</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#4f46e5">
 <meta name="mobile-web-app-capable" content="yes">
@@ -455,6 +455,34 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 .sticky-resize{position:absolute;right:-6px;bottom:-6px;width:16px;height:16px;border-radius:4px;background:var(--primary);border:2px solid #fff;cursor:nwse-resize;opacity:0;transition:opacity .12s;box-shadow:0 1px 4px rgba(0,0,0,.3);touch-action:none;z-index:3;}
 .sticky-note.sticky-img:hover .sticky-resize{opacity:1;}
 .sticky-board.img-drop{outline:3px dashed var(--primary);outline-offset:-6px;}
+.side-sched{border-top:1px solid var(--border);margin-top:10px;padding-top:12px;}
+.side-sched .ss-head{display:flex;align-items:center;gap:5px;margin-bottom:7px;white-space:nowrap;min-width:0;}
+.side-sched .ss-head h3{font-size:.82rem;color:var(--text);letter-spacing:0;}
+.side-sched .ss-date{font-size:0.68rem;font-weight:700;color:var(--muted);overflow:hidden;text-overflow:ellipsis;}
+.side-sched .ss-cal{margin-left:auto;border:none;background:none;color:var(--primary-text);font-size:0.8rem;font-weight:800;cursor:pointer;padding:0 2px;}
+.ss-sum{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px;}
+.ss-sum .cdp-chip{font-size:0.66rem;padding:2px 8px;}
+.ss-next{font-size:0.72rem;color:var(--text);background:var(--bg);border-radius:6px;padding:5px 8px;margin-bottom:6px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ss-next b{color:var(--primary-text);margin-right:3px;}
+.ss-next span{color:var(--muted);}
+.ss-grid{position:relative;}
+.ss-hour{position:absolute;left:0;right:0;border-top:1px solid var(--border);}
+.ss-hour span{position:absolute;left:0;top:-7px;font-size:0.6rem;color:var(--muted);background:var(--sidebar-bg,var(--card));padding-right:3px;font-variant-numeric:tabular-nums;}
+.ss-mt{position:absolute;border-radius:4px;background:#a855f72a;border-left:3px solid #a855f7;color:var(--cdp-mt);padding:0 4px;font-size:0.64rem;line-height:1.35;overflow:hidden;cursor:pointer;box-sizing:border-box;white-space:nowrap;text-overflow:ellipsis;}
+.ss-mt b{font-weight:800;font-variant-numeric:tabular-nums;}
+.ss-mt:hover{background:#a855f744;}
+.ss-mt.past{opacity:.45;}
+.ss-mt.now{background:#ef44441f;border-left-color:#ef4444;}
+.ss-now{position:absolute;left:30px;right:0;border-top:2px solid #ef4444;z-index:3;pointer-events:none;}
+.ss-now::before{content:'';position:absolute;left:-4px;top:-5px;width:8px;height:8px;border-radius:50%;background:#ef4444;}
+.ss-empty{position:absolute;left:40px;right:0;top:40%;text-align:center;font-size:0.7rem;color:var(--muted);}
+.proj-head{cursor:pointer;user-select:none;display:flex;align-items:center;gap:4px;}
+.proj-head:hover{color:var(--text);}
+.proj-head .ph-arrow{display:inline-block;font-size:0.7rem;transition:transform .15s;}
+#sidebar.proj-collapsed .proj-head .ph-arrow{transform:rotate(-90deg);}
+.proj-collapsed-hint{margin-left:auto;font-size:0.62rem;font-weight:600;text-transform:none;letter-spacing:0;color:var(--muted);}
+#sidebar.proj-collapsed #project-list > .project-item:not(.active){display:none;}
+#sidebar.proj-collapsed .add-proj-btn{display:none;}
 .hist-done-note{margin-top:4px;font-size:0.78rem;line-height:1.5;color:var(--x-047857);background:#10b9810f;border-left:3px solid #10b981;border-radius:4px;padding:4px 8px;white-space:pre-wrap;word-break:break-word;}
 .wt-i .wt-t .wt-note{display:block;font-size:0.68rem;font-weight:500;color:var(--x-047857);margin-top:2px;white-space:normal;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
 .wt-toggle{display:inline-flex;border:1px solid var(--border);border-radius:7px;overflow:hidden;}
@@ -792,7 +820,7 @@ if ('serviceWorker' in navigator) {
     <img src="data:image/png;base64,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" alt="Wonder Diary" style="width:32px;height:32px;border-radius:8px;flex-shrink:0;">
     <span style="display:flex;flex-direction:column;line-height:1.1;">
       <span style="font-size:1.05rem;font-weight:800;letter-spacing:0.01em;">Wonder Diary</span>
-      <span style="font-size:0.62rem;font-weight:400;color:rgba(255,255,255,0.65);">developed by seokwon · <span id="app-version-label" onclick="switchTab('version',document.querySelector('.tab-btn[onclick*=&quot;version&quot;]'))" style="cursor:pointer;text-decoration:underline dotted;" title="버전 기록 보기">V1.09</span></span>
+      <span style="font-size:0.62rem;font-weight:400;color:rgba(255,255,255,0.65);">developed by seokwon · <span id="app-version-label" onclick="switchTab('version',document.querySelector('.tab-btn[onclick*=&quot;version&quot;]'))" style="cursor:pointer;text-decoration:underline dotted;" title="버전 기록 보기">V1.10</span></span>
     </span>
   </h1>
   <div style="display:flex;align-items:center;justify-content:center;gap:24px;flex:1;flex-wrap:wrap;min-width:0;">
@@ -849,23 +877,17 @@ if ('serviceWorker' in navigator) {
 <div class="container">
   <aside id="sidebar">
     <div class="sidebar-resizer" id="sidebar-resizer"></div>
-    <details class="side-favs" id="side-favs-details" open>
-      <summary><span>⭐ 즐겨찾기</span><span class="sf-count" id="side-favs-count">0</span></summary>
-      <div id="side-favs"></div>
-    </details>
-    <h3>📁 프로젝트</h3>
+    <h3 class="proj-head" onclick="toggleProjList()" title="프로젝트 목록 접기/펼치기"><span class="ph-arrow">▾</span>📁 프로젝트 <span id="proj-collapsed-hint" class="proj-collapsed-hint"></span></h3>
     <div id="project-list"></div>
     <button class="add-proj-btn" onclick="openModal_proj_add()">+ 프로젝트 추가</button>
-    <section class="daily-memo-side" aria-label="빠른 날짜별 메모">
-      <h3>📝 매일 메모</h3>
-      <div class="daily-memo-date-row">
-        <button type="button" class="daily-memo-nav" aria-label="메모 이전 날짜" onclick="moveDailyMemoDate(-1)">‹</button>
-        <input type="date" id="daily-memo-side-date" aria-label="빠른 메모 날짜" onchange="selectDailyMemoDate(this.value)" disabled>
-        <button type="button" class="daily-memo-nav" aria-label="메모 다음 날짜" onclick="moveDailyMemoDate(1)">›</button>
+    <section class="side-sched" aria-label="오늘 일정">
+      <div class="ss-head">
+        <h3 style="margin:0;" id="side-sched-title">📅 오늘 일정</h3>
+        <span id="side-sched-date" class="ss-date"></span>
+        <button type="button" id="side-sched-today" class="btn-sm" onclick="sideSchedToday()" style="display:none;font-size:0.62rem;padding:1px 6px;">오늘</button>
+        <button type="button" class="ss-cal" onclick="switchTab('calendar',document.querySelector('.tab-btn[onclick*=&quot;calendar&quot;]'))" title="캘린더에서 보기">↗</button>
       </div>
-      <textarea class="note-area" id="daily-memo-side-text" aria-label="날짜별 빠른 메모" placeholder="오늘의 메모를 적어보세요.&#10;날짜별로 자동 저장됩니다." oninput="updateDailyMemo(this)" spellcheck="false" disabled></textarea>
-      <div class="daily-memo-side-foot"><span id="daily-memo-side-status" class="daily-memo-status" role="status" aria-live="polite">불러오는 중…</span><button type="button" class="btn-sm" style="background:var(--bg);color:var(--primary-text);" onclick="selectDailyMemoDate(dailyMemoDateKey())">오늘</button></div>
-      <button type="button" class="daily-memo-open" onclick="openDailyMemos()"><span>전체 메모 보기 →</span><span class="daily-memo-count" id="daily-memo-side-count">0</span></button>
+      <div id="side-sched"></div>
     </section>
     <div class="sidebar-note">
       <details id="legacy-note-details"><summary>📌 고정 메모 (기존)</summary>
@@ -1139,8 +1161,6 @@ ZB 교체 둘</textarea>
 
     <!-- 캘린더 (자유 메모) -->
     <div id="tab-calendar" style="display:none;">
-      <div class="cal-layout">
-      <div class="card cal-day-panel" id="cal-day-panel"></div>
       <div class="card" style="min-width:0;">
         <div class="cal-nav" style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;">
           <button class="cal-nav-btn" onclick="calMove(-1)" style="justify-self:start;">◀</button>
@@ -1153,15 +1173,10 @@ ZB 교체 둘</textarea>
             <button class="btn-sm" style="background:var(--c-fef9c3);color:var(--x-a16207);padding:6px 11px;white-space:nowrap;" onclick="openHolidayManager()">🗓️ 휴무일 관리</button>
           </div>
         </div>
-        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px;">📝 날짜 클릭: 왼쪽에 그날 일정 · 더블클릭: 메모 추가 (프로젝트 연결 선택 가능)</div>
+        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px;">📝 날짜 클릭: 왼쪽 사이드바에 그날 일정 · 더블클릭: 메모 추가 (프로젝트 연결 선택 가능)</div>
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;"><div id="cal-outlook-status" style="font-size:0.68rem;color:var(--muted);"></div><button type="button" class="btn-sm outlook-now-btn" style="font-size:0.64rem;padding:1px 8px;"></button><button type="button" class="btn-sm outlook-toggle-btn" onclick="toggleOutlookSync()" style="font-size:0.64rem;padding:1px 8px;"></button></div>
         <div class="cal-grid" id="cal-head-row"></div>
         <div class="cal-grid" id="cal-body"></div>
-      </div>
-      </div>
-      <div class="card" style="margin-top:11px;">
-        <strong style="font-size:0.88rem;">📋 이번 달 메모 목록</strong>
-        <div id="cal-memo-list" style="margin-top:8px;"></div>
       </div>
     </div>
 
@@ -3168,7 +3183,20 @@ function inactiveColor(days){
   return `rgb(${r},${g},${b})`;
 }
 
+/* 프로젝트 목록 접기: 접으면 지금 고른 항목(예: 전체 보기) 한 줄만 남긴다 */
+let projListCollapsed=false;
+try{ projListCollapsed=localStorage.getItem('wd-proj-collapsed')==='1'; }catch(_){}
+function applyProjCollapse(){
+  const sb=document.getElementById('sidebar'); if(sb) sb.classList.toggle('proj-collapsed',projListCollapsed);
+  const h=document.getElementById('proj-collapsed-hint'); if(h) h.textContent=projListCollapsed?`${projects.length}개 접힘`:'';
+}
+function toggleProjList(){
+  projListCollapsed=!projListCollapsed;
+  try{ projListCollapsed?localStorage.setItem('wd-proj-collapsed','1'):localStorage.removeItem('wd-proj-collapsed'); }catch(_){}
+  applyProjCollapse();
+}
 function renderSidebar(){
+  setTimeout(applyProjCollapse,0);
   const el = document.getElementById('project-list');
   const allActive = currentFilter==='all';
   const hiddenCount = hiddenProjects.size;
@@ -4179,7 +4207,9 @@ function calSelectDay(dateKey){
   calSelDate=dateKey;
   document.querySelectorAll('#cal-body .cal-cell[data-date]').forEach(c=>c.classList.toggle('sel-cell',c.dataset.date===dateKey));
   renderCalDayPanel();
+  renderSideSchedule();
 }
+function sideSchedToday(){ calSelDate=TODAY_STR; if(currentTab==='calendar'){ calYear=TODAY.getFullYear(); calMonth=TODAY.getMonth(); renderCalendar(); } renderSideSchedule(); }
 function calDayStep(n){
   const d=new Date(calSelDate+'T00:00:00'); d.setDate(d.getDate()+n);
   calSelDate=cdpKey(d);
@@ -4187,6 +4217,74 @@ function calDayStep(n){
   else calSelectDay(calSelDate);
 }
 function calDayToday(){ calSelDate=TODAY_STR; calYear=TODAY.getFullYear(); calMonth=TODAY.getMonth(); renderCalendar(); }
+/* 왼쪽 사이드바 "📅 오늘 일정": 07~19시 미니 타임라인 (캘린더 왼쪽 패널과 같은 데이터) */
+const SS_START=7, SS_END=19, SS_HOUR_PX=24, SS_LABEL_W=36;
+function renderSideSchedule(){
+  const box=document.getElementById('side-sched'); if(!box) return;
+  const day=(typeof calSelDate!=='undefined'&&calSelDate)||TODAY_STR, isToday=day===TODAY_STR;
+  const d=new Date(day+'T00:00:00');
+  const dl=document.getElementById('side-sched-date'); if(dl) dl.textContent=`${d.getMonth()+1}/${d.getDate()} (${'일월화수목금토'[d.getDay()]})`;
+  const ht=document.getElementById('side-sched-title'); if(ht) ht.textContent=isToday?'📅 오늘 일정':'📅 일정';
+  const tb=document.getElementById('side-sched-today'); if(tb) tb.style.display=isToday?'none':'';
+  const S=SS_START*60, E=SS_END*60;
+  const all=calDayMeetings(day);
+  const timed=all.filter(m=>/^\d{1,2}:\d{2}/.test(m.startTime)).map(m=>{
+    const st=tlToMin(m.startTime); let en=/^\d{1,2}:\d{2}/.test(m.endTime)?tlToMin(m.endTime):st+Math.round((m.hours||0.5)*60);
+    if(!(en>st)) en=st+30; return {...m,_s:st,_e:en};
+  }).sort((a,b)=>a._s-b._s||a._e-b._e);
+  const inR=timed.filter(m=>m._e>S&&m._s<E), out=timed.filter(m=>!(m._e>S&&m._s<E)), untimed=all.filter(m=>!/^\d{1,2}:\d{2}/.test(m.startTime));
+  let busy=0,cur=null; inR.forEach(m=>{ const a=Math.max(S,m._s),b=Math.min(E,m._e); if(!cur||a>cur[1]){ if(cur) busy+=cur[1]-cur[0]; cur=[a,b]; } else cur[1]=Math.max(cur[1],b); }); if(cur) busy+=cur[1]-cur[0];
+  const now=new Date(), nm=isToday?now.getHours()*60+now.getMinutes():(day<TODAY_STR?24*60:-1);
+  const hh=m=>`${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
+  const r1=v=>Math.round(v/6)/10;
+  const nextM=isToday?timed.find(m=>m._s>nm):null;
+  const curM=isToday?timed.find(m=>m._s<=nm&&nm<m._e):null;
+  const mk=(tag,cls,text)=>{ const e=document.createElement(tag); if(cls) e.className=cls; if(text!=null) e.textContent=text; return e; };
+  box.textContent='';
+  const sum=mk('div','ss-sum');
+  sum.appendChild(mk('span','cdp-chip',`미팅 ${all.length}건 · ${r1(busy)}h`));
+  sum.appendChild(mk('span','cdp-chip free',`빈 시간 ${r1(Math.max(0,(E-S)-busy))}h`));
+  box.appendChild(sum);
+  if(curM||nextM){
+    const nx=mk('div','ss-next');
+    nx.innerHTML=curM?`<b style="color:#ef4444;">● 지금</b> ${escAttr(hh(curM._s))} ${escAttr(curM.title)}`:`<b>다음</b> ${escAttr(hh(nextM._s))} ${escAttr(nextM.title)} <span>(${(()=>{const g=nextM._s-nm;return g>=60?Math.floor(g/60)+'시간 '+(g%60?g%60+'분':''):g+'분';})()} 뒤)</span>`;
+    nx.onclick=()=>openCalDayMeeting(curM||nextM); box.appendChild(nx);
+  }
+  if(out.length||untimed.length){
+    const ex=mk('div','cdp-extra');
+    out.forEach(m=>{ const r=mk('div','',`${hh(m._s)} ${m.title}`); r.title=m.title; r.onclick=()=>openCalDayMeeting(m); ex.appendChild(r); });
+    untimed.forEach(m=>{ const r=mk('div','',`시간 미정 · ${m.title}`); r.title=m.title; r.onclick=()=>openCalDayMeeting(m); ex.appendChild(r); });
+    box.appendChild(ex);
+  }
+  const grid=mk('div','ss-grid'); grid.style.height=((SS_END-SS_START)*SS_HOUR_PX+8)+'px';
+  for(let h=SS_START;h<=SS_END;h++){
+    const ln=mk('div','ss-hour'); ln.style.top=((h-SS_START)*SS_HOUR_PX+5)+'px';
+    ln.appendChild(mk('span','',`${String(h).padStart(2,'0')}`)); grid.appendChild(ln);
+  }
+  const groups=[]; let g=null,gEnd=-1;
+  inR.forEach(m=>{ if(!g||m._s>=gEnd){ g=[]; groups.push(g); gEnd=m._e; } else gEnd=Math.max(gEnd,m._e); g.push(m); });
+  groups.forEach(grp=>{
+    const colEnd=[]; grp.forEach(m=>{ let c=colEnd.findIndex(e=>e<=m._s); if(c<0){ c=colEnd.length; colEnd.push(0); } colEnd[c]=m._e; m._col=c; });
+    const n=colEnd.length;
+    grp.forEach(m=>{
+      const a=Math.max(S,m._s), b=Math.min(E,m._e);
+      const el=mk('div','ss-mt'+(m._e<=nm?' past':'')+(curM===m?' now':''));
+      el.style.top=((a-S)/60*SS_HOUR_PX+5)+'px';
+      el.style.height=Math.max(12,(b-a)/60*SS_HOUR_PX-2)+'px';
+      el.style.left=`calc(${SS_LABEL_W}px + (100% - ${SS_LABEL_W}px) * ${m._col/n})`;
+      el.style.width=`calc((100% - ${SS_LABEL_W}px) / ${n} - 2px)`;
+      el.title=`${hh(m._s)}~${hh(m._e)} ${m.title}`;
+      el.appendChild(mk('b','',hh(m._s)));
+      el.appendChild(document.createTextNode(' '+m.title));
+      el.onclick=()=>openCalDayMeeting(m);
+      grid.appendChild(el);
+    });
+  });
+  if(!inR.length) grid.appendChild(mk('div','ss-empty',(isToday?'오늘':'이날')+' 07~19시 미팅 없음'));
+  if(isToday&&nm>=S&&nm<=E){ const nl=mk('div','ss-now'); nl.style.top=((nm-S)/60*SS_HOUR_PX+5)+'px'; nl.title='지금 '+hh(nm); grid.appendChild(nl); }
+  box.appendChild(grid);
+}
+setInterval(()=>{ try{ renderSideSchedule(); }catch(_){} },60000);
 function renderCalDayPanel(){
   const box=document.getElementById('cal-day-panel'); if(!box) return;
   const d=new Date(calSelDate+'T00:00:00'), isToday=calSelDate===TODAY_STR;
@@ -7483,8 +7581,15 @@ function toggleProjHours(pid){
 /* ══════════════════════════════════════
    🏷️ 버전 기록 — 새 버전을 낼 때 맨 위에 한 줄씩 추가
 ══════════════════════════════════════ */
-const APP_VERSION='V1.09';
+const APP_VERSION='V1.10';
 const APP_CHANGELOG=[
+  {v:'V1.10', date:'2026-11-17', items:[
+    '왼쪽 사이드바의 "매일 메모" 삭제 → "📅 오늘 일정"(07~19시 미니 타임라인, 지금/다음 미팅, 미팅·빈 시간) 표시',
+    '캘린더 탭의 왼쪽 하루 일정 칸과 "이번 달 메모 목록" 삭제 → 날짜를 누르면 사이드바 일정이 그날로 바뀜',
+    '사이드바 "📁 프로젝트" 제목을 누르면 목록 접기/펼치기 (접으면 지금 고른 항목만 표시)',
+    '사이드바 ⭐ 즐겨찾기와 링크 탭의 ☆ 버튼 삭제',
+    '기존 날짜별 메모 내용은 메모 모아보기 > 📅 이전 날짜별 메모에서 그대로 볼 수 있음',
+  ]},
   {v:'V1.09', date:'2026-11-17', items:[
     '할 일 목록의 완료된 업무: 오늘(기록 날짜) 완료한 것만 표시, "다른 날 완료 N건 보기"로 펼치기',
   ]},
@@ -8812,7 +8917,6 @@ function renderLinks(){
               <div style="font-size:0.64rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${hostname}</div>
             </div>
           </a>
-          <button class="link-star ${l.fav?'on':''}" onclick="toggleLinkFav(${l.id})" title="${l.fav?'즐겨찾기 해제':'즐겨찾기에 추가'}">${l.fav?'★':'☆'}</button>
           <button onclick="openEditLinkModal(${l.id})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:0.7rem;flex-shrink:0;padding:2px;" onmouseover="this.style.color='var(--primary-text)'" onmouseout="this.style.color='#cbd5e1'" title="수정">✎</button>
           <button onclick="deleteLink(${l.id})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:0.78rem;flex-shrink:0;padding:2px;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#cbd5e1'" title="삭제">✕</button>
         </div>`;
@@ -9842,6 +9946,7 @@ function calcScore(){
 ══════════════════════════════════════ */
 function render(){
   try{ renderLinkFavs(); }catch(_){}
+  try{ renderSideSchedule(); }catch(e){ console.warn(e); }
   if(!activeLogDate) activeLogDate = TODAY_STR; // 홈/할 일이 공유하는 작업 날짜
   // 오늘자 반복 미팅 자동 반영.
   // 중복/부활 방지는 각 항목의 lastAuto가 담당하므로 매 렌더에서 호출해도 안전하고,
