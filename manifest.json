@@ -1,7 +1,7 @@
 {
-  "name": "석원이의 업무 다이어리",
-  "short_name": "업무다이어리",
-  "description": "석원이의 업무 관리 및 진행현황 추적 다이어리",
+  "name": "Wonder Diary",
+  "short_name": "Wonder Diary",
+  "description": "업무 관리 및 진행현황 추적 다이어리",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
