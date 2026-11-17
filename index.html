@@ -3,18 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>석원이의 업무 다이어리 · V1.12</title>
+<title>Wonder Diary</title>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#4f46e5">
+<meta name="theme-color" content="#f5f5f5">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="description" content="업무·미팅·시간 기록을 한곳에서 관리하는 개인 업무 다이어리">
-<meta name="application-name" content="업무 다이어리">
-<meta name="apple-mobile-web-app-title" content="업무 다이어리">
-<script>try{document.documentElement.dataset.theme=localStorage.getItem('wd-theme')==='dark'?'dark':'light';}catch(e){document.documentElement.dataset.theme='light';}</script>
+<meta name="application-name" content="Wonder Diary">
+<meta name="apple-mobile-web-app-title" content="Wonder Diary">
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('wd-theme')==='dark'?'dark':'light';}catch(e){document.documentElement.dataset.theme='light';}
+/* 앱 창 맨 위(제목줄) 색: 데이=연한 회색, 나이트=검정 */
+function syncThemeColor(){ const m=document.querySelector('meta[name="theme-color"]'); if(m) m.setAttribute('content',document.documentElement.dataset.theme==='dark'?'#000000':'#f5f5f5'); }
+syncThemeColor();</script>
 <style>
 :root {
   --bg:#f4f6f9;--card:#fff;--text:#1e293b;
@@ -44,6 +47,24 @@ header h1{font-size:1rem;font-weight:700;white-space:nowrap;flex-shrink:0;}
 .wclock .wc-date{font-size:0.62rem;opacity:.75;white-space:nowrap;}
 .score-badge{background:rgba(255,255,255,.18);padding:4px 12px;border-radius:20px;font-size:0.8rem;white-space:nowrap;}
 .week-badge{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);padding:4px 10px;border-radius:20px;font-size:0.78rem;white-space:nowrap;font-weight:600;}
+/* 앱 맨 위 헤더: 데이=연한 회색, 나이트=검정 계열 (V1.15) */
+header{background:#f5f5f5;color:#1f2937;border-bottom:1px solid #e2e4e8;}
+header .hdr-sub{color:#6b7280 !important;}
+header .wclock{background:#e9eaee;color:#1f2937;}
+header .wclock.work-hours{background:#047857;color:#fff;}
+header #theme-btn,header #hdr-menu-btn{background:#e9eaee !important;color:#1f2937 !important;}
+header #theme-btn:hover,header #hdr-menu-btn:hover{background:#dcdee3 !important;}
+header #save-status{color:#4b5563 !important;}
+header .week-badge{background:#fff;border-color:#d1d5db;color:#1f2937;}
+header .score-badge{background:#e9eaee;}
+:root[data-theme="dark"] header{background:#0b0b0d;color:#e5e7eb;border-bottom-color:#2e2e33;}
+:root[data-theme="dark"] header .hdr-sub{color:#9ca3af !important;}
+:root[data-theme="dark"] header .wclock{background:#1c1c20;color:#e5e7eb;}
+:root[data-theme="dark"] header .wclock.work-hours{background:#047857;color:#fff;}
+:root[data-theme="dark"] header #theme-btn,:root[data-theme="dark"] header #hdr-menu-btn{background:#1c1c20 !important;color:#e5e7eb !important;}
+:root[data-theme="dark"] header #save-status{color:#9ca3af !important;}
+:root[data-theme="dark"] header .week-badge{background:#141416;border-color:#2e2e33;color:#e5e7eb;}
+:root[data-theme="dark"] header .score-badge{background:#1c1c20;}
 @media (max-width:1480px){
   .world-clocks{flex-wrap:nowrap;gap:6px;}
   .wclock{min-width:0;padding:3px 7px;}
@@ -820,7 +841,7 @@ if ('serviceWorker' in navigator) {
     <img src="data:image/png;base64,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" alt="Wonder Diary" style="width:32px;height:32px;border-radius:8px;flex-shrink:0;">
     <span style="display:flex;flex-direction:column;line-height:1.1;">
       <span style="font-size:1.05rem;font-weight:800;letter-spacing:0.01em;">Wonder Diary</span>
-      <span style="font-size:0.62rem;font-weight:400;color:rgba(255,255,255,0.65);">developed by seokwon · <span id="app-version-label" onclick="switchTab('version',document.querySelector('.tab-btn[onclick*=&quot;version&quot;]'))" style="cursor:pointer;text-decoration:underline dotted;" title="버전 기록 보기">V1.12</span></span>
+      <span class="hdr-sub" style="font-size:0.62rem;font-weight:400;color:rgba(255,255,255,0.65);">developed by seokwon · <span id="app-version-label" onclick="switchTab('version',document.querySelector('.tab-btn[onclick*=&quot;version&quot;]'))" style="cursor:pointer;text-decoration:underline dotted;" title="버전 기록 보기">V1.20</span></span>
     </span>
   </h1>
   <div style="display:flex;align-items:center;justify-content:center;gap:24px;flex:1;flex-wrap:wrap;min-width:0;">
@@ -891,10 +912,7 @@ if ('serviceWorker' in navigator) {
     </section>
     <div class="sidebar-note">
       <details id="legacy-note-details"><summary>📌 고정 메모 (기존)</summary>
-      <textarea class="note-area" id="sidebar-note" placeholder="간단한 메모를 남겨보세요...">퇴근차량 5시40분, 6시 30분
-
-7월1일(토) ~7월 13일(월) NA 출장
-ZB 교체 둘</textarea>
+      <textarea class="note-area" id="sidebar-note" placeholder="간단한 메모를 남겨보세요..."></textarea>
       </details>
     </div>
   </aside>
@@ -2146,7 +2164,7 @@ async function connectDataFolder(){
 
     // 폴더에 이미 데이터 파일이 있으면 어느 쪽을 쓸지 물어본다
     const existing=await loadDataFile();
-    const hasHere=hasDiaryData(buildPayload());
+    const hasHere=hasDiaryData(buildPayload()) && !isOnlySampleData();   // 예시 업무만 있으면 '내 데이터 없음'으로 본다
     if(hasDiaryData(existing) && hasHere){
       const useFile=confirm(
         `이 폴더에 이미 저장된 데이터가 있습니다.\n\n`+
@@ -2409,6 +2427,68 @@ function updateBackupFolderUI(connected){
   btn.onclick = connectDataFolder;
 }
 
+/* ── 처음 쓰는 사람용: 저장 폴더가 없으면 안내 팝업 (V1.16) ──────────
+   none : 폴더를 한 번도 안 정함 → 폴더 고르기
+   perm : 폴더는 기억하지만 권한이 풀림 → 허용만 누르면 됨
+   "나중에"를 누르면 이번 실행 동안은 다시 안 띄운다 (다음에 앱을 켜면 다시 안내) */
+async function folderSetupState(){
+  if(!dataDirHandle) return 'none';
+  try{ return (await dataDirHandle.queryPermission({mode:'readwrite'}))==='granted' ? 'ok' : 'perm'; }
+  catch(_){ return 'perm'; }
+}
+async function checkFolderSetupPrompt(force){
+  if(typeof SAFE_MODE!=='undefined' && SAFE_MODE) return;
+  if(!force){ try{ if(sessionStorage.getItem('wd-folder-later')==='1') return; }catch(_){} }
+  const old=document.getElementById('folder-setup-modal');
+  const supported=isFileSystemAccessSupported();
+  const st=supported ? await folderSetupState() : 'unsupported';
+  if(st==='ok'){ old?.remove(); return; }
+  if(old){ old.style.display='flex'; return; }
+  const m=document.createElement('div'); m.id='folder-setup-modal';
+  m.style.cssText='position:fixed;inset:0;z-index:100003;background:rgba(15,23,42,.5);display:flex;align-items:center;justify-content:center;';
+  const btnBase='border:none;border-radius:8px;padding:9px 16px;font-size:0.84rem;font-weight:700;cursor:pointer;';
+  let body;
+  if(st==='unsupported'){
+    body=`<div style="font-weight:800;font-size:1.05rem;margin-bottom:10px;">⚠️ 이 브라우저에서는 저장 폴더를 쓸 수 없어요</div>
+      <div>이 앱은 PC 폴더에 데이터를 저장해요. <b>PC의 Chrome 또는 Edge</b>로 열어 주세요.</div>
+      <div style="color:var(--muted);font-size:0.78rem;margin-top:6px;">지금 브라우저에서는 이 브라우저 안에만 임시로 보관돼요 (캐시를 지우면 사라질 수 있어요).</div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+        <button type="button" data-act="later" style="${btnBase}background:var(--primary);color:#fff;">확인</button></div>`;
+  } else if(st==='perm'){
+    body=`<div style="font-weight:800;font-size:1.05rem;margin-bottom:10px;">🔐 저장 폴더 권한을 다시 허용해 주세요</div>
+      <div>지난번에 연결한 <b>"${escAttr(dataDirHandle.name||'폴더')}"</b> 폴더예요.<br>폴더를 다시 고를 필요 없이, 아래 버튼을 누른 뒤 브라우저 창에서 <b>[허용]</b>(또는 <b>[파일 편집 허용]</b>)만 누르면 돼요.</div>
+      <div style="color:var(--muted);font-size:0.78rem;margin-top:6px;">허용하기 전에는 바꾼 내용이 폴더에 저장되지 않아요.</div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+        <button type="button" data-act="later" style="${btnBase}background:var(--c-f1f5f9);color:var(--text);">나중에</button>
+        <button type="button" data-act="perm" style="${btnBase}background:#10b981;color:#fff;">✅ 권한 허용하기</button></div>`;
+  } else {
+    body=`<div style="font-weight:800;font-size:1.05rem;margin-bottom:10px;">📁 먼저 저장 폴더를 정해 주세요</div>
+      <div>이 앱은 내 PC의 폴더에 <b>${escAttr(DATA_FILE_NAME)}</b> 파일로 데이터를 저장해요.<br>폴더를 안 정하면 이 브라우저 안에만 임시로 보관돼서, 캐시를 지우면 <b>사라질 수 있어요.</b></div>
+      <div style="background:var(--c-f8fafc);border:1px solid var(--border);border-radius:9px;padding:10px 12px;margin-top:12px;font-size:0.8rem;">
+        <div style="font-weight:700;margin-bottom:4px;">하는 방법</div>
+        ① 아래 <b>[📁 저장 폴더 고르기]</b> 클릭<br>
+        ② 폴더 선택 창에서 <b>[새 폴더]</b>로 예: <code>C:\\WorkDiary</code> 를 만들고 선택<br>
+        ③ <b>[파일 편집 허용]</b>(또는 [허용]) 클릭 → 끝!
+        <div style="color:var(--muted);margin-top:6px;">💡 OneDrive 안이 아닌 <b>내 PC 폴더(C 드라이브)</b>를 추천해요 — PC가 느려지거나 멈추는 걸 막아요.</div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+        <button type="button" data-act="later" style="${btnBase}background:var(--c-f1f5f9);color:var(--text);">나중에</button>
+        <button type="button" data-act="pick" style="${btnBase}background:#f59e0b;color:#fff;">📁 저장 폴더 고르기</button></div>`;
+  }
+  m.innerHTML=`<div style="background:var(--card);color:var(--text);border-radius:14px;padding:22px 24px;width:min(480px,92vw);box-shadow:0 20px 50px rgba(0,0,0,.35);font-size:0.85rem;line-height:1.7;">${body}</div>`;
+  m.addEventListener('click',async e=>{
+    const b=e.target.closest('button[data-act]'); if(!b) return;
+    const act=b.dataset.act;
+    if(act==='later'){ try{ sessionStorage.setItem('wd-folder-later','1'); }catch(_){} m.remove(); return; }
+    m.style.display='none';                       // 브라우저 폴더 창이 잘 보이도록 잠깐 숨김
+    if(act==='pick') await connectDataFolder();
+    else await requestBackupFolderPermission();
+    if((await folderSetupState())==='ok') m.remove();
+    else m.style.display='flex';                  // 취소했으면 다시 안내
+  });
+  document.body.appendChild(m);
+}
+
 function restoreFromFile(file){
   if (!file) return;
   const reader = new FileReader();
@@ -2524,18 +2604,9 @@ let TODAY = new Date();      // 앱을 켜둔 채 날짜가 바뀌면 checkDayRo
 // 로컬 날짜 기준 (UTC 오프셋 보정 - 한국 KST 등)
 let TODAY_STR = `${TODAY.getFullYear()}-${String(TODAY.getMonth()+1).padStart(2,'0')}-${String(TODAY.getDate()).padStart(2,'0')}`;
 
-let projects = [
-  {id:'p_ec560f', name:'[NPD] EC560F ZB', color:'#4f46e5', lastAction:'2026-06-19'},
-  {id:'p_teleop', name:'[NPD] Tele OP', color:'#f59e0b', lastAction:'2026-06-19'},
-  {id:'p_eudata', name:'[C0] EU Data_Act3.1', color:'#7c3aed', lastAction:'2026-06-19'},
-  {id:'p_xwatch', name:'[C0] xWatch', color:'#06b6d4', lastAction:'2026-06-19'},
-  {id:'p_namhaCPS', name:'[C0] 남아공 CPS', color:'#10b981', lastAction:'2026-06-19'},
-  {id:'p_ehhybrid', name:'[C0] EH/Hybrid Opti', color:'#0284c7', lastAction:'2026-06-19'},
-  {id:'p_pmt', name:'PMT', color:'#4f46e5', lastAction:'2026-06-19'},
-  {id:'p_bucketw27', name:'Bucket W27', color:'#4f46e5', lastAction:'2026-06-19'},
-  {id:'p_trouble', name:'Trouble shooting Support', color:'#ef4444', lastAction:'2026-06-19'},
-  {id:'p_mailreply', name:'메일답변', color:'#10b981', lastAction:'2026-06-19'},
-  {id:'p_personal', name:'개인업무', color:'#10b981', lastAction:'2026-06-19'},
+// 처음 쓰는 사람용 기본 프로젝트 (데이터 파일이 있으면 그걸로 덮어씀)
+let projects = [   // 처음엔 예시 프로젝트 1개
+  {id:'p_test', name:'TEST', color:'#4f46e5', lastAction:''},
 ];
 /* ══════════════════════════════════════
    공휴일 데이터
@@ -2606,6 +2677,7 @@ function toggleTheme(){
   const next=isNight()?'light':'dark';
   document.documentElement.dataset.theme=next;
   try{ localStorage.setItem('wd-theme',next); }catch(e){}
+  syncThemeColor();
   updateThemeButton();
   render();
 }
@@ -2700,39 +2772,16 @@ function prioSort(a,b){
   const bi=prioRank(b.priority);
   return (ai<0?99:ai)-(bi<0?99:bi);
 }
-let tasks = [
-  // ── 미완료 (긴급 A) ──
-  {id:101,text:'EU data CAN 정리하기',project:'p_eudata',done:false,start:'2026-06-15',end:'2026-06-16',actualEnd:null,priority:'A1',status:'overdue',estHours:1,actualHours:1},
-  {id:102,text:'EU DATA act Instruction',project:'p_eudata',done:false,start:'2026-06-16',end:'2026-06-22',actualEnd:null,priority:'A1',status:'in_progress_90',estHours:3,actualHours:null},
-  {id:103,text:'F-CP] 3rd party CAN message by API',project:'p_bucketw27',done:false,start:'2026-06-19',end:'2026-06-19',actualEnd:null,priority:'A1',status:'not_started',estHours:1,actualHours:null},
-  {id:104,text:'Engine RPM drop 원인 분석',project:'p_ec560f',done:false,start:'2026-06-17',end:'2026-07-11',actualEnd:null,priority:'A2',status:'in_progress_20',estHours:8,actualHours:null},
-  {id:105,text:'Variant EU Data Act용 확인 필요',project:'p_eudata',done:false,start:'2026-06-14',end:'2026-06-21',actualEnd:null,priority:'A2',status:'in_progress_30',estHours:4,actualHours:null},
-  {id:106,text:'합천 EC560F C03으로 업데이트 ( 19일 금요일) 방문',project:'p_ec560f',done:false,start:'2026-06-19',end:'2026-06-25',actualEnd:null,priority:'A2',status:'not_started',estHours:8,actualHours:null},
-  {id:107,text:'EC560F Pressure sensor Basic control에 넣기',project:'p_ec560f',done:false,start:'2026-06-15',end:'2026-07-16',actualEnd:null,priority:'A2',status:'not_started',estHours:6,actualHours:null},
-  {id:108,text:'남아공 CPS L9 (rpm control mode overried, 신호전달)',project:'p_bucketw27',done:false,start:'2026-06-14',end:'2026-06-26',actualEnd:null,priority:'A3',status:'in_progress_90',estHours:0.5,actualHours:null},
-  {id:109,text:'EU Data_ACt3.1',project:'p_bucketw27',done:false,start:'2026-06-14',end:'2026-06-26',actualEnd:null,priority:'A3',status:'in_progress_90',estHours:0.5,actualHours:null},
-  {id:110,text:'xWatch',project:'p_bucketw27',done:false,start:'2026-06-14',end:'2026-06-26',actualEnd:null,priority:'A3',status:'in_progress_90',estHours:0.5,actualHours:null},
-  {id:111,text:'E 시리즈 Q-fit close 이슈 , 0.8초 통신 진단 3초로 변경',project:'p_bucketw27',done:false,start:'2026-06-14',end:'2026-06-26',actualEnd:null,priority:'A3',status:'in_progress',estHours:0.5,actualHours:null},
-  // ── 미완료 (중요 B) ──
-  {id:112,text:'호텔예약, 렌트카예약',project:'p_ec560f',done:false,start:'2026-06-19',end:'2026-06-22',actualEnd:null,priority:'B1',status:'not_started',estHours:2,actualHours:null},
-  {id:113,text:'[TS3582645] ECR145F 410470 Steel wrist install and Vosch chainsaw grapple',project:'p_trouble',done:false,start:'2026-06-19',end:'2026-06-24',actualEnd:null,priority:'B2',status:'not_started',estHours:1,actualHours:null},
-  {id:114,text:'asdasd',project:'p_ec560f',done:false,start:'2026-06-19',end:'2026-06-26',actualEnd:null,priority:'B2',status:'not_started'},
-  {id:115,text:'asd',project:'p_ec560f',done:false,start:'2026-06-19',end:'2026-06-26',actualEnd:null,priority:'B2',status:'not_started'},
-  // ── 완료된 업무 ──
-  {id:201,text:'CHAIN 기본 질문문구 작성 -QC 진단애러',project:'p_bucketw27',done:true,start:'2026-06-18',end:'2026-06-18',actualEnd:'2026-06-18',priority:'A1',status:'done'},
-  {id:202,text:'Optive 작업',project:'p_ec560f',done:true,start:'2026-06-14',end:'2026-06-19',actualEnd:'2026-06-19',priority:'A1',status:'done',estHours:3,actualHours:0.5},
-  {id:203,text:'ew140e',project:'p_eudata',done:true,start:'2026-06-19',end:'2026-06-19',actualEnd:'2026-06-19',priority:'A1',status:'done',estHours:1.5,actualHours:1},
-  {id:204,text:'Re: Volvo F-series - Short Range Remote, bulletin information',project:'p_mailreply',done:true,start:'2026-06-18',end:'2026-06-18',actualEnd:'2026-06-18',priority:'A1',status:'done'},
-  {id:205,text:'CHAIN 기본 질문문구 작성 -Tilt rotator 끊김현상',project:'p_bucketw27',done:true,start:'2026-06-18',end:'2026-06-18',actualEnd:'2026-06-18',priority:'A1',status:'done'},
-  {id:206,text:'Tool manager PPT 작성',project:'p_ec560f',done:true,start:'2026-06-15',end:'2026-06-16',actualEnd:'2026-06-17',priority:'A1',status:'done'},
-  {id:207,text:'Chain 상정',project:'p_bucketw27',done:true,start:'2026-06-17',end:'2026-06-19',actualEnd:'2026-06-18',priority:'A1',status:'early_done'},
-  {id:208,text:'Work Mode PPT 작성',project:'p_ec560f',done:true,start:'2026-06-15',end:'2026-06-16',actualEnd:'2026-06-17',priority:'A1',status:'done'},
-  {id:209,text:'TR 통신 끊겼을 때 계속 회전되는 문제 PPT',project:'p_pmt',done:true,start:'2026-06-15',end:'2026-06-16',actualEnd:'2026-06-18',priority:'A1',status:'done'},
-  {id:210,text:'Qfit 3초 진단 변경 PPT',project:'p_pmt',done:true,start:'2026-06-15',end:'2026-06-16',actualEnd:'2026-06-18',priority:'A1',status:'done'},
-  {id:211,text:'통신 끊겼을 경우 Neutral로 가는거 사양서 적기',project:'p_namhaCPS',done:true,start:'2026-06-15',end:'2026-06-17',actualEnd:'2026-06-17',priority:'A2',status:'done'},
-  {id:212,text:'TS3575768 EC400F 410707/410779 CD',project:'p_trouble',done:true,start:'2026-06-16',end:'2026-06-19',actualEnd:'2026-06-19',priority:'B2',status:'done',estHours:0.5,actualHours:0.5},
-  {id:213,text:'TS3581340 EC380DL 271576 19,831hrs Hammer function activation',project:'p_trouble',done:true,start:'2026-06-15',end:'2026-06-19',actualEnd:'2026-06-19',priority:'B2',status:'done',estHours:0.5,actualHours:0.5},
-];
+/* 화면에 예시 업무만 있고 내가 쓴 기록은 없는 상태인가 */
+function isOnlySampleData(){
+  return (tasks||[]).every(t=>t&&t.sample) && !(weeklyLogs||[]).length;
+}
+/* 처음엔 예시 업무 1개 — 앱을 처음 켠 날 시작, 7일 뒤 마감 */
+let tasks = (()=>{
+  const k=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const s0=new Date(TODAY.getFullYear(),TODAY.getMonth(),TODAY.getDate()), e0=new Date(s0); e0.setDate(e0.getDate()+7);
+  return [{id:101,text:'TEST',project:'p_test',done:false,start:k(s0),end:k(e0),actualEnd:null,priority:'A1',sample:true}];
+})();
 let weeklyLogs = [];
 
 // 대한민국 법정 공휴일 (내장 데이터, 매년 갱신 필요)
@@ -3045,6 +3094,7 @@ const proj = id => {
     const name=id.replace('__ext__','');
     return {name, color:'#64748b', id};
   }
+  if(!id) return {name:'프로젝트 없음',color:'#94a3b8'};
   return projects.find(p=>p.id===id)||{name:'?',color:'#888'};
 };
 const todayMs = TODAY.getTime();
@@ -3170,7 +3220,7 @@ function updateHeaderWeek(){
 /* ══════════════════════════════════════
    SIDEBAR
 ══════════════════════════════════════ */
-function inactiveDays(p){ return Math.ceil((TODAY.getTime() - d(p.lastAction).getTime())/86400000); }
+function inactiveDays(p){ if(!p.lastAction) return 0; return Math.ceil((TODAY.getTime() - d(p.lastAction).getTime())/86400000); }
 
 // 2주(14일)~10주(70일) → 색상 보간 (연한빨간 → 진한빨간)
 function inactiveColor(days){
@@ -3244,7 +3294,8 @@ function renderSidebar(){
   ['project-select','edit-project','w-project'].forEach(id=>{
     const sel = document.getElementById(id); if(!sel) return;
     const cur = sel.value;
-    sel.innerHTML = projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+    sel.innerHTML = projects.length ? projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')
+      : '<option value="">(프로젝트 없음)</option>';   // 프로젝트가 하나도 없을 때
     if(projects.find(p=>p.id===cur)) sel.value=cur;
   });
   if(currentFilter!=='all'){
@@ -5946,7 +5997,7 @@ function editTaskAction(id,anchor){
   closeActionPop();
   const pop=document.createElement('div'); pop.id='act-pop'; pop.className='act-pop';
   pop.innerHTML=`<div class="ap-h">▶ Action <span>다음에 뭘 해야 하는지 한 줄로</span></div>
-    <input type="text" maxlength="120" placeholder="예: 덕근님께 로그 요청 / 금요일까지 SW 검증" value="${escAttr(t.action||'')}">
+    <input type="text" maxlength="120" placeholder="예: 담당자에게 로그 요청 / 금요일까지 검증" value="${escAttr(t.action||'')}">
     <div class="ap-btns">${t.action?'<button type="button" class="btn-sm" data-a="clear">지우기</button>':''}<span style="flex:1"></span><button type="button" class="btn-sm" data-a="cancel">취소</button><button type="button" class="btn-sm ap-ok" data-a="ok">저장</button></div>
     <div class="ap-hint">Enter: 저장 · Esc: 취소</div>`;
   document.body.appendChild(pop);
@@ -7609,8 +7660,39 @@ function toggleProjHours(pid){
 /* ══════════════════════════════════════
    🏷️ 버전 기록 — 새 버전을 낼 때 맨 위에 한 줄씩 추가
 ══════════════════════════════════════ */
-const APP_VERSION='V1.12';
+const APP_VERSION='V1.20';
 const APP_CHANGELOG=[
+  {v:'V1.20', date:'2026-11-17', items:[
+    '처음 화면 예시: 프로젝트 1개(TEST) + 업무 1개(TEST, 처음 켠 날 시작 · 7일 뒤 마감)',
+  ]},
+  {v:'V1.19', date:'2026-11-17', items:[
+    '예시 업무 모두 삭제 · 처음 켜면 빈 화면에서 시작',
+    '기본 프로젝트(일반 업무·메일답변·개인업무)도 삭제 · 프로젝트는 각자 추가',
+    '프로젝트가 하나도 없을 때도 업무 추가 가능 ("프로젝트 없음"으로 표시)',
+  ]},
+  {v:'V1.18', date:'2026-11-17', items:[
+    '예시 업무를 2개만 남김 (EU data CAN 정리하기 · Engine RPM drop 원인 분석), 처음 켠 날부터 시작',
+  ]},
+  {v:'V1.17', date:'2026-11-17', items:[
+    '예시 업무를 우선순위별 1개씩 + 완료 1개로 줄임',
+    '예시 업무 날짜는 앱을 처음 받은(처음 켠) 날부터 시작 · 매일 자동으로 바뀌지 않음',
+  ]},
+  {v:'V1.16', date:'2026-11-17', items:[
+    '저장 폴더가 안 정해져 있으면 앱을 켤 때 "저장 폴더를 정해주세요" 안내 팝업 (처음 쓰는 사람용)',
+    '폴더는 기억하는데 권한만 풀린 경우엔 "권한 허용" 한 번으로 끝나는 팝업',
+    '처음 화면 예시 업무: 우선순위별 2개씩 + 완료 2개, 일반적인 제목으로',
+    '예시 업무 날짜는 항상 오늘 기준으로 자동 변경 (손댄 예시는 내 업무로 보고 그대로 둠)',
+  ]},
+  {v:'V1.15', date:'2026-11-17', items:[
+    '앱 맨 위 파란 헤더(로고·세계시계 줄)를 연한 회색으로 (나이트 모드는 검정 계열)',
+  ]},
+  {v:'V1.14', date:'2026-11-17', items:[
+    '앱 창 맨 위 제목줄 색을 파란색 → 연한 회색으로 (나이트 모드에서는 검정)',
+  ]},
+  {v:'V1.13', date:'2026-11-17', items:[
+    '공유용으로 정리: 처음 여는 사람은 빈 상태로 시작 (기본 프로젝트: 일반 업무 · 메일답변 · 개인업무, 예시 업무·개인 메모 삭제)',
+    '브라우저 맨 위 제목을 "Wonder Diary"로 (개인 이름 삭제)',
+  ]},
   {v:'V1.12', date:'2026-11-17', items:[
     '사이드바 오늘 일정 높이를 조금 줄임 (남은 공간의 약 3/4)',
   ]},
@@ -11297,6 +11379,7 @@ setInterval(checkDeadlineSignalDay,60000);
   checkRepeatTasks();
   render();
   updateSubProjToggleVisibility();
+  setTimeout(checkFolderSetupPrompt, 900);   // 저장 폴더가 없으면 안내 팝업
   // 주간 자동 보관은 render 후 안전하게 실행
   setTimeout(()=>{ if(tasks.length>0) autoArchiveCompletedTasks(); }, 500);
   setTimeout(syncOutlookMeetings, 20000);  // 화면이 뜨고 PC가 한숨 돌린 뒤에 읽는다
