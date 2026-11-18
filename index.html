@@ -16,7 +16,7 @@
 <meta name="apple-mobile-web-app-title" content="Wonder Diary">
 <script>try{document.documentElement.dataset.theme=localStorage.getItem('wd-theme')==='dark'?'dark':'light';}catch(e){document.documentElement.dataset.theme='light';}
 /* 앱 창 맨 위(제목줄) 색: 데이=연한 회색, 나이트=검정 */
-function syncThemeColor(){ const m=document.querySelector('meta[name="theme-color"]'); if(m) m.setAttribute('content',document.documentElement.dataset.theme==='dark'?'#000000':'#f5f5f5'); }
+function syncThemeColor(){ const m=document.querySelector('meta[name="theme-color"]'); if(!m) return; const dk=document.documentElement.dataset.theme==='dark', mt=document.documentElement.classList.contains('in-meeting'); m.setAttribute('content',mt?(dk?'#0f2a1b':'#d8eedf'):(dk?'#000000':'#f5f5f5')); }
 syncThemeColor();</script>
 <style>
 :root {
@@ -35,10 +35,10 @@ syncThemeColor();</script>
 :where(:root[data-theme="dark"]) input::placeholder,:where(:root[data-theme="dark"]) textarea::placeholder{color:#6b7280;}
 *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',sans-serif;}
 body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;height:100vh;overflow:hidden;}
-/* 지금 미팅 시간이면 바탕을 연한 세이지(초록빛 회색)로 — 눈에 거슬리지 않게 (V1.21) */
-body{transition:background-color .8s ease;}
-html.in-meeting body{background:#e2eee6;}
-html.in-meeting[data-theme="dark"] body{background:#0c1a12;}
+/* 지금 미팅 시간이면 맨 위 헤더 바탕을 은은한 초록으로 — 눈이 편한 색 (V1.22) */
+header{transition:background-color .8s ease,border-color .8s ease;}
+html.in-meeting header{background:#d8eedf !important;border-bottom-color:#b9dcc5 !important;}
+html.in-meeting[data-theme="dark"] header{background:#0f2a1b !important;border-bottom-color:#1d4a31 !important;}
 /* Header */
 header{background:var(--primary);color:white;padding:0 16px;height:56px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:10px;}
 header h1{font-size:1rem;font-weight:700;white-space:nowrap;flex-shrink:0;}
@@ -845,7 +845,7 @@ if ('serviceWorker' in navigator) {
     <img src="data:image/png;base64,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" alt="Wonder Diary" style="width:32px;height:32px;border-radius:8px;flex-shrink:0;">
     <span style="display:flex;flex-direction:column;line-height:1.1;">
       <span style="font-size:1.05rem;font-weight:800;letter-spacing:0.01em;">Wonder Diary</span>
-      <span class="hdr-sub" style="font-size:0.62rem;font-weight:400;color:rgba(255,255,255,0.65);">developed by seokwon · <span id="app-version-label" onclick="switchTab('version',document.querySelector('.tab-btn[onclick*=&quot;version&quot;]'))" style="cursor:pointer;text-decoration:underline dotted;" title="버전 기록 보기">V1.21</span></span>
+      <span class="hdr-sub" style="font-size:0.62rem;font-weight:400;color:rgba(255,255,255,0.65);">developed by seokwon · <span id="app-version-label" onclick="switchTab('version',document.querySelector('.tab-btn[onclick*=&quot;version&quot;]'))" style="cursor:pointer;text-decoration:underline dotted;" title="버전 기록 보기">V1.22</span></span>
     </span>
   </h1>
   <div style="display:flex;align-items:center;justify-content:center;gap:24px;flex:1;flex-wrap:wrap;min-width:0;">
@@ -4363,7 +4363,9 @@ function updateMeetingMode(){
       return st<=nm && nm<en;
     })||null;
   }catch(_){}
+  const was=document.documentElement.classList.contains('in-meeting');
   document.documentElement.classList.toggle('in-meeting',!!cur);
+  if(was!==!!cur) syncThemeColor();   // 앱 창 제목줄 색도 같이
 }
 setInterval(()=>{ try{ renderSideSchedule(); }catch(_){} try{ updateMeetingMode(); }catch(_){} },30000);
 function renderCalDayPanel(){
@@ -7678,8 +7680,11 @@ function toggleProjHours(pid){
 /* ══════════════════════════════════════
    🏷️ 버전 기록 — 새 버전을 낼 때 맨 위에 한 줄씩 추가
 ══════════════════════════════════════ */
-const APP_VERSION='V1.21';
+const APP_VERSION='V1.22';
 const APP_CHANGELOG=[
+  {v:'V1.22', date:'2026-11-18', items:[
+    '미팅 중 색 변경을 전체 바탕 대신 맨 위 헤더(+앱 창 제목줄)만 은은한 초록으로',
+  ]},
   {v:'V1.21', date:'2026-11-18', items:[
     '미팅 시간이 되면 다이어리 바탕색이 연한 초록빛 회색으로 바뀜 (미팅 끝나면 원래 색으로)',
   ]},
