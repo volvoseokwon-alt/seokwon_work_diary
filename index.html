@@ -9,8 +9,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="wd-icon-192.png">
+<link rel="apple-touch-icon" href="wd-icon-192.png">
 <meta name="description" content="업무·미팅·시간 기록을 한곳에서 관리하는 개인 업무 다이어리">
 <meta name="application-name" content="Wonder Diary">
 <meta name="apple-mobile-web-app-title" content="Wonder Diary">
@@ -35,6 +35,8 @@ syncThemeColor();</script>
 :where(:root[data-theme="dark"]) input::placeholder,:where(:root[data-theme="dark"]) textarea::placeholder{color:#6b7280;}
 *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',sans-serif;}
 body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+.mail-badge{flex-shrink:0;font-size:0.82rem;line-height:1;cursor:pointer;opacity:.85;user-select:none;}
+.mail-badge:hover{opacity:1;transform:scale(1.15);}
 /* 지금 미팅 시간이면 맨 위 헤더 바탕을 은은한 초록으로 — 눈이 편한 색 (V1.22) */
 header{transition:background-color .8s ease,border-color .8s ease;}
 html.in-meeting header{background:#d8eedf !important;border-bottom-color:#b9dcc5 !important;}
@@ -845,7 +847,7 @@ if ('serviceWorker' in navigator) {
     <img src="data:image/png;base64,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" alt="Wonder Diary" style="width:32px;height:32px;border-radius:8px;flex-shrink:0;">
     <span style="display:flex;flex-direction:column;line-height:1.1;">
       <span style="font-size:1.05rem;font-weight:800;letter-spacing:0.01em;">Wonder Diary</span>
-      <span class="hdr-sub" style="font-size:0.62rem;font-weight:400;color:rgba(255,255,255,0.65);">developed by seokwon · <span id="app-version-label" onclick="switchTab('version',document.querySelector('.tab-btn[onclick*=&quot;version&quot;]'))" style="cursor:pointer;text-decoration:underline dotted;" title="버전 기록 보기">V1.22</span></span>
+      <span class="hdr-sub" style="font-size:0.62rem;font-weight:400;color:rgba(255,255,255,0.65);">developed by seokwon · <span id="app-version-label" onclick="switchTab('version',document.querySelector('.tab-btn[onclick*=&quot;version&quot;]'))" style="cursor:pointer;text-decoration:underline dotted;" title="버전 기록 보기">V1.24</span></span>
     </span>
   </h1>
   <div style="display:flex;align-items:center;justify-content:center;gap:24px;flex:1;flex-wrap:wrap;min-width:0;">
@@ -4182,7 +4184,7 @@ function renderTaskList(list){
         ${ddayBadgeHTML(t,'flex-shrink:0;')}
         ${prio?`<span onclick="event.stopPropagation();showPriorityPicker(event, ${t.id})" title="클릭하여 우선순위 변경" style="background:${pc};color:white;font-size:0.7rem;font-weight:800;padding:2px 6px;border-radius:4px;min-width:26px;text-align:center;flex-shrink:0;cursor:pointer;white-space:nowrap;">${prioLabel(prio)}</span>`:''}
         <span class="p-badge editable" onclick="event.stopPropagation();showProjectPicker(event, ${t.id})" onmousedown="event.stopPropagation()" title="클릭하여 프로젝트/하위분류 변경" style="background:${p.color}22;color:${readable(p.color)};flex-shrink:0;cursor:pointer;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
-        <span class="task-text" ondblclick="event.stopPropagation();startInlineEditTaskText(${t.id}, this)" title="더블클릭하여 수정" style="font-size:0.85rem;flex:0 1 auto;min-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;${dlSignal?'color:var(--alert-text);font-weight:700;':''}">${t.text}</span>
+        ${flagMailBadgeHTML(t)}<span class="task-text" ondblclick="event.stopPropagation();startInlineEditTaskText(${t.id}, this)" title="더블클릭하여 수정" style="font-size:0.85rem;flex:0 1 auto;min-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;${dlSignal?'color:var(--alert-text);font-weight:700;':''}">${t.text}</span>
         ${copyTitleBtnHTML(t)}${memoPeekHTML(t,'')}${actionChipHTML(t)}
         <span class="date-badge editable" onclick="event.stopPropagation();showDatePicker(event, ${t.id})" onmousedown="event.stopPropagation()" title="클릭하여 기간 변경" style="flex-shrink:0;">📅 ${fmt(t.start)} ~ ${fmt(t.end)} <span style="opacity:0.5;">✎</span></span>
         ${!t.done?`<select class="status-select" draggable="false" onmousedown="event.stopPropagation()" style="color:${readable(stInfo.color)};border-color:${stInfo.color}22;background:${stInfo.color}11;flex-shrink:0;"
@@ -5916,6 +5918,49 @@ function escAttr(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/
 /* 업무명 오른쪽 여백에 들어가는 메모 미리보기.
    메모가 있으면 내용을, 없으면 마우스를 올렸을 때만 "메모 추가" 힌트를 보여준다.
    (별도의 📝 아이콘 없이 이 영역이 메모를 여는 버튼 역할까지 겸한다) */
+/* ── 깃발(플래그) 메일에서 가져온 업무 표시: 제목 앞 📧 배지 (V1.24) ──────────
+   마우스를 올리면 보낸 사람·받은 시간, 누르면 메일 정보 창 */
+function flagMailInfo(t){
+  let from=t.flagFrom||'', recv=t.flagReceived||'';
+  if((!from||!recv) && typeof t.memo==='string'){            // 예전 버전에서 들어온 업무: 메모 첫 줄에서 찾기
+    const mf=t.memo.match(/보낸 사람:\s*([^·\n]+)/), mr=t.memo.match(/받은 날짜:\s*([^·\n]+)/);
+    if(!from&&mf) from=mf[1].trim(); if(!recv&&mr) recv=mr[1].trim();
+  }
+  return {from,recv};
+}
+function flagMailBadgeHTML(t){
+  if(!t||!t.outlookMailId) return '';
+  const {from,recv}=flagMailInfo(t);
+  const tip=['📧 깃발 메일에서 가져온 업무', from&&('보낸 사람: '+from), recv&&('받은 시간: '+recv), '(클릭하면 메일 정보)'].filter(Boolean).join('\n');
+  return `<span class="mail-badge" draggable="false" title="${escAttr(tip)}" onmousedown="event.stopPropagation()" onclick="event.stopPropagation();showFlagMailInfo(${t.id})">📧</span>`;
+}
+function showFlagMailInfo(id){
+  const t=findTaskAnywhere(id)?.t; if(!t) return;
+  const {from,recv}=flagMailInfo(t);
+  document.getElementById('flag-mail-info')?.remove();
+  const m=document.createElement('div'); m.id='flag-mail-info';
+  m.style.cssText='position:fixed;inset:0;z-index:100002;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;';
+  const row=(k,v)=>v?`<div style="display:flex;gap:10px;margin:3px 0;"><span style="color:var(--muted);min-width:64px;">${k}</span><span style="word-break:break-all;">${escAttr(v)}</span></div>`:'';
+  const body=(t.memo||'').trim();
+  m.innerHTML=`<div style="background:var(--card);color:var(--text);border-radius:14px;padding:20px 22px;width:min(560px,92vw);max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(0,0,0,.35);font-size:0.84rem;line-height:1.6;">
+    <div style="font-weight:800;font-size:1rem;margin-bottom:10px;">📧 깃발 메일에서 가져온 업무</div>
+    ${row('제목',t.text)}${row('보낸 사람',from)}${row('받은 시간',recv)}
+    ${body?`<div style="margin-top:10px;color:var(--muted);font-size:0.76rem;">메일 내용 / 메모</div><div style="margin-top:4px;padding:10px 12px;border:1px solid var(--border);border-radius:9px;background:var(--c-f8fafc);white-space:pre-wrap;overflow:auto;flex:1;min-height:40px;">${escAttr(body)}</div>`:''}
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">
+      <button type="button" class="btn-sm" data-act="copy" title="Outlook에서 메일을 찾을 때 붙여넣기">제목 복사</button>
+      <button type="button" class="btn-sm" data-act="close" style="background:var(--primary);color:#fff;">닫기</button>
+    </div></div>`;
+  let downOnBg=false;
+  m.addEventListener('pointerdown',e=>{ downOnBg=e.target===m; });
+  m.addEventListener('click',e=>{
+    if(e.target===m&&downOnBg){ m.remove(); return; }
+    const b=e.target.closest('button[data-act]'); if(!b) return;
+    if(b.dataset.act==='close') m.remove(); else copyTaskTitle(t.id,b);
+  });
+  const esc=e=>{ if(e.key==='Escape'){ m.remove(); document.removeEventListener('keydown',esc,true); } };
+  document.addEventListener('keydown',esc,true);
+  document.body.appendChild(m);
+}
 // 메일답변 할 일: 메일 검색용으로 제목을 바로 복사하는 버튼
 function isMailTask(t){
   if(t.outlookMailId) return true;
@@ -6950,7 +6995,7 @@ function renderHome(){
         <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask(${t.id})" style="flex-shrink:0;">
         ${t.priority?`<span style="background:${pc};color:white;font-size:0.68rem;font-weight:800;padding:1px 6px;border-radius:4px;flex-shrink:0;white-space:nowrap;">${prioLabel(t.priority)}</span>`:''}
         <span style="color:${readable(p.color)};font-weight:600;font-size:0.72rem;flex-shrink:0;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
-        <span class="task-text" ondblclick="event.stopPropagation();startInlineEditTaskText(${t.id}, this)" title="더블클릭하여 수정" style="flex:0 1 auto;min-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;${t.done?'text-decoration:line-through;':''}">${t.text}</span>
+        ${flagMailBadgeHTML(t)}<span class="task-text" ondblclick="event.stopPropagation();startInlineEditTaskText(${t.id}, this)" title="더블클릭하여 수정" style="flex:0 1 auto;min-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;${t.done?'text-decoration:line-through;':''}">${t.text}</span>
         ${copyTitleBtnHTML(t)}${memoPeekHTML(t,'h')}${actionChipHTML(t)}
         <select class="status-select" draggable="false" onmousedown="event.stopPropagation()" style="color:${readable(stInfo.color)};border-color:${stInfo.color}22;background:${stInfo.color}11;flex-shrink:0;font-size:0.68rem;"
             onchange="setTaskStatus(${t.id},this.value)">
@@ -7032,7 +7077,7 @@ function renderHome(){
           <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask(${t.id})" style="flex-shrink:0;" title="${t.done?'체크 해제하면 미완료로 되돌립니다':'완료 처리'}">
           ${t.priority?`<span style="background:${pc};color:white;font-size:0.68rem;font-weight:800;padding:1px 6px;border-radius:4px;flex-shrink:0;white-space:nowrap;">${prioLabel(t.priority)}</span>`:''}
           <span style="color:${readable(p.color)};font-weight:600;font-size:0.72rem;flex-shrink:0;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
-          <span class="task-text" ondblclick="event.stopPropagation();startInlineEditTaskText(${t.id}, this)" title="더블클릭하여 수정" style="flex:0 1 auto;min-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;${t.done?'text-decoration:line-through;':''}">${t.text}</span>
+          ${flagMailBadgeHTML(t)}<span class="task-text" ondblclick="event.stopPropagation();startInlineEditTaskText(${t.id}, this)" title="더블클릭하여 수정" style="flex:0 1 auto;min-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;${t.done?'text-decoration:line-through;':''}">${t.text}</span>
           ${copyTitleBtnHTML(t)}${memoPeekHTML(t,'d')}${actionChipHTML(t)}
           ${t.done
             ? `<span class="status-chip" onclick="editCompleteDate(${t.id})" title="클릭하여 완료일 변경 (현재: ${fmt(t.actualEnd)})" style="background:${stInfo.color};font-size:0.68rem;flex-shrink:0;display:flex;align-items:center;gap:4px;cursor:pointer;">${stInfo.icon} ${stInfo.label}</span>`
@@ -7680,8 +7725,14 @@ function toggleProjHours(pid){
 /* ══════════════════════════════════════
    🏷️ 버전 기록 — 새 버전을 낼 때 맨 위에 한 줄씩 추가
 ══════════════════════════════════════ */
-const APP_VERSION='V1.22';
+const APP_VERSION='V1.24';
 const APP_CHANGELOG=[
+  {v:'V1.24', date:'2026-11-19', items:[
+    '깃발 메일에서 가져온 업무는 제목 앞에 📧 표시 (마우스 올리면 보낸 사람·받은 시간, 누르면 메일 정보 창)',
+  ]},
+  {v:'V1.23', date:'2026-11-18', items:[
+    '앱 아이콘을 검정 W 아이콘(wd-icon-*.png)으로 연결 — 예전 보라색 아이콘이 캐시에 남지 않게 파일 이름 변경',
+  ]},
   {v:'V1.22', date:'2026-11-18', items:[
     '미팅 중 색 변경을 전체 바탕 대신 맨 위 헤더(+앱 창 제목줄)만 은은한 초록으로',
   ]},
@@ -10300,7 +10351,7 @@ function renderParkingLot(){
         <span style="flex-shrink:0;font-size:0.8rem;">📥</span>
         ${prio?`<span onclick="event.stopPropagation();showPriorityPicker(event, ${t.id})" title="클릭하여 우선순위 변경" style="background:${prioColor(prio)};color:white;font-size:0.7rem;font-weight:800;padding:2px 6px;border-radius:4px;min-width:26px;text-align:center;flex-shrink:0;cursor:pointer;white-space:nowrap;">${prioLabel(prio)}</span>`:''}
         <span class="p-badge editable" onclick="event.stopPropagation();showProjectPicker(event, ${t.id})" onmousedown="event.stopPropagation()" title="클릭하여 프로젝트/하위분류 변경" style="background:${p.color}22;color:${readable(p.color)};flex-shrink:0;cursor:pointer;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
-        <span class="task-text" ondblclick="event.stopPropagation();startInlineEditTaskText(${t.id}, this)" title="더블클릭하여 수정" style="font-size:0.85rem;flex:0 1 auto;min-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;">${t.text}</span>
+        ${flagMailBadgeHTML(t)}<span class="task-text" ondblclick="event.stopPropagation();startInlineEditTaskText(${t.id}, this)" title="더블클릭하여 수정" style="font-size:0.85rem;flex:0 1 auto;min-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;">${t.text}</span>
         ${copyTitleBtnHTML(t)}${memoPeekHTML(t,'p')}${actionChipHTML(t)}
         <span class="date-badge" style="flex-shrink:0;background:var(--c-f5f3ff);color:var(--x-7c3aed);border-color:var(--c-ddd6fe);">날짜 미정</span>
         <div style="display:flex;gap:5px;flex-shrink:0;">
