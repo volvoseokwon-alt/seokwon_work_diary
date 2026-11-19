@@ -222,6 +222,9 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 .drag-handle:active{cursor:grabbing;}
 .task-item.dragging{opacity:.4;border:2px dashed var(--primary);}
 .task-item.drag-over{border-top:3px solid var(--primary);}
+#mx-pop .mx-opt{display:block;width:100%;text-align:left;margin:3px 0;padding:6px 9px;background:var(--bg);color:var(--text);font-weight:700;}
+#mx-pop .mx-opt:hover{background:var(--pri-light);}
+.prio-group-label.drag-over{background:var(--pri-light);outline:2px dashed var(--primary);border-radius:6px;}
 .project-item.dragging{opacity:.35;}
 .project-item.drag-over{border-top:2px solid var(--primary);}
 
@@ -854,7 +857,7 @@ if ('serviceWorker' in navigator) {
     <img src="data:image/png;base64,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" alt="Wonder Diary" style="width:32px;height:32px;border-radius:8px;flex-shrink:0;">
     <span style="display:flex;flex-direction:column;line-height:1.1;">
       <span style="font-size:1.05rem;font-weight:800;letter-spacing:0.01em;">Wonder Diary</span>
-      <span class="hdr-sub" style="font-size:0.62rem;font-weight:400;color:rgba(255,255,255,0.65);">developed by seokwon · <span id="app-version-label" onclick="switchTab('version',document.querySelector('.tab-btn[onclick*=&quot;version&quot;]'))" style="cursor:pointer;text-decoration:underline dotted;" title="버전 기록 보기">V1.29</span></span>
+      <span class="hdr-sub" style="font-size:0.62rem;font-weight:400;color:rgba(255,255,255,0.65);">developed by seokwon · <span id="app-version-label" onclick="switchTab('version',document.querySelector('.tab-btn[onclick*=&quot;version&quot;]'))" style="cursor:pointer;text-decoration:underline dotted;" title="버전 기록 보기">V1.32</span></span>
     </span>
   </h1>
   <div style="display:flex;align-items:center;justify-content:center;gap:24px;flex:1;flex-wrap:wrap;min-width:0;">
@@ -992,8 +995,8 @@ if ('serviceWorker' in navigator) {
           <select id="sub-project-select" style="padding:6px 7px;border:1.5px solid var(--border);border-radius:6px;font-size:0.8rem;background:var(--card);min-width:110px;" onchange="onSubProjSelectChange('sub-project-select','sub-project-custom')"></select>
           <input type="text" id="sub-project-custom" placeholder="하위 분류명 입력" style="display:none;padding:6px 8px;border:1.5px solid var(--primary);border-radius:6px;font-size:0.8rem;min-width:110px;">
           <select id="task-priority" style="padding:6px 7px;border:1.5px solid var(--border);border-radius:6px;font-size:0.8rem;background:var(--card);font-weight:700;">
-            <option value="A1" style="color:var(--x-b91c1c)" selected>오늘</option><option value="A2" style="color:var(--x-c026d3)">이번 주</option>
-            <option value="C1" style="color:var(--x-0f766e)">조만간</option>
+            <option value="A1" style="color:var(--x-b91c1c)" selected>오늘</option><option value="A2" style="color:var(--x-c026d3)">일주일</option>
+            <option value="C1" style="color:var(--x-0f766e)">조만간</option><option value="D1" style="color:var(--x-64748b)">챙기기</option>
           </select>
           <div class="date-grp" id="add-date-start-grp"><label>시작</label><input type="date" id="start-date"></div>
           <div class="date-grp" id="add-date-end-grp"><label>종료</label><input type="date" id="end-date"></div>
@@ -1100,7 +1103,7 @@ if ('serviceWorker' in navigator) {
       <div class="card" style="display:none;margin-bottom:12px;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
           <span style="font-size:0.85rem;font-weight:700;color:var(--muted);">💡 오늘 하면 어떨까요?</span>
-          <span style="font-size:0.7rem;color:var(--muted);background:var(--bg);padding:2px 8px;border-radius:8px;">이번 주 안에 할 일</span>
+          <span style="font-size:0.7rem;color:var(--muted);background:var(--bg);padding:2px 8px;border-radius:8px;">일주일 안에 할 일</span>
         </div>
         <div id="home-suggest-tasks"></div>
       </div>
@@ -1835,7 +1838,7 @@ let _saveTimer=null, _saveInFlight=false, _savePending=false;
 function buildPayload(){
   const raw = {
     projects, tasks, weeklyLogs, trash, completedProjects,
-    repeatTasks, recurringMeetings, cancelledMeetings, outlookSync, calMemos, taskTags, quickLinks, linkGroupsExtra, linkGroupStyle, customHolidays, dailyPlans, dailyMemos, stickyNotes, stickyLinks,
+    repeatTasks, recurringMeetings, cancelledMeetings, meetingExcludeRules, outlookSync, calMemos, taskTags, quickLinks, linkGroupsExtra, linkGroupStyle, customHolidays, dailyPlans, dailyMemos, stickyNotes, stickyLinks,
     sidebarNote: document.getElementById('sidebar-note')?.value || '',
     updatedAt: new Date().toISOString()
   };
@@ -1958,6 +1961,7 @@ function applyData(data){
   repeatTasks       = data.repeatTasks       || repeatTasks;
   recurringMeetings = data.recurringMeetings || recurringMeetings;
   cancelledMeetings = data.cancelledMeetings || cancelledMeetings;
+  meetingExcludeRules = data.meetingExcludeRules || meetingExcludeRules;
   outlookSync       = data.outlookSync       || outlookSync;
   migrateRemovedPriorities();
   calMemos          = data.calMemos          || calMemos;
@@ -2524,6 +2528,7 @@ function restoreFromFile(file){
       repeatTasks = data.repeatTasks || [];
       recurringMeetings = data.recurringMeetings || [];
       cancelledMeetings = data.cancelledMeetings || [];
+      meetingExcludeRules = data.meetingExcludeRules || [];
       outlookSync = data.outlookSync || {from:'', seen:{}};
       migrateRemovedPriorities();
       calMemos = data.calMemos || {};
@@ -2657,8 +2662,8 @@ const HOLIDAYS={
 };
 
 /* priority: A1>A2>B1>B2>C1>C2 */
-const PRIORITY_ORDER=['A1','A2','C1'];   // V1.25: 3단계만 (오늘 / 이번 주 / 여유) — B1·B2·C2는 C1(여유)으로
-const PRIORITY_COLOR={A1:'#b91c1c',A2:'#c026d3',B1:'#4f46e5',B2:'#0284c7',C1:'#0f766e',C2:'#64748b'};
+const PRIORITY_ORDER=['A1','A2','C1','D1'];   // 오늘 / 일주일 / 조만간 / 챙기기(V1.30) — 예전 B1·B2·C2는 C1으로
+const PRIORITY_COLOR={A1:'#b91c1c',A2:'#c026d3',B1:'#4f46e5',B2:'#0284c7',C1:'#0f766e',C2:'#64748b',D1:'#64748b'};
 // 없어진 우선순위 → 같은 등급의 가장 낮은 단계로 옮김. 지난 완료 기록은 값을 그대로 두고 표시만 맞춘다
 const REMOVED_PRIORITY={A3:'A2',B1:'C1',B2:'C1',B3:'C1',C2:'C1',C3:'C1'};
 function prioColor(p){ return p?PRIORITY_COLOR[REMOVED_PRIORITY[p]||p]||'#94a3b8':'#cbd5e1'; }
@@ -2694,10 +2699,10 @@ function toggleTheme(){
   render();
 }
 // 화면 표시 이름. 저장값과 정렬은 A1~C2 그대로 사용
-const PRIORITY_LABEL={A1:'오늘',A2:'이번 주',C1:'조만간'};
+const PRIORITY_LABEL={A1:'오늘',A2:'일주일',C1:'조만간',D1:'챙기기'};
 function prioLabel(p){ return PRIORITY_LABEL[REMOVED_PRIORITY[p]||p]||p||''; }
 // 목록의 그룹 제목은 한글
-const PRIORITY_GROUP_LABEL={A1:'오늘 할 일',A2:'이번 주 안에 할 일',C1:'조만간 끝내야 할 일'};
+const PRIORITY_GROUP_LABEL={A1:'오늘 할 일',A2:'일주일 안에 할 일',C1:'조만간 끝내야 할 일',D1:'챙겨야 할 일 (내 할 일은 끝, 확인만)'};
 function prioGroupLabel(p){ return PRIORITY_GROUP_LABEL[REMOVED_PRIORITY[p]||p]||p||''; }
 function prioRank(p){ const i=PRIORITY_ORDER.indexOf(p); return i<0?PRIORITY_ORDER.length:i; }
 function migrateRemovedPriorities(){
@@ -2857,6 +2862,7 @@ let repeatTasks = [];     // {id, text, project, priority, cycle:'weekly'|'biwee
 let recurringMeetings = [];
 let outlookSync = {from:'', seen:{}};   // Outlook 가져오기 상태 (시작 날짜, 이미 처리한 일정)
 let cancelledMeetings = [];  // 취소한 미팅. weeklyLogs에서 빼두므로 시간·건수 집계에 들어가지 않는다
+let meetingExcludeRules = [];  // V1.32: 항상 미팅 시간에서 뺄 제목 [{title, reason:'personal'|'skip'}]
 let calMemos = {};        // {'2026-06-17': {text:'...', color:'#4f46e5'}}
 /* {'2026-06-23': {taskId: 2 | {h:2, start:'13:00'}, ...}}
    홈에서 "오늘 계획"으로 입력한 업무별 예상 투입시간.
@@ -3942,7 +3948,7 @@ function renderGantt(list){
     weekLines.push({pct:Math.max(0,Math.min(100,pct)), label:fmtD(dt)});
   }
 
-  if(!list.length){ container.innerHTML='<div style="color:var(--muted);font-size:0.82rem;padding:10px 0">오늘·이번 주 업무가 없습니다.</div>'+(relaxHidden?`<div style="font-size:0.74rem;color:var(--muted);padding:6px 2px;">⏳ '조만간 끝내야 할 일' ${relaxHidden}개는 타임라인에서 뺐어요 (아래 할 일 목록에서 보기)</div>`:''); return; }
+  if(!list.length){ container.innerHTML='<div style="color:var(--muted);font-size:0.82rem;padding:10px 0">오늘·일주일 업무가 없습니다.</div>'+(relaxHidden?`<div style="font-size:0.74rem;color:var(--muted);padding:6px 2px;">⏳ '조만간'·'챙기기' 업무 ${relaxHidden}개는 타임라인에서 뺐어요 (아래 할 일 목록에서 보기)</div>`:''); return; }
 
   const notDoneList = list.filter(t=>!t.done).sort(prioSort);
   const doneList = list.filter(t=>t.done).sort(prioSort);
@@ -3952,7 +3958,7 @@ function renderGantt(list){
   notDoneList.forEach(t=>{
     container.appendChild(buildGanttRow(t));
   });
-  if(relaxHidden){ const n=document.createElement('div'); n.innerHTML=relaxHidden?`<div style="font-size:0.74rem;color:var(--muted);padding:6px 2px;">⏳ '조만간 끝내야 할 일' ${relaxHidden}개는 타임라인에서 뺐어요 (아래 할 일 목록에서 보기)</div>`:''; container.appendChild(n.firstElementChild); }
+  if(relaxHidden){ const n=document.createElement('div'); n.innerHTML=relaxHidden?`<div style="font-size:0.74rem;color:var(--muted);padding:6px 2px;">⏳ '조만간'·'챙기기' 업무 ${relaxHidden}개는 타임라인에서 뺐어요 (아래 할 일 목록에서 보기)</div>`:''; container.appendChild(n.firstElementChild); }
 
   // 완료/미완료 사이 구분줄 (완료 업무가 있을 때만 표시)
   if (doneList.length > 0) {
@@ -4171,6 +4177,9 @@ function renderTaskList(list){
       lbl.className='prio-group-label';
       const groupColor=prioColor(prio);
       lbl.innerHTML=`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${groupColor};margin-right:4px;vertical-align:middle;"></span>${prioGroupLabel(prio)}`;
+      lbl.addEventListener('dragover', e=>taskDragOver(e, prio));
+      lbl.addEventListener('dragleave', e=>e.currentTarget.classList.remove('drag-over'));
+      lbl.addEventListener('drop', e=>groupLabelDrop(e, prio));
       el.appendChild(lbl);
       lastPrio=prio;
     }
@@ -4190,7 +4199,7 @@ function renderTaskList(list){
     item.innerHTML=`
       <!-- 메인 행 -->
       <div style="display:flex;align-items:center;gap:8px;width:100%;">
-        <span class="drag-handle" title="같은 우선순위 내 순서 변경">⠿</span>
+        <span class="drag-handle" title="끌어서 순서 변경 · 다른 그룹으로 옮기기">⠿</span>
         <input type="checkbox" draggable="false" onmousedown="event.stopPropagation()" ${t.done?'checked':''} onchange="toggleTask(${t.id})">
         ${ddayBadgeHTML(t,'flex-shrink:0;')}
         ${prio?`<span onclick="event.stopPropagation();showPriorityPicker(event, ${t.id})" title="클릭하여 우선순위 변경" style="background:${pc};color:white;font-size:0.7rem;font-weight:800;padding:2px 6px;border-radius:4px;min-width:26px;text-align:center;flex-shrink:0;cursor:pointer;white-space:nowrap;">${prioLabel(prio)}</span>`:''}
@@ -4262,7 +4271,7 @@ function calDayMeetings(dateKey){
   const list=weeklyLogs.filter(l=>l.type==='meeting'&&l.date===dateKey)
     .map(l=>({title:l.task||'(제목 없음)',startTime:l.startTime||'',endTime:l.endTime||'',hours:+l.hours||0,logId:l.id}));
   if(dateKey>=TODAY_STR) (outlookSync.upcoming||[]).forEach(e=>{
-    if(e.date===dateKey&&!list.some(x=>x.title===e.title)&&!cancelledMeetings.some(x=>x.date===dateKey&&x.task===e.title))
+    if(e.date===dateKey&&!list.some(x=>x.title===e.title)&&!cancelledMeetings.some(x=>x.date===dateKey&&x.task===e.title)&&!meetingExcludeRuleFor(e.title))
       list.push({title:e.title||'(제목 없음)',startTime:e.startTime||'',endTime:e.endTime||'',hours:+e.hours||0,upcoming:e});
   });
   return list;
@@ -4527,7 +4536,7 @@ function calMeetingsForDate(dateKey){
   const today=dailyMemoDateKey();
   const list=weeklyLogs.filter(l=>l.type==='meeting'&&l.date===dateKey).map(l=>({title:l.task||'(제목 없음)',startTime:l.startTime||'',logId:l.id}));
   if(dateKey>today) (outlookSync.upcoming||[]).forEach(e=>{
-    if(e.date===dateKey&&!list.some(x=>x.title===e.title)&&!cancelledMeetings.some(x=>x.date===dateKey&&x.task===e.title)) list.push({title:e.title,startTime:e.startTime,upcoming:e});
+    if(e.date===dateKey&&!list.some(x=>x.title===e.title)&&!cancelledMeetings.some(x=>x.date===dateKey&&x.task===e.title)&&!meetingExcludeRuleFor(e.title)) list.push({title:e.title,startTime:e.startTime,upcoming:e});
   });
   return list.sort((a,b)=>(a.startTime||'99').localeCompare(b.startTime||'99'));
 }
@@ -5132,31 +5141,30 @@ function projDragEnd(e){ e.currentTarget.classList.remove('dragging','drag-over'
    DRAG & DROP — 업무 순서 (같은 priority 내)
 ══════════════════════════════════════ */
 let dragTaskId=null, dragTaskPrio=null;
+/* 업무를 다른 우선순위 그룹으로 옮길 때: 그 그룹의 맨 밑으로 (V1.31)
+   이미 마감이 된 업무를 사용자가 직접 '일주일'로 내리면, 자동으로 다시 '오늘'로 올리지 않게 표시 */
+function groupTailOrder(prio, exceptId){
+  const same=tasks.filter(x=>x.id!==exceptId && !x.parked && !x.done && (REMOVED_PRIORITY[x.priority]||x.priority)===prio);
+  return same.length ? Math.max(...same.map(x=>x.subOrder||0))+1 : 0;
+}
+function applyPriorityChange(t, newPrio){
+  if(!t || t.priority===newPrio) return t;
+  const n={...t, priority:newPrio, subOrder:groupTailOrder(newPrio, t.id)};
+  if(newPrio==='A2' && n.end && n.end<=TODAY_STR) n.promotedFor=n.end;   // 직접 내린 건 그대로 둠
+  return n;
+}
 function taskDragStart(e,tid,prio){
   dragTaskId=tid; dragTaskPrio=prio;
   e.currentTarget.classList.add('dragging');
   e.dataTransfer.effectAllowed='move';
 }
 function taskDragOver(e, targetPrio){
-  if(targetPrio!==dragTaskPrio){ e.dataTransfer.dropEffect='none'; return; }
+  if(!dragTaskId) return;
   e.preventDefault(); e.dataTransfer.dropEffect='move';
   e.currentTarget.classList.add('drag-over');
 }
-function taskDrop(e, targetTid, targetPrio){
-  e.preventDefault();
-  e.currentTarget.classList.remove('drag-over');
-  if(!dragTaskId || dragTaskId===targetTid || dragTaskPrio!==targetPrio) return;
-  // 같은 priority 그룹 내에서 subOrder 재정렬
-  const samePrio=tasks.filter(t=>(t.priority||'')===(dragTaskPrio||'') && !t.parked).sort((a,b)=>(a.subOrder||0)-(b.subOrder||0));
-  const fromIdx=samePrio.findIndex(t=>t.id===dragTaskId);
-  const toIdx=samePrio.findIndex(t=>t.id===targetTid);
-  if(fromIdx<0||toIdx<0) return;
-  const [moved]=samePrio.splice(fromIdx,1);
-  samePrio.splice(toIdx,0,moved);
-  // subOrder 재부여 — 이 값을 할 일/홈/타임라인이 공통으로 참조하므로 한 곳에서 바꾸면 셋 다 같은 순서로 보임
-  samePrio.forEach((t,i)=>{ const idx=tasks.findIndex(x=>x.id===t.id); if(idx>=0) tasks[idx].subOrder=i; });
+function rerenderAfterTaskDrag(){
   saveData();
-  // 현재 보고 있는 화면에 맞게 다시 그림 (할 일 탭이면 리스트+타임라인 모두, 홈이면 홈만)
   if(currentTab==='today'){
     const ft=filteredTasks();
     renderTaskList(ft);
@@ -5165,6 +5173,45 @@ function taskDrop(e, targetTid, targetPrio){
   } else if(currentTab==='home'){
     renderHome();
   }
+}
+function taskDrop(e, targetTid, targetPrio){
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if(!dragTaskId || dragTaskId===targetTid) return;
+  const dragged=tasks.find(t=>t.id===dragTaskId); if(!dragged) return;
+  const moved=targetPrio && (dragged.priority||'')!==targetPrio;
+  if(moved){   // 다른 그룹 위에 놓으면 그 그룹으로 옮긴다
+    tasks=tasks.map(t=>t.id===dragTaskId?applyPriorityChange(t,targetPrio):t);
+  }
+  const prio=moved?targetPrio:(dragged.priority||'');
+  // 같은 priority 그룹 내에서 subOrder 재정렬 (놓은 업무 자리로)
+  const samePrio=tasks.filter(t=>(t.priority||'')===prio && !t.parked).sort((a,b)=>(a.subOrder||0)-(b.subOrder||0));
+  const fromIdx=samePrio.findIndex(t=>t.id===dragTaskId);
+  const toIdx=samePrio.findIndex(t=>t.id===targetTid);
+  if(fromIdx>=0&&toIdx>=0){
+    const [m]=samePrio.splice(fromIdx,1);
+    samePrio.splice(toIdx,0,m);
+    // subOrder 재부여 — 이 값을 할 일/홈/타임라인이 공통으로 참조하므로 한 곳에서 바꾸면 셋 다 같은 순서로 보임
+    samePrio.forEach((t,i)=>{ const idx=tasks.findIndex(x=>x.id===t.id); if(idx>=0) tasks[idx].subOrder=i; });
+  }
+  dragTaskId=null;
+  rerenderAfterTaskDrag();
+  if(moved) showMiniToast(`↕️ <b>${escAttr(prioGroupLabel(targetPrio))}</b>(으)로 옮겼어요`,1800);
+}
+/* 그룹 제목 위에 놓으면 그 그룹의 맨 밑으로 */
+function groupLabelDrop(e, targetPrio){
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if(!dragTaskId) return;
+  const dragged=tasks.find(t=>t.id===dragTaskId); if(!dragged) return;
+  if((dragged.priority||'')===targetPrio){
+    tasks=tasks.map(t=>t.id===dragTaskId?{...t,subOrder:groupTailOrder(targetPrio,t.id)}:t);
+  } else {
+    tasks=tasks.map(t=>t.id===dragTaskId?applyPriorityChange(t,targetPrio):t);
+    showMiniToast(`↕️ <b>${escAttr(prioGroupLabel(targetPrio))}</b>(으)로 옮겼어요`,1800);
+  }
+  dragTaskId=null;
+  rerenderAfterTaskDrag();
 }
 
 /* ══════════════════════════════════════
@@ -6254,7 +6301,7 @@ function closePriorityPicker(){
 }
 function setTaskPriorityFromPicker(id, newPriority){
   closePriorityPicker();
-  tasks=tasks.map(t=>t.id===id?{...t,priority:newPriority}:t);
+  tasks=tasks.map(t=>t.id===id?applyPriorityChange(t,newPriority):t);   // 다른 그룹으로 가면 맨 밑에
   saveAndRender();
 }
 
@@ -7054,15 +7101,16 @@ function renderHome(){
           <span style="flex:1;cursor:pointer;" title="눌러서 내용 보기" onclick="openMeetingDetail(${l.id})">${l.task||'(제목 없음)'}</span>
           <button class="btn-sm" style="background:var(--bg);color:var(--muted);flex-shrink:0;padding:2px 8px;" onclick="openEditWeekly(${l.id})">수정</button>
           <button class="btn-sm" title="미팅을 취소합니다. 시간 집계에서 빠지고 되돌릴 수 있습니다" style="background:var(--c-fef3c7);color:var(--x-b45309);flex-shrink:0;padding:2px 8px;" onclick="cancelMeeting(${l.id})">취소</button>
+          <button class="btn-sm" title="개인 일정이거나 참석 안 하는 미팅 — 미팅 시간에서 뺍니다" style="background:var(--c-f1f5f9);color:var(--x-475569);flex-shrink:0;padding:2px 8px;" onclick="showMeetingExcludePicker(event, ${l.id})">제외</button>
           <button class="btn-sm" style="background:var(--c-fee2e2);color:var(--warn);flex-shrink:0;padding:2px 8px;" onclick="deleteWeekly(${l.id})">삭제</button>
         </div>`;
       }).join('')+selCancelled.map(l=>{
         const p=proj(l.project);
         return `<div style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--border);font-size:0.84rem;color:var(--muted);">
-          <span style="background:#94a3b8;color:white;font-size:0.68rem;font-weight:800;padding:1px 6px;border-radius:4px;flex-shrink:0;">취소됨</span>
+          <span style="background:${l.excludeReason?'#64748b':'#94a3b8'};color:white;font-size:0.68rem;font-weight:800;padding:1px 6px;border-radius:4px;flex-shrink:0;">${l.excludeReason?MEETING_EXCLUDE_LABEL[l.excludeReason]:'취소됨'}</span>${l.excludeReason&&meetingExcludeRuleFor(l.task)?'<span title="같은 제목은 자동으로 제외됩니다" style="font-size:0.68rem;flex-shrink:0;">🔁 자동</span>':''}
           <span style="font-weight:600;font-size:0.72rem;flex-shrink:0;text-decoration:line-through;">${l.hours}h · ${p?p.name:''}</span>
           <span style="flex:1;text-decoration:line-through;cursor:pointer;" title="눌러서 내용 보기" onclick="openMeetingDetail(${l.id})">${l.task||'(제목 없음)'}</span>
-          <button class="btn-sm" title="취소를 되돌려 미팅과 시간을 다시 넣습니다" style="background:var(--bg);color:var(--primary-text);flex-shrink:0;padding:2px 8px;" onclick="restoreCancelledMeeting(${l.id})">되돌리기</button>
+          <button class="btn-sm" title="되돌려서 미팅과 시간을 다시 넣습니다 (자동 제외도 해제)" style="background:var(--bg);color:var(--primary-text);flex-shrink:0;padding:2px 8px;" onclick="restoreCancelledMeeting(${l.id})">되돌리기</button>
         </div>`;
       }).join('');
     }
@@ -7123,7 +7171,7 @@ function renderHome(){
   const stEl=document.getElementById('home-suggest-tasks');
   if(stEl){
     if(!suggestTasks.length){
-      stEl.innerHTML='<div style="color:var(--muted);font-size:0.85rem;padding:10px 0;text-align:center;">지금 진행 가능한 「이번 주 안에 할 일」이 없습니다.</div>';
+      stEl.innerHTML='<div style="color:var(--muted);font-size:0.85rem;padding:10px 0;text-align:center;">지금 진행 가능한 「일주일 안에 할 일」이 없습니다.</div>';
     } else {
       stEl.innerHTML=suggestTasks.map(t=>{
         const p=proj(t.project);
@@ -7736,8 +7784,20 @@ function toggleProjHours(pid){
 /* ══════════════════════════════════════
    🏷️ 버전 기록 — 새 버전을 낼 때 맨 위에 한 줄씩 추가
 ══════════════════════════════════════ */
-const APP_VERSION='V1.29';
+const APP_VERSION='V1.32';
 const APP_CHANGELOG=[
+  {v:'V1.32', date:'2026-11-20', items:[
+    '미팅 목록에 "제외" 버튼 — 개인 일정 / 참석 안 함은 미팅 시간·건수·레포트에서 빠짐 (되돌리기 가능)',
+    '"같은 제목은 항상 빼기"를 켜면 Outlook·반복 미팅으로 들어와도 자동 제외',
+  ]},
+  {v:'V1.31', date:'2026-11-20', items:[
+    '다른 그룹으로 옮겨진 업무(일주일 → 오늘 자동 이동 포함)는 그 그룹 맨 밑에 붙음',
+    '드래그로 다른 그룹으로 옮기기 — 업무 위에 놓으면 그 자리, 그룹 제목 위에 놓으면 맨 밑',
+  ]},
+  {v:'V1.30', date:'2026-11-20', items:[
+    '"이번 주 안에 할 일" → "일주일 안에 할 일" (배지: 일주일)',
+    '맨 아래에 "챙겨야 할 일" 추가 — 내 할 일은 끝났고 확인·챙기기만 남은 업무 (배지: 챙기기, 타임라인엔 안 나옴)',
+  ]},
   {v:'V1.29', date:'2026-11-19', items:[
     '플래그 메일 팝업에 "✅ 이미 완료" 버튼 — 마무리 내용·완료일·걸린 시간 적고 바로 완료 처리 (주간 기록에도 남음)',
   ]},
@@ -8116,6 +8176,8 @@ function autoAddRecurringToday(){
     const log={id:Date.now()+Math.random(), type:'meeting', project:r.project, projName:r.projName||'',
       task:r.title, date, hours:r.hours, memo:r.memo||''};
     if(r.startTime && r.endTime){ log.startTime=r.startTime; log.endTime=r.endTime; }
+    const rule=meetingExcludeRuleFor(r.title);
+    if(rule){ log.excludeReason=rule.reason; cancelledMeetings.push(log); return; }   // 항상 제외하는 제목
     weeklyLogs.push(log);
     added++;
   });
@@ -9578,7 +9640,7 @@ function generateReport(){
     if(t.done || t.parked) return false; // 보류함(일정 미정)은 기간 집계에서 제외
     return t.start<=endKey && t.end>=startKey; // 기간과 겹치는 업무
   });
-  const byPrioCount={A:0,B:0,C:0};
+  const byPrioCount={A:0,B:0,C:0,D:0};
   activeTasks.forEach(t=>{ const tier=(t.priority||'C2')[0]; if(byPrioCount[tier]!=null) byPrioCount[tier]++; });
   const overdueTasks = activeTasks.filter(t=>isOverdue(t));
   const atRiskTasks = activeTasks.filter(t=>!isOverdue(t) && getHealthScore(t)<-20);
@@ -9914,8 +9976,9 @@ function generateReport(){
       </div>
       ${isPartialPeriod||hasFutureExcluded?`<div style="font-size:0.74rem;color:var(--x-92400e);background:var(--c-fef3c7);border-radius:6px;padding:4px 9px;display:inline-block;margin-top:2px;">ℹ️ 기준 시간은 ${isPartialPeriod?`실제 기록이 시작된 ${fmt(earliestLogDate)}부터 `:''}${hasFutureExcluded?'오늘까지로':'기간 종료일까지로'} 계산했습니다${isPartialPeriod?' (기록 이전 기간은 제외)':''}${hasFutureExcluded?' (아직 지나지 않은 미래 날짜는 제외)':''}.</div>`:''}
       <div style="display:flex;gap:18px;flex-wrap:wrap;font-size:0.82rem;margin-top:8px;">
-        <div><strong style="color:#ef4444;">${byPrioCount.A}</strong> <span style="color:var(--x-64748b);">오늘·이번 주</span></div>
+        <div><strong style="color:#ef4444;">${byPrioCount.A}</strong> <span style="color:var(--x-64748b);">오늘·일주일</span></div>
         <div><strong style="color:#10b981;">${byPrioCount.C}</strong> <span style="color:var(--x-64748b);">조만간</span></div>
+        <div><strong style="color:#64748b;">${byPrioCount.D}</strong> <span style="color:var(--x-64748b);">챙기기</span></div>
         <div><strong style="color:var(--x-dc2626);">${overdueTasks.length}</strong> <span style="color:var(--x-64748b);">지연</span></div>
         <div><strong style="color:#10b981;">${doneTasks.length}</strong> <span style="color:var(--x-64748b);">완료(이 기간)</span></div>
       </div>
@@ -10174,12 +10237,12 @@ function autoPromoteDueTasks(){
     if(!t||t.done||t.parked||!t.end) return;
     const p=REMOVED_PRIORITY[t.priority]||t.priority;
     if(p!=='A2' || t.end>TODAY_STR || t.promotedFor===t.end) return;
-    t.priority='A1'; t.promotedFor=t.end; moved.push(t);
+    t.subOrder=groupTailOrder('A1', t.id); t.priority='A1'; t.promotedFor=t.end; moved.push(t);   // 오늘 할 일 맨 밑으로
   });
   if(moved.length){
     scheduleSave();
     const names=moved.slice(0,3).map(t=>escAttr(t.text)).join(', ')+(moved.length>3?` 외 ${moved.length-3}개`:'');
-    setTimeout(()=>{ try{ showMiniToast(`📌 마감이 된 '이번 주' 업무 ${moved.length}개를 <b>오늘 할 일</b>로 옮겼어요<br><span style="opacity:.8;font-size:.9em">${names}</span>`,6000); }catch(_){} },300);
+    setTimeout(()=>{ try{ showMiniToast(`📌 마감이 된 '일주일' 업무 ${moved.length}개를 <b>오늘 할 일</b>로 옮겼어요<br><span style="opacity:.8;font-size:.9em">${names}</span>`,6000); }catch(_){} },300);
   }
   return moved.length;
 }
@@ -10981,6 +11044,7 @@ function refreshAfterMeetingChange(){
   saveData();
   if(document.getElementById('weekly-log')) renderWeekly();
   refreshDateViews();
+  try{ renderSideSchedule(); }catch(_){}   // 왼쪽 '오늘 일정'의 미팅 건수·시간도 바로 반영
 }
 function cancelMeeting(id){
   const l=weeklyLogs.find(x=>x.id===id); if(!l) return;
@@ -10993,7 +11057,52 @@ function restoreCancelledMeeting(id){
   weeklyLogs.push(l);
   cancelledMeetings=cancelledMeetings.filter(x=>x.id!==id);
   if(l.outlookId && outlookSync.seen[l.outlookId]) outlookSync.seen[l.outlookId].keep=true;
+  // 제외 규칙으로 빠졌던 미팅이면 규칙도 같이 해제 (다음부터는 다시 미팅 시간에 들어감)
+  if(l.excludeReason){
+    const had=meetingExcludeRules.some(r=>r.title===(l.task||''));
+    meetingExcludeRules=meetingExcludeRules.filter(r=>r.title!==(l.task||''));
+    delete l.excludeReason;
+    if(had) showMiniToast('↩️ 되돌렸어요 · 이 제목의 <b>자동 제외</b>도 해제했어요',2600);
+  }
   refreshAfterMeetingChange();
+}
+/* ── 미팅 시간에서 제외 (개인 일정 / 참석 안 함) — V1.32 ──────────
+   취소와 같은 방식으로 weeklyLogs에서 빼 두므로 근무시간·미팅 건수·레포트에 안 들어간다.
+   "같은 제목은 항상 제외"를 켜면 Outlook·반복 미팅으로 다시 들어와도 자동으로 제외 */
+const MEETING_EXCLUDE_LABEL={personal:'🙋 개인 일정',skip:'🙅 참석 안 함'};
+function meetingExcludeRuleFor(title){ return meetingExcludeRules.find(r=>r.title===String(title||'').trim()); }
+function excludeMeeting(id, reason, always){
+  const l=weeklyLogs.find(x=>x.id===id); if(!l) return;
+  const title=String(l.task||'').trim();
+  const targets=always ? weeklyLogs.filter(x=>x.type==='meeting'&&String(x.task||'').trim()===title&&x.date>=l.date) : [l];
+  targets.forEach(x=>{ x.excludeReason=reason; cancelledMeetings.push(x); });
+  weeklyLogs=weeklyLogs.filter(x=>!targets.includes(x));
+  if(always && title){
+    meetingExcludeRules=meetingExcludeRules.filter(r=>r.title!==title);
+    meetingExcludeRules.push({title, reason});
+  }
+  refreshAfterMeetingChange();
+  showMiniToast(`${MEETING_EXCLUDE_LABEL[reason]} — 미팅 시간에서 뺐어요${always?' · 같은 제목은 앞으로도 자동 제외':''}`,2600);
+}
+function showMeetingExcludePicker(evt, id){
+  evt.stopPropagation();
+  document.getElementById('mx-pop')?.remove();
+  const l=weeklyLogs.find(x=>x.id===id); if(!l) return;
+  const r=evt.currentTarget.getBoundingClientRect();
+  const pop=document.createElement('div'); pop.id='mx-pop';
+  pop.style.cssText=`position:fixed;top:${r.bottom+4}px;left:${Math.max(8,r.right-250)}px;width:250px;z-index:10050;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 26px rgba(0,0,0,.18);padding:10px;font-size:0.8rem;`;
+  pop.innerHTML=`<div style="font-weight:800;margin-bottom:6px;">미팅 시간에서 빼기</div>
+    <button type="button" class="btn-sm mx-opt" data-r="personal">🙋 개인 일정</button>
+    <button type="button" class="btn-sm mx-opt" data-r="skip">🙅 참석 안 함</button>
+    <label style="display:flex;gap:6px;align-items:flex-start;margin-top:8px;color:var(--muted);font-size:0.74rem;cursor:pointer;">
+      <input type="checkbox" id="mx-always" style="margin-top:2px;"> 같은 제목 미팅은 앞으로도 항상 빼기 (Outlook·반복 미팅 포함)</label>`;
+  document.body.appendChild(pop);
+  const pr=pop.getBoundingClientRect();
+  if(pr.bottom>window.innerHeight) pop.style.top=`${r.top-pr.height-4}px`;
+  pop.querySelectorAll('.mx-opt').forEach(b=>b.onclick=()=>{ const al=pop.querySelector('#mx-always').checked; pop.remove(); excludeMeeting(id,b.dataset.r,al); });
+  const close=e=>{ if(!pop.contains(e.target)){ pop.remove(); document.removeEventListener('mousedown',close,true); } };
+  setTimeout(()=>document.addEventListener('mousedown',close,true),0);
+  pop.addEventListener('keydown',e=>{ if(e.key==='Escape') pop.remove(); });
 }
 /* ══════════════════════════════════════
    Outlook 미팅 가져오기
@@ -11062,7 +11171,7 @@ function showMeetingDetail(l){
   const row=(k,v)=>{ if(!v) return; const d=document.createElement('div'); const b=document.createElement('b'); b.textContent=k+' '; d.append(b,String(v)); meta.append(d); };
   row('일시',`${l.date}${l.startTime?` ${l.startTime}~${l.endTime||''}`:''} (${l.hours}h)`);
   if(det){ row('장소',det.location); row('주최자',det.organizer); row('참석자',fmtPeople(det.attendees)); row('선택 참석',fmtPeople(det.optional)); }
-  if(cancelledMeetings.includes(l)) row('상태','취소됨');
+  if(cancelledMeetings.includes(l)) row('상태',l.excludeReason?`${MEETING_EXCLUDE_LABEL[l.excludeReason]} — 미팅 시간에서 제외`:'취소됨');
   const lk=document.getElementById('md-links'); lk.textContent='';
   const addLink=(href,label)=>{ const a=document.createElement('a'); a.href=href; a.target='_blank'; a.rel='noopener noreferrer'; a.textContent=label; a.style.cssText='color:var(--primary-text);border:1px solid var(--border);border-radius:6px;padding:2px 8px;text-decoration:none;'; lk.append(a); };
   if(det&&/^https:\/\//i.test(det.webLink)) addLink(det.webLink,'Outlook에서 열기');
@@ -11114,7 +11223,10 @@ function applyOutlookEvents(raw){
     const same=[...weeklyLogs,...cancelledMeetings].find(l=>l.type==='meeting'&&l.date===e.date&&!l.outlookId&&((l.task||'')===e.title||(l.startTime&&l.startTime===e.startTime)));
     seen[e.id]=entry;
     if(same){ same.outlookId=e.id; if(fillTime(same,e)) updated++; return; }
-    weeklyLogs.push({id:Date.now()+Math.random(),type:'meeting',project:'__meeting__',projName:'미팅',task:e.title,date:e.date,hours:e.hours,memo:'',startTime:e.startTime,endTime:e.endTime,outlookId:e.id});
+    const nl={id:Date.now()+Math.random(),type:'meeting',project:'__meeting__',projName:'미팅',task:e.title,date:e.date,hours:e.hours,memo:'',startTime:e.startTime,endTime:e.endTime,outlookId:e.id};
+    const rule=meetingExcludeRuleFor(e.title);
+    if(rule){ nl.excludeReason=rule.reason; cancelledMeetings.push(nl); return; }   // 항상 제외하는 제목
+    weeklyLogs.push(nl);
     added++;
   });
   // 캘린더에 미리 보여줄 예정 일정
