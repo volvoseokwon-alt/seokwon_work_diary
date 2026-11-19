@@ -462,6 +462,13 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 .ft-days button.on{background:var(--primary);color:#fff;border-color:var(--primary);}
 #ft-proj{width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:7px;background:var(--card);color:var(--text);font-size:0.82rem;}
 .ft-actions{display:flex;gap:7px;align-items:center;margin-top:16px;flex-wrap:wrap;}
+.ft-done{margin-top:14px;padding:12px 14px;border:1.5px solid #10b981;border-radius:10px;background:rgba(16,185,129,.07);}
+.ft-done textarea{width:100%;box-sizing:border-box;margin-top:6px;border:1px solid var(--border);border-radius:8px;padding:8px 10px;font:inherit;font-size:0.82rem;background:var(--card);color:var(--text);resize:vertical;}
+.ft-done-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:0.78rem;color:var(--muted);}
+.ft-done-row input{border:1px solid var(--border);border-radius:6px;padding:4px 6px;font:inherit;font-size:0.8rem;background:var(--card);color:var(--text);}
+.ft-done-row input[type=number]{width:58px;}
+.ft-done-btn.on{background:#10b981;color:#fff;border-color:#10b981;}
+.ft-done-save{background:#10b981 !important;color:#fff !important;font-weight:800;}
 .ft-actions .ft-ok{background:var(--primary);color:#fff;font-weight:800;padding:7px 16px;}
 .act-chip{flex-shrink:0;max-width:190px;display:inline-flex;align-items:center;gap:4px;border:1px solid #f9731666;background:#f973161a;color:var(--x-c2410c,#c2410c);border-radius:5px;padding:1px 7px;font-size:0.72rem;font-weight:700;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.6;}
 .act-chip:hover{background:#f9731630;}
@@ -847,7 +854,7 @@ if ('serviceWorker' in navigator) {
     <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAABS3GwHAAAHcklEQVR4nO3d+1ITSRjG4W+oXAWQBDkkKuzu/Wh5wAvzWKXXs7tAVkCrlJLbcP/AWBCSyXRPH77u7/dUpSy1mDST9+3uzBhsRJnNzc2fuceAeK6vr5vcY7gt62AIO0TyliL5ExN6tEldhmRPRvDhIlURoj8JwUcfsYsQ7eAEHyHFKkLwgxJ8xBS6CBshD0b4EVvojAVpE8FHDiFWg94H2NzcIvzI5vr6R68M99oCEX7k1jeD3u3Z2iL80OPHD7+VwGsFIPzQxjeTzgUg/NDKJ5tOBSD80M41o50LQPhRCpesdioA4UdpumZ2bQEIP0rVJbuD9YdR9QEeIKjWFWBra5vZH0Vbl+GVBSD8qEVblldugRp2PjBg6Qqwvc3sj7qsynTQzwMApblXAGZ/1GpZtlkBYNqdAjD7o3aLGV+4CsSlH9jyewXY3h4y+8OE21nnPQBMowAwrRERGQ7Z/sCeq6urhhUgs++frnIPwTQKANMoQEbz2Z9VIJ9f9wG4/p8fr0EOG8PhiDfAGXz/9D33EMwbDkc/2QIpQSHyoAAZEHY9KIAiFCM9CpAYIdelGY14Exzbt49+oR8/GQUeCRZRgIh8g7+IIsRDAQILFfpVKENYzWg0pgCRfPv4Lchxxk/GQY6D+yhAAr5FIPjxUYDE1pWB0KfFZVCYRgESa5vhmf3TowAwjQJkwEyvx4CfAq3DztMxP5E7A1aATHaesgpoMOCTSFrwOuTACpDRztOdO78iPQoA05rxeIc7wTCLFQCmUQCYRgFgGgWAadwJhmncCINpbIFgGgWAaRQAplEAmEYBYBoFgGkUAKZxHwCmcScYplW5Bfr64WvuIVSpxvM6yD2AkGp8gbSZn+PdZ7uZRxJG8+DBbtGfCGsLfS0vkga1nudiVwBmez1KXhWKWgF8Ql/ii6JNzee9yjfBQFdFFcBnVmGr1E/Ns7+ImRthFr5HTco530WtACIiu8/2nL/m64cvEUZSP5/z5vP65GTmTrCV7zO30s5zcSuAiMjec/dZ5st7VgEXPufL53XJrcgCAKEUWwBWgXiszP4iBRcACKHoApQ669Sm5Neh6AL4YBvUztr52bi5aVHuY+/5vse3nX/ceh9ubs5/7jH7P8ytACIiX95f5h6CShbPi8kCAHPN3t5+Mf8cus3lO/fZa/+Fz/YpjMXx5hyLSHnnLxRWgAyWhc0ngOivmgL4zEY5QrfuOTWOaZkaZn+RigpQgq7hZzVIp6oCaF4FXJ9H67hE6pn9Rcx8IGYdreeAccVW1QogIrL/4sD5ay7fXUQYSf/jaxyXz/nVrLoCaNM3xLFLYF2VBdAyS4UKr5YSaDmvIVVZAB+hQ2bteKWqtgA1zlY51Xo+N5pGpNaHq8t3F0GeN9bsmnN8uV/LWI9qV4BcLt7G3VrEPr41VRfg4KX7st0nYKnCmXqMPuexFMV/IGb9w4f78/iG8uDlxOvrbp5P7/ko5VH1CiDiF7CLt+cRRnLffGy+JXDl832lGlsu1RcghVSF0fK8NTFRgJirgG8IF8fkvxWKN87aZ38RIwWIJVT41/15rHHAUAFCrwKhw9/171cJPVYLs7+IoQJo0DVUVsKnQdV3ghcfk2P3YC07ju/s7zJWHxdvz4Mca3I8yf5apXqwAqxx/ua89fdduZbPp6wi4cZrhYEbYXcfk+Opx2m6+Vr/8E8TjnUe+vlx0oy11EdzcDCt4ucCuTh/8znZc/mG+LbSxlsStkARhQqTtVCmZLIABGo5i+fFZAFSCB0mi+FMwWwBYgYq1rFLHLN2ZgsQS+wgWQ1qLKYLUOo2pdRxa2TmP8pOodRzWeq4Q2gmk4fm7gMs+vz6v97HmL56GGAkbkodtyamt0Ch5AqR9fCGQAGkX5Byh7DksWtAAXrQEiAt4ygRBfjFWoisfb+rUABP2gKkbTyloAC3rAvR/O+1hq3LuKavHqodfw4UYEHXEmjVNj7tY8+hmUwemb8PsMzn17M7v5++epRpJH5KH38qzXRKAWAXWyCYRgFgGgWAaRQAplEAmEYBYBoFgGkDn58eBtSCFQCm8ZlgmMYKANMoAEyjADCNAsA0CgDTKABM40YYTGMFgGkUAKZxJximsQLANAoA0ygATNuYzU55FwCTZrPThhUApg1ufmERgE2sADCNAsC0DRGR2eyEPRBMmWd+MP8D7gjDIrZAMO13Ac7O2AbBhttZZwWAafdm/ceP/+B/jEG1zs7+vZN5VgCYdq8Aiw0BarEs26wAMG1pAVgFUJtVmWYFgGmtM/3hIVeEUL7T09U7mtYVoO0LgRKsyzBbIJjWaYY/PPyTrRCKc3r6z9p8d1oBuhwI0KRrZjtvgSgBSuGSVaf3AJQA2rlm1PlNMCWAVj7Z9LoKRAmgjW8mvS+DUgJo0SeLvUN8dMQlUuRzctJvIu59I6zvAABfIbIXNLxHR3+xGiC6k5O/g+U26D+FCDkwYJnQGYsWWFYDhBRrco0+Y1ME9BF7V5Fsy0IR4CLVdjr5np0ioE3q95FZ37RSBojkvXii7qoNpaibtiuF/wMLch9B3Hc9fwAAAABJRU5ErkJggg==" alt="Wonder Diary" style="width:32px;height:32px;border-radius:8px;flex-shrink:0;">
     <span style="display:flex;flex-direction:column;line-height:1.1;">
       <span style="font-size:1.05rem;font-weight:800;letter-spacing:0.01em;">Wonder Diary</span>
-      <span class="hdr-sub" style="font-size:0.62rem;font-weight:400;color:rgba(255,255,255,0.65);">developed by seokwon · <span id="app-version-label" onclick="switchTab('version',document.querySelector('.tab-btn[onclick*=&quot;version&quot;]'))" style="cursor:pointer;text-decoration:underline dotted;" title="버전 기록 보기">V1.28</span></span>
+      <span class="hdr-sub" style="font-size:0.62rem;font-weight:400;color:rgba(255,255,255,0.65);">developed by seokwon · <span id="app-version-label" onclick="switchTab('version',document.querySelector('.tab-btn[onclick*=&quot;version&quot;]'))" style="cursor:pointer;text-decoration:underline dotted;" title="버전 기록 보기">V1.29</span></span>
     </span>
   </h1>
   <div style="display:flex;align-items:center;justify-content:center;gap:24px;flex:1;flex-wrap:wrap;min-width:0;">
@@ -7729,8 +7736,11 @@ function toggleProjHours(pid){
 /* ══════════════════════════════════════
    🏷️ 버전 기록 — 새 버전을 낼 때 맨 위에 한 줄씩 추가
 ══════════════════════════════════════ */
-const APP_VERSION='V1.28';
+const APP_VERSION='V1.29';
 const APP_CHANGELOG=[
+  {v:'V1.29', date:'2026-11-19', items:[
+    '플래그 메일 팝업에 "✅ 이미 완료" 버튼 — 마무리 내용·완료일·걸린 시간 적고 바로 완료 처리 (주간 기록에도 남음)',
+  ]},
   {v:'V1.28', date:'2026-11-19', items:[
     '"이번 주" 업무가 마감일(D-Day)이 되면 자동으로 "오늘 할 일"로 이동 (지난 업무 포함, 옮기면 알림)',
     '자동으로 옮긴 업무를 다시 "이번 주"로 내리면 마감일을 바꾸기 전까지 그대로 둠',
@@ -11196,9 +11206,21 @@ function showFlagTriage(force,focusId){
       <div class="ft-sec" style="flex:1;min-width:180px;"><div class="dv-h">프로젝트</div><select id="ft-proj">${projOpts}</select></div>
       <div class="ft-sec"><div class="dv-h">마감</div><div class="ft-days">${[[0,'오늘'],[1,'내일'],[3,'3일 뒤'],[7,'1주 뒤']].map(([d,l])=>`<button type="button" data-days="${d}" class="${d===pick.days?'on':''}">${l}</button>`).join('')}</div></div>
     </div>
+    <div class="ft-done" hidden>
+      <div class="dv-h">📝 어떻게 마무리했나요? <span style="font-weight:500;">(선택)</span></div>
+      <textarea id="ft-done-note" rows="3" placeholder="예: 의견 회신 완료 / 담당자에게 전달 / 자료 첨부해서 답장"></textarea>
+      <div class="ft-done-row">
+        <label>완료일 <input type="date" id="ft-done-date" value="${TODAY_STR}"></label>
+        <label>걸린 시간 <input type="number" id="ft-done-hours" value="0.5" min="0" step="0.5"> h</label>
+        <span style="flex:1"></span>
+        <button type="button" class="btn-sm" data-act="done-cancel">취소</button>
+        <button type="button" class="btn-sm ft-done-save" data-act="done-save">✅ 완료로 저장</button>
+      </div>
+    </div>
     <div class="ft-actions">
       <button type="button" class="btn-sm" data-act="delete" title="할 일이 아니면 휴지통으로">🗑 할 일 아님</button>
       <button type="button" class="btn-sm" data-act="park" title="일정 없이 보류함으로">📥 보류함</button>
+      <button type="button" class="btn-sm ft-done-btn" data-act="done" title="이미 처리한 메일이면 마무리 내용만 적고 완료로">✅ 이미 완료</button>
       <span style="flex:1"></span>
       ${list.length>1?`<button type="button" class="btn-sm" data-act="next">다음 메일 ▶</button>`:''}
       <button type="button" class="btn-sm" data-act="later">⏰ 나중에</button>
@@ -11210,11 +11232,43 @@ function showFlagTriage(force,focusId){
   box.querySelectorAll('[data-prio]').forEach(b=>b.onclick=()=>{ pick.prio=b.dataset.prio; box.querySelectorAll('[data-prio]').forEach(x=>x.classList.toggle('on',x===b)); });
   box.querySelectorAll('[data-days]').forEach(b=>b.onclick=()=>{ pick.days=+b.dataset.days; box.querySelectorAll('[data-days]').forEach(x=>x.classList.toggle('on',x===b)); });
   box.querySelector('#ft-proj').onchange=e=>{ pick.proj=e.target.value; };
+  box.querySelector('#ft-done-note').addEventListener('keydown',e=>{ if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); box.querySelector('[data-act="done-save"]').click(); } });
   const next=()=>{ const l=pendingFlagTasks(); if(l.length) showFlagTriage(true,(l[(l.findIndex(x=>x.id===t.id)+1)%l.length]||l[0]).id); else closeFlagTriage(false); };
   box.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{
     const act=b.dataset.act;
     if(act==='later'){ closeFlagTriage(true); return; }
     if(act==='next'){ next(); return; }
+    if(act==='done'||act==='done-cancel'){
+      const sec=box.querySelector('.ft-done'); sec.hidden=(act==='done-cancel');
+      box.querySelector('.ft-done-btn').classList.toggle('on',!sec.hidden);
+      if(!sec.hidden){ sec.scrollIntoView({block:'nearest'}); setTimeout(()=>box.querySelector('#ft-done-note')?.focus(),30); }
+      return;
+    }
+    if(act==='done-save'){
+      const dateVal=box.querySelector('#ft-done-date').value||TODAY_STR;
+      const note=(box.querySelector('#ft-done-note').value||'').trim().slice(0,2000);
+      const hrs=parseFloat(box.querySelector('#ft-done-hours').value);
+      const recv=(t.flagReceived||'').slice(0,10);
+      let ct=null;
+      tasks=tasks.map(x=>{
+        if(x.id!==t.id) return x;
+        ct={...x, flagPending:false, project:pick.proj, priority:pick.prio, done:true, status:'done',
+            start:(recv&&recv<dateVal)?recv:dateVal, end:dateVal, actualEnd:dateVal};
+        if(note) ct.doneNote=note; else delete ct.doneNote;
+        return ct;
+      });
+      delete flagTriagePick[t.id];
+      if(ct){
+        try{ touchProject(ct.project); }catch(_){}
+        addToHistory(ct, dateVal);
+        setCompletionHours(ct, dateVal, isNaN(hrs)?0:hrs, null);
+      }
+      saveAndRender();
+      showMiniToast('✅ 이미 완료한 메일로 기록했어요'+(note?' (마무리 메모 저장)':''),2400);
+      const l=pendingFlagTasks();
+      if(l.length) showFlagTriage(true,l[0].id); else closeFlagTriage(false);
+      return;
+    }
     if(act==='delete'){ if(!confirm('이 메일은 할 일이 아닌가요? 휴지통으로 보냅니다.')) return; delete flagTriagePick[t.id]; deleteTask(t.id); }
     else if(act==='park'){ tasks=tasks.map(x=>x.id===t.id?{...x,flagPending:false,project:pick.proj,priority:pick.prio}:x); delete flagTriagePick[t.id]; parkTask(t.id); }
     else if(act==='ok'){
