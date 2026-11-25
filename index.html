@@ -513,6 +513,28 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 .ss-mt:hover{background:#a855f744;}
 .ss-mt.past{opacity:.45;}
 .ss-mt.now{background:#ef44441f;border-left-color:#ef4444;}
+/* V1.41 시간 계획 블록 */
+.ss-mt.ss-tb{background:#22c55e2e;border-left-color:#16a34a;cursor:grab;touch-action:none;user-select:none;}
+.ss-mt.ss-tb:hover{background:#22c55e4a;}
+.ss-mt.ss-tb{color:var(--text);}
+.ss-mt.ss-tb b{color:#16a34a;}
+.ss-mt.ss-tb.now{background:#22c55e55;border-left-color:#15803d;}
+.ss-mt.ss-tb.logged{opacity:.5;}
+.ss-mt.ss-tb.moving{opacity:.85;box-shadow:0 2px 8px rgba(0,0,0,.25);z-index:5;cursor:grabbing;}
+.ss-tb-x{position:absolute;top:0;right:1px;border:none;background:transparent;color:var(--muted);font-size:0.75rem;line-height:1;padding:1px 3px;cursor:pointer;display:none;}
+.ss-mt.ss-tb:hover .ss-tb-x{display:block;}
+.ss-tb-x:hover{color:#ef4444;}
+.ss-tb-h{position:absolute;left:0;right:0;bottom:0;height:6px;cursor:ns-resize;}
+.ss-tb-h::after{content:'';position:absolute;left:50%;bottom:1px;width:14px;margin-left:-7px;border-top:2px solid #16a34a88;border-radius:2px;}
+.ss-ghost{position:absolute;border-radius:4px;border:2px dashed #16a34a;background:#22c55e1a;color:#15803d;font-size:0.68rem;font-weight:700;padding:1px 5px;pointer-events:none;box-sizing:border-box;z-index:4;}
+.ss-grid.drop-on{outline:2px dashed #16a34a66;outline-offset:2px;border-radius:6px;}
+.ss-hint{font-size:0.64rem;color:var(--muted);margin:-2px 0 6px;}
+.tb-badge{flex-shrink:0;font-size:0.66rem;font-weight:700;color:#15803d;background:#22c55e22;border-radius:4px;padding:0 4px;margin-right:4px;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.task-item.tb-flash{animation:tbFlash 1.6s ease;}
+@keyframes tbFlash{0%,60%{box-shadow:0 0 0 3px #22c55e;background:#22c55e22;}100%{box-shadow:none;}}
+#tb-prompt{position:fixed;right:18px;bottom:18px;z-index:100003;background:var(--card);color:var(--text);border:1px solid var(--border);border-left:4px solid #16a34a;border-radius:12px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.25);font-size:0.8rem;max-width:340px;}
+#tb-prompt .tbp-t{font-weight:700;margin-bottom:8px;line-height:1.45;}
+#tb-prompt .tbp-b{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;}
 .ss-now{position:absolute;left:30px;right:0;border-top:2px solid #ef4444;z-index:3;pointer-events:none;}
 .ss-now::before{content:'';position:absolute;left:-4px;top:-5px;width:8px;height:8px;border-radius:50%;background:#ef4444;}
 .ss-empty{position:absolute;left:40px;right:0;top:40%;text-align:center;font-size:0.7rem;color:var(--muted);}
@@ -860,7 +882,7 @@ if ('serviceWorker' in navigator) {
     <img src="data:image/png;base64,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" alt="Wonder Diary" style="width:32px;height:32px;border-radius:8px;flex-shrink:0;">
     <span style="display:flex;flex-direction:column;line-height:1.1;">
       <span style="font-size:1.05rem;font-weight:800;letter-spacing:0.01em;">Wonder Diary</span>
-      <span class="hdr-sub" style="font-size:0.62rem;font-weight:400;color:rgba(255,255,255,0.65);">developed by seokwon · <span id="app-version-label" onclick="switchTab('version',document.querySelector('.tab-btn[onclick*=&quot;version&quot;]'))" style="cursor:pointer;text-decoration:underline dotted;" title="버전 기록 보기">V1.39</span></span>
+      <span class="hdr-sub" style="font-size:0.62rem;font-weight:400;color:rgba(255,255,255,0.65);">developed by seokwon · <span id="app-version-label" onclick="switchTab('version',document.querySelector('.tab-btn[onclick*=&quot;version&quot;]'))" style="cursor:pointer;text-decoration:underline dotted;" title="버전 기록 보기">V1.41</span></span>
     </span>
   </h1>
   <div style="display:flex;align-items:center;justify-content:center;gap:24px;flex:1;flex-wrap:wrap;min-width:0;">
@@ -1843,7 +1865,7 @@ let _saveTimer=null, _saveInFlight=false, _savePending=false;
 function buildPayload(){
   const raw = {
     projects, tasks, weeklyLogs, trash, completedProjects,
-    repeatTasks, recurringMeetings, cancelledMeetings, meetingExcludeRules, outlookSync, calMemos, taskTags, quickLinks, linkGroupsExtra, linkGroupStyle, customHolidays, dailyPlans, dailyMemos, stickyNotes, stickyLinks,
+    repeatTasks, recurringMeetings, cancelledMeetings, meetingExcludeRules, timeBlocks, outlookSync, calMemos, taskTags, quickLinks, linkGroupsExtra, linkGroupStyle, customHolidays, dailyPlans, dailyMemos, stickyNotes, stickyLinks,
     sidebarNote: document.getElementById('sidebar-note')?.value || '',
     updatedAt: new Date().toISOString()
   };
@@ -1967,6 +1989,7 @@ function applyData(data){
   recurringMeetings = data.recurringMeetings || recurringMeetings;
   cancelledMeetings = data.cancelledMeetings || cancelledMeetings;
   meetingExcludeRules = data.meetingExcludeRules || meetingExcludeRules;
+  timeBlocks        = Array.isArray(data.timeBlocks) ? data.timeBlocks : timeBlocks;
   outlookSync       = data.outlookSync       || outlookSync;
   migrateRemovedPriorities();
   calMemos          = data.calMemos          || calMemos;
@@ -2240,7 +2263,7 @@ async function restoreOutlookFolder(){
 async function allowOutlookFolder(){
   if(!outlookDirHandle) return;
   try{ outlookDirNeedsPerm=(await outlookDirHandle.requestPermission({mode:'read'}))!=='granted'; }catch(_){}
-  if(!outlookDirNeedsPerm){ outlookSyncAt=0; outlookFileStamp=''; syncOutlookMeetings(); }
+  if(!outlookDirNeedsPerm){ outlookSyncAt=0; outlookFileStamp=''; syncOutlookMeetings(true); }
   else setOutlookStatus('☁️ Outlook 폴더 읽기 권한이 필요합니다');
 }
 async function pickOutlookFolder(){
@@ -2248,7 +2271,7 @@ async function pickOutlookFolder(){
     const h=await window.showDirectoryPicker({id:'workdiary-outlook',mode:'read'});
     outlookDirHandle=h; outlookDirNeedsPerm=false;
     await saveDirHandleToDB(h,'outlookDir');
-    outlookSyncAt=0; outlookFileStamp=''; syncOutlookMeetings(); updateBackupFolderUI(!!dataDirHandle);
+    outlookSyncAt=0; outlookFileStamp=''; syncOutlookMeetings(true); updateBackupFolderUI(!!dataDirHandle);
   }catch(e){ if(e.name!=='AbortError') console.warn(e); }
 }
 async function copyDirFiles(fromDir,toDir,onEach){
@@ -2332,8 +2355,11 @@ const CLOUD_BACKUP_DIR='로컬데이터_백업';
 let _cloudBackupDay='';
 async function cloudDailyBackup(){
   if(!outlookDirHandle||!dataDirHandle||SAFE_MODE) return;
+  if(!odAllowed(false)) return;                       // V1.40
   const d=new Date(), ds=`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
   if(_cloudBackupDay===ds) return;
+  odBegin('하루 백업');
+  let hung=false;
   try{
     if((await outlookDirHandle.queryPermission({mode:'readwrite'}))!=='granted') return;   // 쓰기 권한이 없으면 건너뜀 (묻지 않음)
     const dir=await outlookDirHandle.getDirectoryHandle(CLOUD_BACKUP_DIR,{create:true});
@@ -2342,6 +2368,7 @@ async function cloudDailyBackup(){
     const w=await fh.createWritable(); await w.write(JSON.stringify(buildPayload())); await w.close();
     _cloudBackupDay=ds;
   }catch(e){ console.warn('OneDrive 하루 백업 실패:',e); }
+  finally{ odEnd(hung); }
 }
 /* ── 매일 아침 Teams 브리핑용 파일 (V1.38) ──────────────────────────
    OneDrive WorkDiary/brief/brief-YYYY-MM-DD.html 을 오늘부터 3일치 미리 써 둔다.
@@ -2370,6 +2397,9 @@ function briefHTML(dk){
   const proj=t=>{ const pj=projects.find(x=>x.id===t.project); return pj?` <span style="color:#6b7280">[${esc(pj.name)}]</span>`:''; };
   let h=`<b>📅 ${dd.getMonth()+1}/${dd.getDate()}(${wd}) 오늘의 업무 브리핑</b><br><br>`;
   h+=`<b>🗣️ 미팅 ${meets.length}건</b><br>`+(meets.length?meets.map(m=>`· ${esc(m.startTime)}${m.endTime?'~'+esc(m.endTime):''} ${esc(m.title||m.task)}`).join('<br>'):'· 없음')+'<br><br>';
+  const tbs=(timeBlocks||[]).filter(b=>b.date===dk&&!b.dismissed).map(b=>({b,t:tasks.find(x=>String(x.id)===String(b.taskId))})).filter(x=>x.t).sort((a,b)=>a.b.s-b.b.s);
+  if(tbs.length){ const hm=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+    h+=`<b>🕘 시간 계획 ${tbs.length}건</b><br>`+tbs.map(x=>`· ${hm(x.b.s)}~${hm(x.b.e)} ${esc(x.t.text)}${proj(x.t)}`).join('<br>')+'<br><br>'; }
   h+=`<b>✅ 오늘 할 일 ${list.length}건</b><br>`+(list.length?list.map(t=>`· ${esc(t.text)}${proj(t)}${dday(t)}${t.action?`<br>&nbsp;&nbsp;↳ ${esc(t.action)}`:''}`).join('<br>'):'· 없음');
   if(week) h+=`<br><br>📌 일주일 안에 할 일 ${week}건 대기 중`;
   h+=`<br><br><span style="color:#9ca3af">Wonder Diary · ${isToday?'':'미리 만든 '}브리핑 (작성 ${new Date().toTimeString().slice(0,5)})</span>`;
@@ -2377,7 +2407,10 @@ function briefHTML(dk){
 }
 async function writeBriefFiles(force){
   if(!briefOn()||!outlookDirHandle||SAFE_MODE) return;
+  if(!odAllowed(force===true)){ scheduleBrief(); return; }   // V1.40
   if(!force && Date.now()-_briefAt<5*60000){ scheduleBrief(); return; }
+  let hung=false;
+  odBegin('브리핑 파일');
   try{
     if((await withTimeout(outlookDirHandle.queryPermission({mode:'readwrite'}),5000,'OneDrive 쓰기 권한 확인'))!=='granted') return;
     const dir=await withTimeout(outlookDirHandle.getDirectoryHandle(BRIEF_DIR,{create:true}),8000,'브리핑 폴더 열기');
@@ -2394,7 +2427,8 @@ async function writeBriefFiles(force){
       if(m&&m[1]<TODAY_STR) dir.removeEntry(name).catch(()=>{});
     }
     _briefAt=Date.now();
-  }catch(e){ console.warn('브리핑 파일 쓰기 실패:',e); }
+  }catch(e){ console.warn('브리핑 파일 쓰기 실패:',e); hung=/응답 없음/.test(e&&e.message||''); }
+  finally{ odEnd(hung); }
 }
 function scheduleBrief(){
   if(!briefOn()) return;
@@ -2618,6 +2652,7 @@ function restoreFromFile(file){
       recurringMeetings = data.recurringMeetings || [];
       cancelledMeetings = data.cancelledMeetings || [];
       meetingExcludeRules = data.meetingExcludeRules || [];
+      timeBlocks = Array.isArray(data.timeBlocks) ? data.timeBlocks : [];
       outlookSync = data.outlookSync || {from:'', seen:{}};
       migrateRemovedPriorities();
       calMemos = data.calMemos || {};
@@ -2951,6 +2986,9 @@ let repeatTasks = [];     // {id, text, project, priority, cycle:'weekly'|'biwee
 let recurringMeetings = [];
 let outlookSync = {from:'', seen:{}};   // Outlook 가져오기 상태 (시작 날짜, 이미 처리한 일정)
 let cancelledMeetings = [];  // 취소한 미팅. weeklyLogs에서 빼두므로 시간·건수 집계에 들어가지 않는다
+let ssDragTaskId=null, ssBlockDrag=null;   // V1.41: 타임라인에서 끄는 업무 / 블록 이동 중
+const TB_SNAP=30, TB_DEFAULT=60;
+let timeBlocks = [];  // V1.41: 시간 계획 블록 [{id, taskId, date, s, e(분), logged, logId, dismissed}]
 let meetingExcludeRules = [];  // V1.32: 항상 미팅 시간에서 뺄 제목 [{title, reason:'personal'|'skip'}]
 let calMemos = {};        // {'2026-06-17': {text:'...', color:'#4f46e5'}}
 /* {'2026-06-23': {taskId: 2 | {h:2, start:'13:00'}, ...}}
@@ -4194,6 +4232,8 @@ function renderGantt(list){
           }
         </div>
       </div>`;
+    try{ const lb=row.querySelector('.chart-label'); if(lb&&!t.done){ lb.draggable=true; lb.style.cursor='grab'; lb.title+='\n(왼쪽 「오늘 일정」으로 끌어다 놓으면 시간 계획)';
+      lb.addEventListener('dragstart',e=>{ ssDragTaskId=t.id; e.dataTransfer.effectAllowed='copyMove'; try{ e.dataTransfer.setData('text/plain','wd-task:'+t.id); }catch(_){} }); } }catch(_){}
     return row;
   }
 }
@@ -4312,7 +4352,7 @@ function renderTaskList(list){
         ${ddayBadgeHTML(t,'flex-shrink:0;')}
         ${prio?`<span onclick="event.stopPropagation();showPriorityPicker(event, ${t.id})" title="클릭하여 우선순위 변경" style="background:${pc};color:white;font-size:0.7rem;font-weight:800;padding:2px 6px;border-radius:4px;min-width:26px;text-align:center;flex-shrink:0;cursor:pointer;white-space:nowrap;">${prioLabel(prio)}</span>`:''}
         <span class="p-badge editable" onclick="event.stopPropagation();showProjectPicker(event, ${t.id})" onmousedown="event.stopPropagation()" title="클릭하여 프로젝트/하위분류 변경" style="background:${p.color}22;color:${readable(p.color)};flex-shrink:0;cursor:pointer;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
-        ${flagMailBadgeHTML(t)}<span class="task-text" ondblclick="event.stopPropagation();startInlineEditTaskText(${t.id}, this)" title="더블클릭하여 수정" style="font-size:0.85rem;flex:0 1 auto;min-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;${dlSignal?'color:var(--alert-text);font-weight:700;':''}">${t.text}</span>
+        ${flagMailBadgeHTML(t)}${timeBlockBadgeHTML(t)}<span class="task-text" ondblclick="event.stopPropagation();startInlineEditTaskText(${t.id}, this)" title="더블클릭하여 수정" style="font-size:0.85rem;flex:0 1 auto;min-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;${dlSignal?'color:var(--alert-text);font-weight:700;':''}">${t.text}</span>
         ${copyTitleBtnHTML(t)}${memoPeekHTML(t,'')}${actionChipHTML(t)}
         <span class="date-badge editable" onclick="event.stopPropagation();showDatePicker(event, ${t.id})" onmousedown="event.stopPropagation()" title="클릭하여 기간 변경" style="flex-shrink:0;">📅 ${fmt(t.start)} ~ ${fmt(t.end)} <span style="opacity:0.5;">✎</span></span>
         ${!t.done?`<select class="status-select" draggable="false" onmousedown="event.stopPropagation()" style="color:${readable(stInfo.color)};border-color:${stInfo.color}22;background:${stInfo.color}11;flex-shrink:0;"
@@ -4407,6 +4447,7 @@ function calDayToday(){ calSelDate=TODAY_STR; calYear=TODAY.getFullYear(); calMo
 const SS_START=7, SS_END=19, SS_LABEL_W=36;
 let SS_HOUR_PX=24;
 function renderSideSchedule(){
+  if(ssBlockDrag) return;   // V1.41: 블록을 끄는 중에는 다시 그리지 않음
   const box=document.getElementById('side-sched'); if(!box) return;
   const day=(typeof calSelDate!=='undefined'&&calSelDate)||TODAY_STR, isToday=day===TODAY_STR;
   const d=new Date(day+'T00:00:00');
@@ -4420,23 +4461,37 @@ function renderSideSchedule(){
     if(!(en>st)) en=st+30; return {...m,_s:st,_e:en};
   }).sort((a,b)=>a._s-b._s||a._e-b._e);
   const inR=timed.filter(m=>m._e>S&&m._s<E), out=timed.filter(m=>!(m._e>S&&m._s<E)), untimed=all.filter(m=>!/^\d{1,2}:\d{2}/.test(m.startTime));
-  let busy=0,cur=null; inR.forEach(m=>{ const a=Math.max(S,m._s),b=Math.min(E,m._e); if(!cur||a>cur[1]){ if(cur) busy+=cur[1]-cur[0]; cur=[a,b]; } else cur[1]=Math.max(cur[1],b); }); if(cur) busy+=cur[1]-cur[0];
+  // V1.41: 시간 계획 블록
+  const blks=dayTimeBlocks(day).map(x=>({_tb:x.b,_task:x.t,_s:x.b.s,_e:x.b.e,title:x.t.text}));
+  const uni=list=>{ let tot=0,c=null; list.map(m=>[Math.max(S,m._s),Math.min(E,m._e)]).filter(r=>r[1]>r[0]).sort((x,y)=>x[0]-y[0]).forEach(([a,b])=>{ if(!c||a>c[1]){ if(c) tot+=c[1]-c[0]; c=[a,b]; } else c[1]=Math.max(c[1],b); }); if(c) tot+=c[1]-c[0]; return tot; };
+  const busy=uni(inR), planMin=uni(blks), occ=uni(inR.concat(blks));
   const now=new Date(), nm=isToday?now.getHours()*60+now.getMinutes():(day<TODAY_STR?24*60:-1);
   const hh=m=>`${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
   const r1=v=>Math.round(v/6)/10;
   const nextM=isToday?timed.find(m=>m._s>nm):null;
   const curM=isToday?timed.find(m=>m._s<=nm&&nm<m._e):null;
+  const sortedB=blks.slice().sort((a,b)=>a._s-b._s);
+  const nextB=isToday?sortedB.find(m=>m._s>nm):null;
+  const curB=isToday?sortedB.find(m=>m._s<=nm&&nm<m._e):null;
   const mk=(tag,cls,text)=>{ const e=document.createElement(tag); if(cls) e.className=cls; if(text!=null) e.textContent=text; return e; };
   box.textContent='';
   const sum=mk('div','ss-sum');
   sum.appendChild(mk('span','cdp-chip',`미팅 ${all.length}건 · ${r1(busy)}h`));
-  sum.appendChild(mk('span','cdp-chip free',`빈 시간 ${r1(Math.max(0,(E-S)-busy))}h`));
+  if(blks.length){ const c=mk('span','cdp-chip',`업무 계획 ${r1(planMin)}h`); c.style.cssText='background:#22c55e22;color:#15803d;'; sum.appendChild(c); }
+  sum.appendChild(mk('span','cdp-chip free',`빈 시간 ${r1(Math.max(0,(E-S)-occ))}h`));
   box.appendChild(sum);
-  if(curM||nextM){
+  const curX=curM||curB;
+  const nextX=[nextM,nextB].filter(Boolean).sort((a,b)=>a._s-b._s)[0]||null;
+  if(curX||nextX){
     const nx=mk('div','ss-next');
-    nx.innerHTML=curM?`<b style="color:#ef4444;">● 지금</b> ${escAttr(hh(curM._s))} ${escAttr(curM.title)}`:`<b>다음</b> ${escAttr(hh(nextM._s))} ${escAttr(nextM.title)} <span>(${(()=>{const g=nextM._s-nm;return g>=60?Math.floor(g/60)+'시간 '+(g%60?g%60+'분':''):g+'분';})()} 뒤)</span>`;
-    nx.onclick=()=>openCalDayMeeting(curM||nextM); box.appendChild(nx);
+    const tag=x=>x._tb?'<span style="color:#15803d;">업무</span> ':'';
+    const gap=g=>g>=60?Math.floor(g/60)+'시간 '+(g%60?g%60+'분':''):g+'분';
+    nx.innerHTML=curX?`<b style="color:${curX._tb?'#15803d':'#ef4444'};">● 지금</b> ${tag(curX)}${escAttr(hh(curX._s))} ${escAttr(curX.title)}`
+                     :`<b>다음</b> ${tag(nextX)}${escAttr(hh(nextX._s))} ${escAttr(nextX.title)} <span>(${gap(nextX._s-nm)} 뒤)</span>`;
+    const tgt=curX||nextX;
+    nx.onclick=()=>tgt._tb?jumpToTask(tgt._task.id):openCalDayMeeting(tgt); box.appendChild(nx);
   }
+  if(!blks.length) box.appendChild(mk('div','ss-hint','💡 할 일을 아래 시간표로 끌어다 놓으면 시간 계획이 돼요'));
   if(out.length||untimed.length){
     const ex=mk('div','cdp-extra');
     out.forEach(m=>{ const r=mk('div','',`${hh(m._s)} ${m.title}`); r.title=m.title; r.onclick=()=>openCalDayMeeting(m); ex.appendChild(r); });
@@ -4454,34 +4509,197 @@ function renderSideSchedule(){
     }
   }
   const grid=mk('div','ss-grid'); grid.style.height=((SS_END-SS_START)*SS_HOUR_PX+8)+'px';
+  grid.dataset.day=day;
   for(let h=SS_START;h<=SS_END;h++){
     const ln=mk('div','ss-hour'); ln.style.top=((h-SS_START)*SS_HOUR_PX+5)+'px';
     ln.appendChild(mk('span','',`${String(h).padStart(2,'0')}`)); grid.appendChild(ln);
   }
+  const items=inR.concat(blks.filter(m=>m._e>S&&m._s<E)).sort((a,b)=>a._s-b._s||a._e-b._e);
   const groups=[]; let g=null,gEnd=-1;
-  inR.forEach(m=>{ if(!g||m._s>=gEnd){ g=[]; groups.push(g); gEnd=m._e; } else gEnd=Math.max(gEnd,m._e); g.push(m); });
+  items.forEach(m=>{ if(!g||m._s>=gEnd){ g=[]; groups.push(g); gEnd=m._e; } else gEnd=Math.max(gEnd,m._e); g.push(m); });
   groups.forEach(grp=>{
     const colEnd=[]; grp.forEach(m=>{ let c=colEnd.findIndex(e=>e<=m._s); if(c<0){ c=colEnd.length; colEnd.push(0); } colEnd[c]=m._e; m._col=c; });
     const n=colEnd.length;
     grp.forEach(m=>{
       const a=Math.max(S,m._s), b=Math.min(E,m._e);
-      const el=mk('div','ss-mt'+(m._e<=nm?' past':'')+(curM===m?' now':''));
+      const isB=!!m._tb, isNow=isB?curB===m:curM===m;
+      const el=mk('div','ss-mt'+(isB?' ss-tb':'')+(isB&&m._tb.logged?' logged':'')+(!isB&&m._e<=nm?' past':'')+(isB&&m._e<=nm&&!m._tb.logged?' past':'')+(isNow?' now':''));
       el.style.top=((a-S)/60*SS_HOUR_PX+5)+'px';
       el.style.height=Math.max(12,(b-a)/60*SS_HOUR_PX-2)+'px';
       el.style.left=`calc(${SS_LABEL_W}px + (100% - ${SS_LABEL_W}px) * ${m._col/n})`;
       el.style.width=`calc((100% - ${SS_LABEL_W}px) / ${n} - 2px)`;
-      el.title=`${hh(m._s)}~${hh(m._e)} ${m.title}`;
       el.appendChild(mk('b','',hh(m._s)));
-      el.appendChild(document.createTextNode(' '+m.title));
-      el.onclick=()=>openCalDayMeeting(m);
+      el.appendChild(document.createTextNode(' '+(isB&&m._tb.logged?'✓ ':'')+m.title));
+      if(isB){
+        el.title=`🕘 업무 계획 ${hh(m._s)}~${hh(m._e)}\n${m.title}\n· 끌어서 시간 이동 · 아래 끝을 끌어서 길이 조절 · 클릭하면 목록에서 보기`;
+        el.dataset.tb=m._tb.id;
+        const x=mk('button','ss-tb-x','×'); x.title='이 시간 계획 지우기';
+        x.addEventListener('pointerdown',e=>e.stopPropagation());
+        x.onclick=e=>{ e.stopPropagation(); removeTimeBlock(m._tb.id); };
+        el.appendChild(x);
+        const hdl=mk('div','ss-tb-h'); hdl.title='끌어서 길이 조절';
+        el.appendChild(hdl);
+        el.addEventListener('pointerdown',e=>tbPointerDown(e,el,m._tb,e.target===hdl?'resize':'move'));
+      } else {
+        el.title=`${hh(m._s)}~${hh(m._e)} ${m.title}`;
+        el.onclick=()=>openCalDayMeeting(m);
+      }
       grid.appendChild(el);
     });
   });
-  if(!inR.length) grid.appendChild(mk('div','ss-empty',(isToday?'오늘':'이날')+' 07~19시 미팅 없음'));
+  if(!items.length) grid.appendChild(mk('div','ss-empty',(isToday?'오늘':'이날')+' 07~19시 미팅 없음'));
   if(isToday&&nm>=S&&nm<=E){ const nl=mk('div','ss-now'); nl.style.top=((nm-S)/60*SS_HOUR_PX+5)+'px'; nl.title='지금 '+hh(nm); grid.appendChild(nl); }
+  // 할 일을 끌어다 놓기
+  grid.addEventListener('dragover',e=>{ const id=dragTaskId||ssDragTaskId; if(!id) return; e.preventDefault(); try{ e.dataTransfer.dropEffect=e.dataTransfer.effectAllowed==='move'?'move':'copy'; }catch(_){} grid.classList.add('drop-on'); tbShowGhost(grid,ssMinAt(grid,e.clientY)); });
+  grid.addEventListener('dragleave',e=>{ if(!grid.contains(e.relatedTarget)){ grid.classList.remove('drop-on'); tbHideGhost(); } });
+  grid.addEventListener('drop',e=>{
+    const id=dragTaskId||ssDragTaskId; if(!id) return;
+    e.preventDefault(); e.stopPropagation(); grid.classList.remove('drop-on'); tbHideGhost();
+    dragTaskId=null; ssDragTaskId=null;
+    document.querySelectorAll('.dragging').forEach(x=>x.classList.remove('dragging'));
+    addTimeBlock(id, day, ssMinAt(grid,e.clientY));
+  });
   box.appendChild(grid);
   try{ updateMeetingMode(); }catch(_){}
 }
+
+/* ── V1.41: 시간 계획 블록 ───────────────────────────────────────────── */
+function tbHM(m){ return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'); }
+function dayTimeBlocks(day){
+  return (timeBlocks||[]).filter(b=>b&&b.date===day&&!b.dismissed)
+    .map(b=>({b,t:tasks.find(x=>String(x.id)===String(b.taskId))})).filter(x=>x.t);
+}
+function ssMinAt(grid,clientY){
+  const y=clientY-grid.getBoundingClientRect().top-5;
+  let m=SS_START*60+Math.floor((y/SS_HOUR_PX*60)/TB_SNAP)*TB_SNAP;
+  return Math.max(SS_START*60, Math.min(SS_END*60-TB_SNAP, m));
+}
+function tbShowGhost(grid,m){
+  let gh=grid.querySelector('.ss-ghost');
+  if(!gh){ gh=document.createElement('div'); gh.className='ss-ghost'; grid.appendChild(gh); }
+  const e=Math.min(SS_END*60, m+TB_DEFAULT);
+  gh.style.top=((m-SS_START*60)/60*SS_HOUR_PX+5)+'px';
+  gh.style.height=((e-m)/60*SS_HOUR_PX-2)+'px';
+  gh.style.left=SS_LABEL_W+'px'; gh.style.right='0';
+  gh.textContent=`${tbHM(m)} ~ ${tbHM(e)}`;
+}
+function tbHideGhost(){ document.querySelectorAll('.ss-ghost').forEach(x=>x.remove()); document.querySelectorAll('.ss-grid.drop-on').forEach(x=>x.classList.remove('drop-on')); }
+document.addEventListener('dragend',()=>{ ssDragTaskId=null; tbHideGhost(); });
+function rerenderForTimeBlocks(){
+  try{ renderSideSchedule(); }catch(_){}
+  try{ render(); }catch(_){}
+}
+function addTimeBlock(taskId, day, s){
+  const t=tasks.find(x=>String(x.id)===String(taskId)); if(!t) return;
+  const e=Math.min(SS_END*60, s+TB_DEFAULT);
+  timeBlocks.push({id:Date.now()+Math.floor(Math.random()*1000), taskId:t.id, date:day, s, e});
+  saveData(); rerenderForTimeBlocks();
+  showMiniToast(`🕘 ${tbHM(s)}~${tbHM(e)} 「${t.text}」 시간 계획`,2200);
+}
+function removeTimeBlock(id){
+  timeBlocks=timeBlocks.filter(b=>String(b.id)!==String(id));
+  saveData(); rerenderForTimeBlocks();
+}
+function tbPointerDown(e,el,blk,mode){
+  if(e.button!==0) return;
+  e.preventDefault(); e.stopPropagation();
+  const y0=e.clientY, s0=blk.s, e0=blk.e;
+  ssBlockDrag={id:blk.id, moved:false};
+  try{ el.setPointerCapture(e.pointerId); }catch(_){}
+  const S=SS_START*60, E=SS_END*60;
+  let ns=s0, ne=e0;
+  const label=el.querySelector('b');
+  const onMove=ev=>{
+    const dy=ev.clientY-y0;
+    if(Math.abs(dy)>3) ssBlockDrag.moved=true;
+    if(!ssBlockDrag.moved) return;
+    el.classList.add('moving');
+    const dm=Math.round((dy/SS_HOUR_PX*60)/TB_SNAP)*TB_SNAP;
+    if(mode==='resize'){ ns=s0; ne=Math.max(s0+TB_SNAP, Math.min(E, e0+dm)); }
+    else { const len=e0-s0; ns=Math.max(S, Math.min(E-len, s0+dm)); ne=ns+len; }
+    el.style.top=((Math.max(S,ns)-S)/60*SS_HOUR_PX+5)+'px';
+    el.style.height=Math.max(12,(Math.min(E,ne)-Math.max(S,ns))/60*SS_HOUR_PX-2)+'px';
+    if(label) label.textContent=tbHM(ns);
+    el.title=`${tbHM(ns)}~${tbHM(ne)}`;
+  };
+  const onUp=()=>{
+    el.removeEventListener('pointermove',onMove); el.removeEventListener('pointerup',onUp); el.removeEventListener('pointercancel',onUp);
+    const moved=ssBlockDrag&&ssBlockDrag.moved; ssBlockDrag=null;
+    if(!moved){ jumpToTask(blk.taskId); return; }
+    if(ns!==s0||ne!==e0){
+      timeBlocks=timeBlocks.map(b=>String(b.id)===String(blk.id)?{...b,s:ns,e:ne,...(b.logged?{}:{prompted:false})}:b);
+      saveData();
+    }
+    rerenderForTimeBlocks();
+  };
+  el.addEventListener('pointermove',onMove); el.addEventListener('pointerup',onUp); el.addEventListener('pointercancel',onUp);
+}
+function timeBlockBadgeHTML(t){
+  if(!t||t.done||!Array.isArray(timeBlocks)||!timeBlocks.length) return '';
+  const bs=timeBlocks.filter(b=>b&&b.date===TODAY_STR&&!b.dismissed&&String(b.taskId)===String(t.id)).sort((a,b)=>a.s-b.s);
+  if(!bs.length) return '';
+  const tip='오늘 시간 계획\n'+bs.map(b=>`${tbHM(b.s)}~${tbHM(b.e)}${b.logged?' ✓ 기록함':''}`).join('\n');
+  return `<span class="tb-badge" draggable="false" title="${escAttr(tip)}" onmousedown="event.stopPropagation()">🕘 ${tbHM(bs[0].s)}${bs.length>1?' +'+(bs.length-1):''}</span>`;
+}
+function jumpToTask(id){
+  const find=()=>[...document.querySelectorAll(`.task-item[data-tid="${id}"]`)].find(x=>x.offsetParent!==null);
+  let el=find();
+  const go=el=>{ el.scrollIntoView({behavior:'smooth',block:'center'}); el.classList.remove('tb-flash'); void el.offsetWidth; el.classList.add('tb-flash'); setTimeout(()=>el.classList.remove('tb-flash'),1700); };
+  if(el){ go(el); return; }
+  if(currentTab!=='today'){
+    const btn=document.querySelector('.tab-btn[onclick*="\'today\'"]');
+    if(btn){ switchTab('today',btn); setTimeout(()=>{ const e2=find(); if(e2) go(e2); else showMiniToast('목록에서 이 업무가 안 보여요 (필터를 확인해 주세요)',2500); },80); return; }
+  }
+  showMiniToast('목록에서 이 업무가 안 보여요 (필터를 확인해 주세요)',2500);
+}
+/* 블록 시간이 끝나면 "이 업무 했나요?" → 업무 시간 기록 */
+const _tbSnooze={};
+function checkTimeBlockPrompts(){
+  if(document.getElementById('tb-prompt')) return;
+  const now=new Date(), nm=now.getHours()*60+now.getMinutes();
+  const minDay=(()=>{ const d=new Date(TODAY_STR+'T00:00:00'); d.setDate(d.getDate()-3); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })();
+  const due=(timeBlocks||[]).filter(b=>b&&!b.logged&&!b.dismissed&&b.date>=minDay&&(b.date<TODAY_STR||(b.date===TODAY_STR&&b.e<=nm))&&!(_tbSnooze[b.id]>Date.now()))
+    .map(b=>({b,t:tasks.find(x=>String(x.id)===String(b.taskId))})).filter(x=>x.t)
+    .sort((x,y)=>(x.b.date+tbHM(x.b.s)).localeCompare(y.b.date+tbHM(y.b.s)));
+  if(!due.length) return;
+  showTimeBlockPrompt(due[0].b, due[0].t);
+}
+function showTimeBlockPrompt(b,t){
+  document.getElementById('tb-prompt')?.remove();
+  const hrs=Math.round((b.e-b.s)/60*100)/100;
+  const d=new Date(b.date+'T00:00:00');
+  const dayTxt=b.date===TODAY_STR?'':`${d.getMonth()+1}/${d.getDate()} `;
+  const box=document.createElement('div'); box.id='tb-prompt';
+  box.innerHTML=`<div class="tbp-t">🕘 ${dayTxt}${tbHM(b.s)}~${tbHM(b.e)}<br>「${escAttr(t.text)}」 이 업무 했나요?</div>
+    <div class="tbp-b">
+      <button class="btn-sm" data-a="later" style="background:var(--bg);color:var(--muted);">나중에</button>
+      <button class="btn-sm" data-a="no" style="background:var(--bg);">안 함</button>
+      <button class="btn-sm" data-a="yes" style="background:#16a34a;color:#fff;font-weight:700;">${hrs}h 기록</button>
+    </div>`;
+  box.addEventListener('click',e=>{
+    const a=e.target?.dataset?.a; if(!a) return;
+    box.remove();
+    if(a==='later'){ _tbSnooze[b.id]=Date.now()+20*60*1000; return; }
+    if(a==='no'){ timeBlocks=timeBlocks.map(x=>String(x.id)===String(b.id)?{...x,dismissed:true}:x); saveData(); rerenderForTimeBlocks(); setTimeout(checkTimeBlockPrompts,400); return; }
+    logTimeBlock(b.id);
+    setTimeout(checkTimeBlockPrompts,400);
+  });
+  document.body.appendChild(box);
+}
+function logTimeBlock(id){
+  const b=timeBlocks.find(x=>String(x.id)===String(id)); if(!b) return;
+  const t=tasks.find(x=>String(x.id)===String(b.taskId)); if(!t) return;
+  const hours=Math.round((b.e-b.s)/60*100)/100;
+  const entry={type:'task', project:t.project, projName:proj(t.project).name, task:t.text, date:b.date, hours, memo:'🕘 시간 계획', startTime:tbHM(b.s), endTime:tbHM(b.e)};
+  let logId=b.logId;
+  if(logId!=null&&weeklyLogs.some(l=>l.id===logId)) weeklyLogs=weeklyLogs.map(l=>l.id===logId?{...l,...entry}:l);
+  else { logId=Date.now()+Math.random(); weeklyLogs.push({id:logId,...entry}); }
+  timeBlocks=timeBlocks.map(x=>String(x.id)===String(id)?{...x,logged:true,logId}:x);
+  saveData(); rerenderForTimeBlocks();
+  showMiniToast(`⏱ 「${t.text}」 ${hours}h 기록했어요`,2200);
+}
+setInterval(()=>{ try{ checkTimeBlockPrompts(); }catch(_){} },30000);
+setTimeout(()=>{ try{ checkTimeBlockPrompts(); }catch(_){} },15000);
 /* 오늘 지금 진행 중인 미팅이 있으면 html에 in-meeting 클래스 → 바탕색 변경 */
 function updateMeetingMode(){
   let cur=null;
@@ -7151,7 +7369,7 @@ function renderHome(){
       const planVal=planObj.h>0?planObj.h:'';
       const planEndLbl=(planObj.start&&planObj.h>0)?tlToStr(tlToMin(planObj.start)+Math.round(planObj.h*60)):'';
       const actualForTask=weeklyLogs.filter(l=>l.date===activeLogDate && l.type!=='meeting' && l.project===t.project && l.task===t.text).reduce((s,l)=>s+(l.hours||0),0);
-      return `<div class="task-item" draggable="true"
+      return `<div class="task-item" draggable="true" data-tid="${t.id}"
         ondragstart="taskDragStart(event, ${t.id}, 'A1')"
         ondragover="taskDragOver(event, 'A1')"
         ondragleave="this.classList.remove('drag-over')"
@@ -7163,7 +7381,7 @@ function renderHome(){
         <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask(${t.id})" style="flex-shrink:0;">
         ${t.priority?`<span style="background:${pc};color:white;font-size:0.68rem;font-weight:800;padding:1px 6px;border-radius:4px;flex-shrink:0;white-space:nowrap;">${prioLabel(t.priority)}</span>`:''}
         <span style="color:${readable(p.color)};font-weight:600;font-size:0.72rem;flex-shrink:0;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
-        ${flagMailBadgeHTML(t)}<span class="task-text" ondblclick="event.stopPropagation();startInlineEditTaskText(${t.id}, this)" title="더블클릭하여 수정" style="flex:0 1 auto;min-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;${t.done?'text-decoration:line-through;':''}">${t.text}</span>
+        ${flagMailBadgeHTML(t)}${timeBlockBadgeHTML(t)}<span class="task-text" ondblclick="event.stopPropagation();startInlineEditTaskText(${t.id}, this)" title="더블클릭하여 수정" style="flex:0 1 auto;min-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;${t.done?'text-decoration:line-through;':''}">${t.text}</span>
         ${copyTitleBtnHTML(t)}${memoPeekHTML(t,'h')}${actionChipHTML(t)}
         <select class="status-select" draggable="false" onmousedown="event.stopPropagation()" style="color:${readable(stInfo.color)};border-color:${stInfo.color}22;background:${stInfo.color}11;flex-shrink:0;font-size:0.68rem;"
             onchange="setTaskStatus(${t.id},this.value)">
@@ -7246,7 +7464,7 @@ function renderHome(){
           <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask(${t.id})" style="flex-shrink:0;" title="${t.done?'체크 해제하면 미완료로 되돌립니다':'완료 처리'}">
           ${t.priority?`<span style="background:${pc};color:white;font-size:0.68rem;font-weight:800;padding:1px 6px;border-radius:4px;flex-shrink:0;white-space:nowrap;">${prioLabel(t.priority)}</span>`:''}
           <span style="color:${readable(p.color)};font-weight:600;font-size:0.72rem;flex-shrink:0;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
-          ${flagMailBadgeHTML(t)}<span class="task-text" ondblclick="event.stopPropagation();startInlineEditTaskText(${t.id}, this)" title="더블클릭하여 수정" style="flex:0 1 auto;min-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;${t.done?'text-decoration:line-through;':''}">${t.text}</span>
+          ${flagMailBadgeHTML(t)}${timeBlockBadgeHTML(t)}<span class="task-text" ondblclick="event.stopPropagation();startInlineEditTaskText(${t.id}, this)" title="더블클릭하여 수정" style="flex:0 1 auto;min-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;${t.done?'text-decoration:line-through;':''}">${t.text}</span>
           ${copyTitleBtnHTML(t)}${memoPeekHTML(t,'d')}${actionChipHTML(t)}
           ${t.done
             ? `<span class="status-chip" onclick="editCompleteDate(${t.id})" title="클릭하여 완료일 변경 (현재: ${fmt(t.actualEnd)})" style="background:${stInfo.color};font-size:0.68rem;flex-shrink:0;display:flex;align-items:center;gap:4px;cursor:pointer;">${stInfo.icon} ${stInfo.label}</span>`
@@ -7894,8 +8112,21 @@ function toggleProjHours(pid){
 /* ══════════════════════════════════════
    🏷️ 버전 기록 — 새 버전을 낼 때 맨 위에 한 줄씩 추가
 ══════════════════════════════════════ */
-const APP_VERSION='V1.39';
+const APP_VERSION='V1.41';
 const APP_CHANGELOG=[
+  {v:'V1.41', date:'2026-11-26', items:[
+    '시간 계획: 할 일(목록·타임라인)을 왼쪽 「오늘 일정」으로 끌어다 놓으면 그 시간에 초록색 업무 블록이 생김 (기본 1시간, 30분 단위)',
+    '블록을 위아래로 끌면 시간 이동, 아래 끝을 끌면 길이 조절, × 로 삭제, 클릭하면 목록에서 그 업무로 이동',
+    '미팅과 겹치면 나란히 표시. 「빈 시간」은 미팅+업무 계획을 뺀 시간, 「다음/지금」 줄에도 업무 블록 표시',
+    '할 일 목록에 🕘 시작 시각 배지',
+    '블록 시간이 끝나면 「이 업무 했나요?」 → [기록]을 누르면 그 시간이 업무 시간으로 기록됨',
+    '다른 날짜를 골라 미리 계획할 수 있고, 아침 브리핑에도 시간 계획이 들어감',
+  ]},
+  {v:'V1.40', date:'2026-11-26', items:[
+    'PC 켠 직후 멈춤 방지: 앱을 켜고 3분 동안은 OneDrive를 건드리지 않음 ([지금 가져오기]만 예외)',
+    'OneDrive 읽다가 멈춰 재부팅했으면, 다음에 켤 때 OneDrive를 자동으로 건너뜀',
+    'OneDrive가 한 번 응답하지 않으면 그 뒤로는 자동으로 다시 읽지 않음 (직접 누를 때만)',
+  ]},
   {v:'V1.39', date:'2026-11-24', items:[
     'Teams 흐름이 트리거 내용을 통째로(triggerBody) 저장해도 메시지를 찾아 할 일로 추가',
   ]},
@@ -10598,7 +10829,7 @@ function renderParkingLot(){
         <span style="flex-shrink:0;font-size:0.8rem;">📥</span>
         ${prio?`<span onclick="event.stopPropagation();showPriorityPicker(event, ${t.id})" title="클릭하여 우선순위 변경" style="background:${prioColor(prio)};color:white;font-size:0.7rem;font-weight:800;padding:2px 6px;border-radius:4px;min-width:26px;text-align:center;flex-shrink:0;cursor:pointer;white-space:nowrap;">${prioLabel(prio)}</span>`:''}
         <span class="p-badge editable" onclick="event.stopPropagation();showProjectPicker(event, ${t.id})" onmousedown="event.stopPropagation()" title="클릭하여 프로젝트/하위분류 변경" style="background:${p.color}22;color:${readable(p.color)};flex-shrink:0;cursor:pointer;">${p.name}${t.subProject?` · ${t.subProject}`:''}</span>
-        ${flagMailBadgeHTML(t)}<span class="task-text" ondblclick="event.stopPropagation();startInlineEditTaskText(${t.id}, this)" title="더블클릭하여 수정" style="font-size:0.85rem;flex:0 1 auto;min-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;">${t.text}</span>
+        ${flagMailBadgeHTML(t)}${timeBlockBadgeHTML(t)}<span class="task-text" ondblclick="event.stopPropagation();startInlineEditTaskText(${t.id}, this)" title="더블클릭하여 수정" style="font-size:0.85rem;flex:0 1 auto;min-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;">${t.text}</span>
         ${copyTitleBtnHTML(t)}${memoPeekHTML(t,'p')}${actionChipHTML(t)}
         <span class="date-badge" style="flex-shrink:0;background:var(--c-f5f3ff);color:var(--x-7c3aed);border-color:var(--c-ddd6fe);">날짜 미정</span>
         <div style="display:flex;gap:5px;flex-shrink:0;">
@@ -11408,12 +11639,12 @@ try{
   if(/[?&]outlook=on\b/i.test(location.search)) localStorage.removeItem('wd-outlook-off');
   outlookSyncOff=localStorage.getItem('wd-outlook-off')==='1';
 }catch(_){}
-function outlookSyncNow(){ outlookSyncAt=0; outlookFileStamp=''; flagPollAt=0; setOutlookStatus('📨 Outlook 파일 읽는 중…'); syncOutlookMeetings(); }
+function outlookSyncNow(){ outlookSyncAt=0; outlookFileStamp=''; flagPollAt=0; setOutlookStatus('📨 Outlook 파일 읽는 중…'); syncOutlookMeetings(true); }
 function toggleOutlookSync(){
   outlookSyncOff=!outlookSyncOff;
   try{ outlookSyncOff?localStorage.setItem('wd-outlook-off','1'):localStorage.removeItem('wd-outlook-off'); }catch(_){}
   if(outlookSyncOff) setOutlookStatus('⏸ Outlook 연동 꺼짐 · Outlook 파일을 읽지 않습니다');
-  else { outlookSyncAt=0; outlookFileStamp=''; setOutlookStatus('Outlook 연동 켜는 중…'); syncOutlookMeetings(); }
+  else { outlookSyncAt=0; outlookFileStamp=''; setOutlookStatus('Outlook 연동 켜는 중…'); syncOutlookMeetings(true); }
 }
 /* ══════════════════════════════════════
    플래그 메일 → 할 일
@@ -11617,9 +11848,11 @@ let _flagSyncRunning=false;
 async function syncOutlookFlags(){
   if(_flagSyncRunning) return 0;            // 주기 확인과 30분 동기화가 겹치지 않게
   _flagSyncRunning=true;
+  let hung=false;
+  odBegin('플래그 메일 폴더');
   try{ return await withTimeout(_syncOutlookFlags(), 25000, '플래그 메일 읽기'); }
-  catch(e){ console.warn(e); outlookFlagStatus=' · ⚠️ 플래그 메일 폴더가 응답하지 않아요'; return 0; }
-  finally{ _flagSyncRunning=false; if(_lastOutlookText) setOutlookStatus(_lastOutlookText); }   // 플래그 결과도 상태줄에 반영
+  catch(e){ console.warn(e); hung=true; outlookFlagStatus=' · ⚠️ 플래그 메일 폴더가 응답하지 않아 이번에는 더 읽지 않아요'; return 0; }
+  finally{ _flagSyncRunning=false; odEnd(hung||/응답 없음/.test(outlookFlagStatus||'')); if(_lastOutlookText) setOutlookStatus(_lastOutlookText); }   // 플래그 결과도 상태줄에 반영
 }
 /* 플래그 메일만 따로 자주 확인: 2분마다 + 앱 창으로 돌아올 때(1분에 한 번까지)
    폴더 안 파일 이름만 훑고, 새 파일만 읽는다 (OneDrive에는 읽기만) */
@@ -11628,6 +11861,7 @@ async function pollOutlookFlags(force){
   if(outlookSyncOff||(typeof SAFE_MODE!=='undefined'&&SAFE_MODE)||!outlookDir()) return;
   if(outlookDirHandle&&outlookDirNeedsPerm) return;
   if(outlookSyncBusy) return;
+  if(!odAllowed(false)) return;                       // V1.40
   if(!force&&Date.now()-flagPollAt<60*1000) return;
   flagPollAt=Date.now();
   try{ await syncOutlookFlags(); }catch(e){ console.warn('플래그 메일 확인 실패:',e); }
@@ -11673,22 +11907,67 @@ async function _syncOutlookFlags(){
   return added;
 }
 // 앱으로 돌아올 때마다 OneDrive 파일을 읽지 않도록 1분에 한 번으로 제한
+/* ── V1.40: OneDrive 보호 장치 ─────────────────────────────────────────
+   PC를 켠 직후에는 OneDrive가 동기화 준비로 바빠서, 그때 파일을 읽으면 Windows 쪽에서 멈출 수 있다.
+   (앱은 기다리다 포기할 수 있지만, 이미 Windows에 보낸 읽기 요청은 앱이 취소할 수 없다)
+   1) 앱을 켜고 3분 동안은 OneDrive를 아예 건드리지 않는다 (직접 [지금 가져오기]를 누를 때만 예외)
+   2) OneDrive 작업 중에는 '작업 중' 표시를 남겨 두고, 끝나면 지운다.
+      다음에 앱을 켰을 때 표시가 남아 있으면(=그때 멈춰서 재부팅) 이번엔 OneDrive를 건너뛴다
+   3) 한 번이라도 응답이 없으면 그 세션에서는 OneDrive를 더 읽지 않는다 (사용자가 직접 누를 때만) */
+const APP_START_AT=Date.now(), OD_START_DELAY=3*60*1000, OD_PENDING_KEY='wd-od-pending';
+let odSuspended=false, odSuspendReason='', _odBusy=0, _odBusySince=0;
+(function(){
+  try{
+    const raw=localStorage.getItem(OD_PENDING_KEY);
+    if(raw){
+      const p=JSON.parse(raw);
+      if(p&&p.t&&Date.now()-p.t<24*3600*1000){ odSuspended=true; odSuspendReason=`지난번 OneDrive "${p.label||''}" 읽는 중에 끝나지 않았어요 (PC가 멈췄을 수 있음)`; }
+      localStorage.removeItem(OD_PENDING_KEY);
+    }
+  }catch(_){}
+})();
+function odBegin(label){
+  _odBusy++; if(_odBusy===1) _odBusySince=Date.now();
+  try{ if(!localStorage.getItem(OD_PENDING_KEY)) localStorage.setItem(OD_PENDING_KEY,JSON.stringify({label,t:Date.now()})); }catch(_){}
+}
+function odEnd(hung){
+  _odBusy=Math.max(0,_odBusy-1);
+  if(hung){ odSuspended=true; odSuspendReason='OneDrive가 응답하지 않아 이번에는 더 읽지 않아요'; return; }   // 표시는 남겨 둔다
+  if(_odBusy===0&&!odSuspended){ try{ localStorage.removeItem(OD_PENDING_KEY); }catch(_){} }
+}
+window.addEventListener('pagehide',()=>{   // 앱을 정상적으로 닫는 중이면(짧은 작업 중) 표시를 지운다
+  if(!odSuspended&&(_odBusy===0||Date.now()-_odBusySince<10000)){ try{ localStorage.removeItem(OD_PENDING_KEY); }catch(_){} }
+});
+/* 자동으로 OneDrive를 읽어도 되는지 (manual=사용자가 직접 누름) */
+function odAllowed(manual){
+  if(manual){ if(odSuspended){ odSuspended=false; odSuspendReason=''; } return true; }
+  if(odSuspended) return false;
+  return Date.now()-APP_START_AT>=OD_START_DELAY;
+}
+function odWaitText(){
+  if(odSuspended) return `⏸ ${odSuspendReason} · OneDrive가 괜찮아지면 [지금 가져오기]를 눌러 주세요`;
+  const left=Math.ceil((OD_START_DELAY-(Date.now()-APP_START_AT))/60000);
+  return `☁️ PC 부담을 줄이려고 앱을 켜고 ${left}분 뒤에 Outlook 파일을 읽어요 · 바로 읽으려면 [지금 가져오기]`;
+}
 let outlookSyncBusy=false, outlookSyncAt=0, outlookFileStamp='';
 function requestOutlookSync(){
   if(Date.now()-outlookSyncAt<60000) return;
   syncOutlookMeetings();
 }
-async function syncOutlookMeetings(){
+async function syncOutlookMeetings(manual){
   if(outlookSyncOff){ setOutlookStatus('⏸ Outlook 연동 꺼짐 · Outlook 파일을 읽지 않습니다'); return; }
   if(outlookSyncBusy) return;
+  if(!odAllowed(manual===true)){ setOutlookStatus(odWaitText()); return; }   // V1.40: 켜자마자/멈춘 뒤에는 건드리지 않음
   outlookSyncBusy=true;
   outlookSyncAt=Date.now();
+  let hung=false;
+  odBegin('미팅 파일');
   try{ await withTimeout(runOutlookSync(), 30000, 'Outlook 파일 읽기'); }
-  catch(e){   // V1.35: OneDrive가 응답하지 않으면 30초 뒤 포기하고 다음 주기에 다시 시도
-    console.warn(e);
-    setOutlookStatus('☁️ OneDrive 폴더가 30초 동안 응답하지 않아요 · OneDrive가 켜져 있는지 확인 후 [지금 가져오기]');
+  catch(e){   // OneDrive가 응답하지 않으면 30초 뒤 포기하고, 이번 세션에서는 더 읽지 않음
+    console.warn(e); hung=true;
+    setOutlookStatus('⏸ OneDrive가 30초 동안 응답하지 않아 이번에는 더 읽지 않아요 · OneDrive가 괜찮아지면 [지금 가져오기]');
   }
-  finally{ outlookSyncBusy=false; }
+  finally{ outlookSyncBusy=false; odEnd(hung||/응답 없음/.test(_lastOutlookText||'')); }
 }
 async function runOutlookSync(){
   if(!outlookDir()){ setOutlookStatus('Outlook 연동: 저장 폴더가 연결되어 있지 않습니다'); return; }
@@ -11877,13 +12156,14 @@ window.addEventListener('unhandledrejection',e=>{ if(!window.__appStarted){ star
   await startupStep('하위분류', ()=>updateSubProjToggleVisibility());
   window.__appStarted=true;
   showStartupErrors();
-  try{ refreshBriefMenu(); setTimeout(()=>writeBriefFiles(true), 40000); }catch(_){}   // Outlook 일정을 읽은 뒤 브리핑 파일 갱신
+  try{ refreshBriefMenu(); setTimeout(()=>writeBriefFiles(false), OD_START_DELAY+60000); }catch(_){}   // Outlook 일정을 읽은 뒤 브리핑 파일 갱신 (V1.40: 켜고 4분 뒤)
   setTimeout(checkFolderSetupPrompt, 900);   // 저장 폴더가 없으면 안내 팝업
   // 주간 자동 보관은 render 후 안전하게 실행
   setTimeout(()=>{ if(tasks.length>0) autoArchiveCompletedTasks(); }, 500);
-  setTimeout(syncOutlookMeetings, 20000);  // 화면이 뜨고 PC가 한숨 돌린 뒤에 읽는다
-  setInterval(syncOutlookMeetings, 30*60*1000);   // 미팅 흐름도 30분마다 파일을 만든다
-  setTimeout(cloudDailyBackup, 3*60*1000);         // 로컬로 옮긴 경우: 하루 한 번 OneDrive에 백업 사본
+  setTimeout(()=>syncOutlookMeetings(), OD_START_DELAY+5000);  // V1.40: 앱을 켜고 3분 뒤에 처음 읽는다 (PC 켠 직후 OneDrive 부담 줄이기)
+  setTimeout(()=>{ try{ setOutlookStatus(odWaitText()); }catch(_){} }, 1500);
+  setInterval(()=>syncOutlookMeetings(), 30*60*1000);   // 미팅 흐름도 30분마다 파일을 만든다
+  setTimeout(cloudDailyBackup, OD_START_DELAY+2*60000);         // 로컬로 옮긴 경우: 하루 한 번 OneDrive에 백업 사본 (켜고 5분 뒤)
   setInterval(cloudDailyBackup, 60*60*1000);
   // 다른 창(Outlook)에서 돌아올 때마다 OneDrive 파일을 읽지 않는다. 30분 주기 + "지금 가져오기" 버튼
   setOutlookStatus(outlookSyncOff?'⏸ Outlook 연동 꺼짐 · Outlook 파일을 읽지 않습니다':'Outlook 연동: 잠시 후 읽습니다');
