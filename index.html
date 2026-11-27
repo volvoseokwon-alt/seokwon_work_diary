@@ -531,6 +531,9 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 .ss-hint{font-size:0.64rem;color:var(--muted);margin:-2px 0 6px;}
 .tb-badge{flex-shrink:0;font-size:0.66rem;font-weight:700;color:#15803d;background:#22c55e22;border-radius:4px;padding:0 4px;margin-right:4px;white-space:nowrap;font-variant-numeric:tabular-nums;}
 .task-item.tb-flash{animation:tbFlash 1.6s ease;}
+.task-sort-bar{display:inline-flex;align-items:center;gap:5px;font-size:0.74rem;font-weight:700;color:var(--muted);cursor:pointer;}
+.task-sort-sel{font-size:0.74rem;font-weight:700;padding:3px 6px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);cursor:pointer;}
+.task-sort-sel.on{border-color:var(--primary);color:var(--primary-text);background:var(--pri-light);}
 /* V1.43: 오늘 시간 계획이 잡힌 할 일 — 은은한 민트 바탕 + 왼쪽 초록 줄, 글자는 그대로 진하게 */
 .task-item:has(.tb-badge){--tb-row-bg:#edf8f1;--tb-row-line:#5fbf86;background:var(--tb-row-bg)!important;box-shadow:inset 3px 0 0 var(--tb-row-line);border-radius:6px;}
 .task-item:has(.tb-badge) .task-text{color:var(--text);font-weight:600;}
@@ -889,7 +892,7 @@ if ('serviceWorker' in navigator) {
     <img src="data:image/png;base64,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" alt="Wonder Diary" style="width:32px;height:32px;border-radius:8px;flex-shrink:0;">
     <span style="display:flex;flex-direction:column;line-height:1.1;">
       <span style="font-size:1.05rem;font-weight:800;letter-spacing:0.01em;">Wonder Diary</span>
-      <span class="hdr-sub" style="font-size:0.62rem;font-weight:400;color:rgba(255,255,255,0.65);">developed by seokwon · <span id="app-version-label" onclick="switchTab('version',document.querySelector('.tab-btn[onclick*=&quot;version&quot;]'))" style="cursor:pointer;text-decoration:underline dotted;" title="버전 기록 보기">V1.43</span></span>
+      <span class="hdr-sub" style="font-size:0.62rem;font-weight:400;color:rgba(255,255,255,0.65);">developed by seokwon · <span id="app-version-label" onclick="switchTab('version',document.querySelector('.tab-btn[onclick*=&quot;version&quot;]'))" style="cursor:pointer;text-decoration:underline dotted;" title="버전 기록 보기">V1.44</span></span>
     </span>
   </h1>
   <div style="display:flex;align-items:center;justify-content:center;gap:24px;flex:1;flex-wrap:wrap;min-width:0;">
@@ -1058,6 +1061,14 @@ if ('serviceWorker' in navigator) {
           전체 보기에서도 하위분류별로 묶어서 보기
         </label>
       </div>
+      <div style="display:flex;justify-content:flex-end;margin-bottom:6px;"><label class="task-sort-bar" title="그룹(오늘·일주일·…) 안에서 업무를 어떤 순서로 보여줄지 정해요">↕ 정렬
+          <select class="task-sort-sel" onchange="setTaskSortMode(this.value)">
+            <option value="manual">직접 순서 (끌어서)</option>
+            <option value="created">등록순</option>
+            <option value="newest">최근 등록순</option>
+            <option value="due">마감일순</option>
+            <option value="project">프로젝트별</option>
+          </select></label></div>
       <div class="task-list" id="task-list"></div>
 
       <!-- ═══ 보류함 (Parking Lot) — 날짜 미정 업무 ═══ -->
@@ -1080,6 +1091,14 @@ if ('serviceWorker' in navigator) {
       <div class="card" style="margin-bottom:12px;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
           <span style="font-size:0.85rem;font-weight:700;color:var(--muted);">📌 할 일 &amp; 미팅</span>
+          <label class="task-sort-bar" title="그룹(오늘·일주일·…) 안에서 업무를 어떤 순서로 보여줄지 정해요">↕ 정렬
+          <select class="task-sort-sel" onchange="setTaskSortMode(this.value)">
+            <option value="manual">직접 순서 (끌어서)</option>
+            <option value="created">등록순</option>
+            <option value="newest">최근 등록순</option>
+            <option value="due">마감일순</option>
+            <option value="project">프로젝트별</option>
+          </select></label>
           <div style="display:flex;align-items:center;gap:4px;margin-left:auto;">
             <button class="cal-nav-btn" style="width:24px;height:24px;font-size:0.7rem;" onclick="homeMoveDate(-1)">◀</button>
             <span id="home-today-date" style="font-size:0.78rem;font-weight:700;color:var(--text);min-width:88px;text-align:center;"></span>
@@ -4270,8 +4289,41 @@ function sortTasksForDisplay(list, showSubGroups){
     const ai=prioRank(a.priority);
     const bi=prioRank(b.priority);
     if(ai!==bi) return (ai<0?99:ai)-(bi<0?99:bi);
-    return (a.subOrder||0)-(b.subOrder||0);
+    return taskOrderCmp(a,b);
   });
+}
+/* V1.44: 그룹 안 정렬 방식 (이 PC에만 기억) */
+const TASK_SORT_MODES={manual:'직접 순서',created:'등록순',newest:'최근 등록순',due:'마감일순',project:'프로젝트별'};
+let taskSortMode=(()=>{ try{ const v=localStorage.getItem('wd-task-sort'); return TASK_SORT_MODES[v]?v:'manual'; }catch(_){ return 'manual'; } })();
+function taskOrderCmp(a,b){
+  const id=(x)=>+x.id||0, end=(x)=>x.end||'9999-99-99', man=(a.subOrder||0)-(b.subOrder||0);
+  switch(taskSortMode){
+    case 'created': return id(a)-id(b);
+    case 'newest':  return id(b)-id(a);
+    case 'due':     return end(a).localeCompare(end(b)) || man || id(a)-id(b);
+    case 'project': { const pa=(proj(a.project)?.name)||'', pb=(proj(b.project)?.name)||''; return pa.localeCompare(pb,'ko') || end(a).localeCompare(end(b)) || id(a)-id(b); }
+    default:        return man;
+  }
+}
+function syncTaskSortSelects(){
+  document.querySelectorAll('.task-sort-sel').forEach(s=>{ s.value=taskSortMode; s.classList.toggle('on',taskSortMode!=='manual'); });
+}
+function setTaskSortMode(v){
+  if(!TASK_SORT_MODES[v]) v='manual';
+  taskSortMode=v; try{ localStorage.setItem('wd-task-sort',v); }catch(_){}
+  syncTaskSortSelects(); render();
+}
+/* 다른 정렬로 보고 있을 때 끌어서 순서를 바꾸면: 지금 보이는 순서를 그대로 직접 순서로 굳힌 뒤 바꾼다 */
+function bakeTaskOrderToManual(){
+  if(taskSortMode==='manual') return false;
+  const groups={};
+  tasks.forEach(t=>{ if(!t||t.done||t.parked) return; (groups[_taskGroup(t)]=groups[_taskGroup(t)]||[]).push(t); });
+  Object.values(groups).forEach(g=>g.sort(taskOrderCmp).forEach((t,i)=>{ t.subOrder=i; }));
+  const was=TASK_SORT_MODES[taskSortMode];
+  taskSortMode='manual'; try{ localStorage.setItem('wd-task-sort','manual'); }catch(_){}
+  syncTaskSortSelects();
+  showMiniToast(`↕ 순서를 직접 바꿔서 「직접 순서」로 바꿨어요 (${was}로 보이던 순서 그대로)`,2800);
+  return true;
 }
 
 let showOtherDoneTasks=false;
@@ -5531,6 +5583,7 @@ function taskDrop(e, targetTid, targetPrio){
   e.currentTarget.classList.remove('drag-over');
   if(!dragTaskId || dragTaskId===targetTid) return;
   const dragged=tasks.find(t=>t.id===dragTaskId); if(!dragged) return;
+  bakeTaskOrderToManual();   // V1.44
   const moved=targetPrio && (dragged.priority||'')!==targetPrio;
   if(moved){   // 다른 그룹 위에 놓으면 그 그룹으로 옮긴다
     tasks=tasks.map(t=>t.id===dragTaskId?applyPriorityChange(t,targetPrio):t);
@@ -8128,8 +8181,13 @@ function toggleProjHours(pid){
 /* ══════════════════════════════════════
    🏷️ 버전 기록 — 새 버전을 낼 때 맨 위에 한 줄씩 추가
 ══════════════════════════════════════ */
-const APP_VERSION='V1.43';
+const APP_VERSION='V1.44';
 const APP_CHANGELOG=[
+  {v:'V1.44', date:'2026-11-27', items:[
+    '할 일 정렬 순서 선택: 직접 순서(끌어서) / 등록순 / 최근 등록순 / 마감일순 / 프로젝트별 — 할 일 탭·홈 위쪽 「정렬」에서 고름',
+    '우선순위 그룹(오늘·일주일·…)은 그대로 두고 그룹 안에서만 정렬. 타임라인도 같은 순서',
+    '다른 정렬에서 업무를 끌어 순서를 바꾸면, 보이던 순서 그대로 「직접 순서」로 바뀜',
+  ]},
   {v:'V1.43', date:'2026-11-27', items:[
     '오늘 일정에 시간 계획을 잡은 할 일은 목록에서 은은한 민트색 바탕 + 왼쪽 초록 줄로 표시 (글자는 진하게 그대로)',
   ]},
@@ -10643,6 +10701,7 @@ function render(){
   try{ scheduleBrief(); }catch(_){}
   try{ autoPromoteDueTasks(); }catch(e){ console.warn(e); }
   try{ if(assignNewTaskOrder()) saveData(); }catch(e){ console.warn(e); }
+  try{ syncTaskSortSelects(); }catch(_){}
   try{ renderLinkFavs(); }catch(_){}
   try{ renderSideSchedule(); }catch(e){ console.warn(e); }
   if(!activeLogDate) activeLogDate = TODAY_STR; // 홈/할 일이 공유하는 작업 날짜
