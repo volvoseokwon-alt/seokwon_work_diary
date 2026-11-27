@@ -516,6 +516,7 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 /* V1.41 시간 계획 블록 */
 .ss-mt.ss-tb{background:#22c55e2e;border-left-color:#16a34a;cursor:grab;touch-action:none;user-select:none;}
 .ss-mt.ss-tb:hover{background:#22c55e4a;}
+.ss-mt.ss-lunch{background:repeating-linear-gradient(135deg,#f59e0b14 0 6px,transparent 6px 12px);border-left-color:#f59e0b99;color:var(--muted);cursor:default;font-weight:600;}
 .ss-mt.ss-tb{color:var(--text);}
 .ss-mt.ss-tb b{color:#16a34a;}
 .ss-mt.ss-tb.now{background:#22c55e55;border-left-color:#15803d;}
@@ -531,6 +532,10 @@ main{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column
 .ss-hint{font-size:0.64rem;color:var(--muted);margin:-2px 0 6px;}
 .tb-badge{flex-shrink:0;font-size:0.66rem;font-weight:700;color:#15803d;background:#22c55e22;border-radius:4px;padding:0 4px;margin-right:4px;white-space:nowrap;font-variant-numeric:tabular-nums;}
 .task-item.tb-flash{animation:tbFlash 1.6s ease;}
+.hs-card .hs-sub{font-size:0.68rem;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hs-card.hs-click{cursor:pointer;transition:transform .12s, box-shadow .12s;}
+.hs-card.hs-click:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.08);}
+.hs-card.hs-zero .n{opacity:.55;}
 .task-sort-bar{display:inline-flex;align-items:center;gap:5px;font-size:0.74rem;font-weight:700;color:var(--muted);cursor:pointer;}
 .task-sort-sel{font-size:0.74rem;font-weight:700;padding:3px 6px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);cursor:pointer;}
 .task-sort-sel.on{border-color:var(--primary);color:var(--primary-text);background:var(--pri-light);}
@@ -892,7 +897,7 @@ if ('serviceWorker' in navigator) {
     <img src="data:image/png;base64,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" alt="Wonder Diary" style="width:32px;height:32px;border-radius:8px;flex-shrink:0;">
     <span style="display:flex;flex-direction:column;line-height:1.1;">
       <span style="font-size:1.05rem;font-weight:800;letter-spacing:0.01em;">Wonder Diary</span>
-      <span class="hdr-sub" style="font-size:0.62rem;font-weight:400;color:rgba(255,255,255,0.65);">developed by seokwon · <span id="app-version-label" onclick="switchTab('version',document.querySelector('.tab-btn[onclick*=&quot;version&quot;]'))" style="cursor:pointer;text-decoration:underline dotted;" title="버전 기록 보기">V1.44</span></span>
+      <span class="hdr-sub" style="font-size:0.62rem;font-weight:400;color:rgba(255,255,255,0.65);">developed by seokwon · <span id="app-version-label" onclick="switchTab('version',document.querySelector('.tab-btn[onclick*=&quot;version&quot;]'))" style="cursor:pointer;text-decoration:underline dotted;" title="버전 기록 보기">V1.46</span></span>
     </span>
   </h1>
   <div style="display:flex;align-items:center;justify-content:center;gap:24px;flex:1;flex-wrap:wrap;min-width:0;">
@@ -2427,7 +2432,7 @@ function briefHTML(dk){
   h+=`<b>🗣️ 미팅 ${meets.length}건</b><br>`+(meets.length?meets.map(m=>`· ${esc(m.startTime)}${m.endTime?'~'+esc(m.endTime):''} ${esc(m.title||m.task)}`).join('<br>'):'· 없음')+'<br><br>';
   const tbs=(timeBlocks||[]).filter(b=>b.date===dk&&!b.dismissed).map(b=>({b,t:tasks.find(x=>String(x.id)===String(b.taskId))})).filter(x=>x.t).sort((a,b)=>a.b.s-b.b.s);
   if(tbs.length){ const hm=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
-    h+=`<b>🕘 시간 계획 ${tbs.length}건</b><br>`+tbs.map(x=>`· ${hm(x.b.s)}~${hm(x.b.e)} ${esc(x.t.text)}${proj(x.t)}`).join('<br>')+'<br><br>'; }
+    h+=`<b>🕘 시간 계획 ${tbs.length}건</b><br>`+tbs.map(x=>`· ${tbSegs(x.b.s,x.b.e).map(g=>hm(g[0])+'~'+hm(g[1])).join(', ')} ${esc(x.t.text)}${proj(x.t)}`).join('<br>')+'<br><br>'; }
   h+=`<b>✅ 오늘 할 일 ${list.length}건</b><br>`+(list.length?list.map(t=>`· ${esc(t.text)}${proj(t)}${dday(t)}${t.action?`<br>&nbsp;&nbsp;↳ ${esc(t.action)}`:''}`).join('<br>'):'· 없음');
   if(week) h+=`<br><br>📌 일주일 안에 할 일 ${week}건 대기 중`;
   h+=`<br><br><span style="color:#9ca3af">Wonder Diary · ${isToday?'':'미리 만든 '}브리핑 (작성 ${new Date().toTimeString().slice(0,5)})</span>`;
@@ -3017,6 +3022,7 @@ let outlookSync = {from:'', seen:{}};   // Outlook 가져오기 상태 (시작 �
 let cancelledMeetings = [];  // 취소한 미팅. weeklyLogs에서 빼두므로 시간·건수 집계에 들어가지 않는다
 let ssDragTaskId=null, ssBlockDrag=null;   // V1.41: 타임라인에서 끄는 업무 / 블록 이동 중
 const TB_SNAP=30, TB_DEFAULT=60;
+const LUNCH_S=12*60, LUNCH_E=13*60;   // V1.46: 점심시간 — 업무 블록은 이 시간을 건너뜀
 let timeBlocks = [];  // V1.41: 시간 계획 블록 [{id, taskId, date, s, e(분), logged, logId, dismissed}]
 let meetingExcludeRules = [];  // V1.32: 항상 미팅 시간에서 뺄 제목 [{title, reason:'personal'|'skip'}]
 let calMemos = {};        // {'2026-06-17': {text:'...', color:'#4f46e5'}}
@@ -4524,9 +4530,10 @@ function renderSideSchedule(){
   }).sort((a,b)=>a._s-b._s||a._e-b._e);
   const inR=timed.filter(m=>m._e>S&&m._s<E), out=timed.filter(m=>!(m._e>S&&m._s<E)), untimed=all.filter(m=>!/^\d{1,2}:\d{2}/.test(m.startTime));
   // V1.41: 시간 계획 블록
-  const blks=dayTimeBlocks(day).map(x=>({_tb:x.b,_task:x.t,_s:x.b.s,_e:x.b.e,title:x.t.text}));
+  const blks=[]; dayTimeBlocks(day).forEach(x=>{ const sg=tbSegs(x.b.s,x.b.e); sg.forEach((g,i)=>blks.push({_tb:x.b,_task:x.t,_s:g[0],_e:g[1],_seg:i,_segN:sg.length,title:x.t.text})); });
+  const lunch=(LUNCH_E>S&&LUNCH_S<E)?[{_lunch:true,_s:LUNCH_S,_e:LUNCH_E,title:'🍚 점심'}]:[];   // V1.46
   const uni=list=>{ let tot=0,c=null; list.map(m=>[Math.max(S,m._s),Math.min(E,m._e)]).filter(r=>r[1]>r[0]).sort((x,y)=>x[0]-y[0]).forEach(([a,b])=>{ if(!c||a>c[1]){ if(c) tot+=c[1]-c[0]; c=[a,b]; } else c[1]=Math.max(c[1],b); }); if(c) tot+=c[1]-c[0]; return tot; };
-  const busy=uni(inR), planMin=uni(blks), occ=uni(inR.concat(blks));
+  const busy=uni(inR), planMin=uni(blks), occ=uni(inR.concat(blks,lunch));
   const now=new Date(), nm=isToday?now.getHours()*60+now.getMinutes():(day<TODAY_STR?24*60:-1);
   const hh=m=>`${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
   const r1=v=>Math.round(v/6)/10;
@@ -4576,7 +4583,7 @@ function renderSideSchedule(){
     const ln=mk('div','ss-hour'); ln.style.top=((h-SS_START)*SS_HOUR_PX+5)+'px';
     ln.appendChild(mk('span','',`${String(h).padStart(2,'0')}`)); grid.appendChild(ln);
   }
-  const items=inR.concat(blks.filter(m=>m._e>S&&m._s<E)).sort((a,b)=>a._s-b._s||a._e-b._e);
+  const items=inR.concat(blks.filter(m=>m._e>S&&m._s<E),lunch).sort((a,b)=>a._s-b._s||a._e-b._e);
   const groups=[]; let g=null,gEnd=-1;
   items.forEach(m=>{ if(!g||m._s>=gEnd){ g=[]; groups.push(g); gEnd=m._e; } else gEnd=Math.max(gEnd,m._e); g.push(m); });
   groups.forEach(grp=>{
@@ -4585,23 +4592,35 @@ function renderSideSchedule(){
     grp.forEach(m=>{
       const a=Math.max(S,m._s), b=Math.min(E,m._e);
       const isB=!!m._tb, isNow=isB?curB===m:curM===m;
+      if(m._lunch){   // V1.46 점심
+        const el=mk('div','ss-mt ss-lunch');
+        el.style.top=((a-S)/60*SS_HOUR_PX+5)+'px';
+        el.style.height=Math.max(12,(b-a)/60*SS_HOUR_PX-2)+'px';
+        el.style.left=`calc(${SS_LABEL_W}px + (100% - ${SS_LABEL_W}px) * ${m._col/n})`;
+        el.style.width=`calc((100% - ${SS_LABEL_W}px) / ${n} - 2px)`;
+        el.textContent='🍚 점심'; el.title='점심시간 12:00~13:00 — 업무 계획은 이 시간을 건너뛰어요';
+        grid.appendChild(el); return;
+      }
       const el=mk('div','ss-mt'+(isB?' ss-tb':'')+(isB&&m._tb.logged?' logged':'')+(!isB&&m._e<=nm?' past':'')+(isB&&m._e<=nm&&!m._tb.logged?' past':'')+(isNow?' now':''));
       el.style.top=((a-S)/60*SS_HOUR_PX+5)+'px';
       el.style.height=Math.max(12,(b-a)/60*SS_HOUR_PX-2)+'px';
       el.style.left=`calc(${SS_LABEL_W}px + (100% - ${SS_LABEL_W}px) * ${m._col/n})`;
       el.style.width=`calc((100% - ${SS_LABEL_W}px) / ${n} - 2px)`;
       el.appendChild(mk('b','',hh(m._s)));
-      el.appendChild(document.createTextNode(' '+(isB&&m._tb.logged?'✓ ':'')+m.title));
+      el.appendChild(document.createTextNode(' '+(isB&&m._seg>0?'↳ ':'')+(isB&&m._tb.logged?'✓ ':'')+m.title));
       if(isB){
-        el.title=`🕘 업무 계획 ${hh(m._s)}~${hh(m._e)}\n${m.title}\n· 끌어서 시간 이동 · 아래 끝을 끌어서 길이 조절 · 클릭하면 목록에서 보기`;
-        el.dataset.tb=m._tb.id;
-        const x=mk('button','ss-tb-x','×'); x.title='이 시간 계획 지우기';
-        x.addEventListener('pointerdown',e=>e.stopPropagation());
-        x.onclick=e=>{ e.stopPropagation(); removeTimeBlock(m._tb.id); };
-        el.appendChild(x);
-        const hdl=mk('div','ss-tb-h'); hdl.title='끌어서 길이 조절';
-        el.appendChild(hdl);
-        el.addEventListener('pointerdown',e=>tbPointerDown(e,el,m._tb,e.target===hdl?'resize':'move'));
+        const tb=m._tb, wk=tbWorkMin(tb.s,tb.e), lunchCut=wk!==tb.e-tb.s;
+        el.title=`🕘 업무 계획 ${tbSegs(tb.s,tb.e).map(g=>hh(g[0])+'~'+hh(g[1])).join(' + ')}${lunchCut?` (점심 제외 ${Math.round(wk/6)/10}h)`:''}\n${m.title}\n· 끌어서 시간 이동 · 아래 끝을 끌어서 길이 조절 · 클릭하면 목록에서 보기`;
+        el.dataset.tb=tb.id;
+        if(m._seg===0){
+          const x=mk('button','ss-tb-x','×'); x.title='이 시간 계획 지우기';
+          x.addEventListener('pointerdown',e=>e.stopPropagation());
+          x.onclick=e=>{ e.stopPropagation(); removeTimeBlock(tb.id); };
+          el.appendChild(x);
+        }
+        let hdl=null;
+        if(m._seg===m._segN-1){ hdl=mk('div','ss-tb-h'); hdl.title='끌어서 길이 조절'; el.appendChild(hdl); }
+        el.addEventListener('pointerdown',e=>tbPointerDown(e,el,tb,(hdl&&e.target===hdl)?'resize':'move'));
       } else {
         el.title=`${hh(m._s)}~${hh(m._e)} ${m.title}`;
         el.onclick=()=>openCalDayMeeting(m);
@@ -4636,14 +4655,33 @@ function ssMinAt(grid,clientY){
   let m=SS_START*60+Math.floor((y/SS_HOUR_PX*60)/TB_SNAP)*TB_SNAP;
   return Math.max(SS_START*60, Math.min(SS_END*60-TB_SNAP, m));
 }
+/* V1.46: 점심시간을 건너뛰는 업무 블록 계산 (s,e = 벽시계 분, 점심이 끼면 e가 점심만큼 뒤) */
+function tbLunchCut(s,e){ return Math.max(0, Math.min(e,LUNCH_E)-Math.max(s,LUNCH_S)); }
+function tbWorkMin(s,e){ return Math.max(0,(e-s)-tbLunchCut(s,e)); }
+function tbFixStart(s){ return (s>=LUNCH_S&&s<LUNCH_E)?LUNCH_E:s; }
+function tbEndFor(s,work){ let e=s+work; if(s<LUNCH_S&&e>LUNCH_S) e+=LUNCH_E-LUNCH_S; return e; }
+function tbSegs(s,e){
+  if(s<LUNCH_S&&e>LUNCH_E) return [[s,LUNCH_S],[LUNCH_E,e]];
+  if(s>=LUNCH_S&&s<LUNCH_E) s=LUNCH_E;
+  if(e>LUNCH_S&&e<=LUNCH_E) e=LUNCH_S;
+  return e>s?[[s,e]]:[[s,s+TB_SNAP]];
+}
+function tbDrawGhost(grid,s,e,label){
+  grid.querySelectorAll('.ss-ghost').forEach(x=>x.remove());
+  const S=SS_START*60, E=SS_END*60;
+  tbSegs(s,e).forEach((g,i)=>{
+    const a=Math.max(S,g[0]), b=Math.min(E,g[1]); if(b<=a) return;
+    const gh=document.createElement('div'); gh.className='ss-ghost';
+    gh.style.top=((a-S)/60*SS_HOUR_PX+5)+'px';
+    gh.style.height=((b-a)/60*SS_HOUR_PX-2)+'px';
+    gh.style.left=SS_LABEL_W+'px'; gh.style.right='0';
+    gh.textContent=i===0?label:'↳ 점심 후 이어서';
+    grid.appendChild(gh);
+  });
+}
 function tbShowGhost(grid,m){
-  let gh=grid.querySelector('.ss-ghost');
-  if(!gh){ gh=document.createElement('div'); gh.className='ss-ghost'; grid.appendChild(gh); }
-  const e=Math.min(SS_END*60, m+TB_DEFAULT);
-  gh.style.top=((m-SS_START*60)/60*SS_HOUR_PX+5)+'px';
-  gh.style.height=((e-m)/60*SS_HOUR_PX-2)+'px';
-  gh.style.left=SS_LABEL_W+'px'; gh.style.right='0';
-  gh.textContent=`${tbHM(m)} ~ ${tbHM(e)}`;
+  const s=tbFixStart(m), e=Math.min(SS_END*60, tbEndFor(s,TB_DEFAULT));
+  tbDrawGhost(grid,s,e,`${tbHM(s)} ~ ${tbHM(e)}`);
 }
 function tbHideGhost(){ document.querySelectorAll('.ss-ghost').forEach(x=>x.remove()); document.querySelectorAll('.ss-grid.drop-on').forEach(x=>x.classList.remove('drop-on')); }
 document.addEventListener('dragend',()=>{ ssDragTaskId=null; tbHideGhost(); });
@@ -4653,7 +4691,8 @@ function rerenderForTimeBlocks(){
 }
 function addTimeBlock(taskId, day, s){
   const t=tasks.find(x=>String(x.id)===String(taskId)); if(!t) return;
-  const e=Math.min(SS_END*60, s+TB_DEFAULT);
+  s=tbFixStart(s);
+  const e=Math.min(SS_END*60, tbEndFor(s,TB_DEFAULT));
   timeBlocks.push({id:Date.now()+Math.floor(Math.random()*1000), taskId:t.id, date:day, s, e});
   saveData(); rerenderForTimeBlocks();
   showMiniToast(`🕘 ${tbHM(s)}~${tbHM(e)} 「${t.text}」 시간 계획`,2200);
@@ -4669,23 +4708,32 @@ function tbPointerDown(e,el,blk,mode){
   ssBlockDrag={id:blk.id, moved:false};
   try{ el.setPointerCapture(e.pointerId); }catch(_){}
   const S=SS_START*60, E=SS_END*60;
+  const grid=el.closest('.ss-grid');
+  const segEls=grid?[...grid.querySelectorAll(`.ss-tb[data-tb="${blk.id}"]`)]:[el];
+  const work=tbWorkMin(s0,e0);
   let ns=s0, ne=e0;
-  const label=el.querySelector('b');
   const onMove=ev=>{
     const dy=ev.clientY-y0;
     if(Math.abs(dy)>3) ssBlockDrag.moved=true;
     if(!ssBlockDrag.moved) return;
-    el.classList.add('moving');
+    segEls.forEach(x=>x.style.opacity='0.3');
     const dm=Math.round((dy/SS_HOUR_PX*60)/TB_SNAP)*TB_SNAP;
-    if(mode==='resize'){ ns=s0; ne=Math.max(s0+TB_SNAP, Math.min(E, e0+dm)); }
-    else { const len=e0-s0; ns=Math.max(S, Math.min(E-len, s0+dm)); ne=ns+len; }
-    el.style.top=((Math.max(S,ns)-S)/60*SS_HOUR_PX+5)+'px';
-    el.style.height=Math.max(12,(Math.min(E,ne)-Math.max(S,ns))/60*SS_HOUR_PX-2)+'px';
-    if(label) label.textContent=tbHM(ns);
-    el.title=`${tbHM(ns)}~${tbHM(ne)}`;
+    if(mode==='resize'){
+      ns=s0; let x=Math.max(s0+TB_SNAP, Math.min(E, e0+dm));
+      if(x>LUNCH_S&&x<=LUNCH_E) x=(s0<LUNCH_S)?LUNCH_S:LUNCH_E+TB_SNAP;   // 점심 안에서 끝나지 않게
+      ne=x;
+    } else {
+      let a=tbFixStart(Math.max(S, s0+dm)), b=tbEndFor(a,work);
+      if(b>E){ a=ns; b=ne; }   // 끝을 넘으면 그 전 자리 유지
+      ns=a; ne=b;
+    }
+    const wk=tbWorkMin(ns,ne);
+    if(grid) tbDrawGhost(grid,ns,ne,`${tbHM(ns)} ~ ${tbHM(ne)}${wk!==ne-ns?` · 업무 ${Math.round(wk/6)/10}h`:''}`);
   };
   const onUp=()=>{
     el.removeEventListener('pointermove',onMove); el.removeEventListener('pointerup',onUp); el.removeEventListener('pointercancel',onUp);
+    if(grid) grid.querySelectorAll('.ss-ghost').forEach(x=>x.remove());
+    segEls.forEach(x=>x.style.opacity='');
     const moved=ssBlockDrag&&ssBlockDrag.moved; ssBlockDrag=null;
     if(!moved){ jumpToTask(blk.taskId); return; }
     if(ns!==s0||ne!==e0){
@@ -4728,11 +4776,11 @@ function checkTimeBlockPrompts(){
 }
 function showTimeBlockPrompt(b,t){
   document.getElementById('tb-prompt')?.remove();
-  const hrs=Math.round((b.e-b.s)/60*100)/100;
+  const hrs=Math.round(tbWorkMin(b.s,b.e)/60*100)/100;
   const d=new Date(b.date+'T00:00:00');
   const dayTxt=b.date===TODAY_STR?'':`${d.getMonth()+1}/${d.getDate()} `;
   const box=document.createElement('div'); box.id='tb-prompt';
-  box.innerHTML=`<div class="tbp-t">🕘 ${dayTxt}${tbHM(b.s)}~${tbHM(b.e)}<br>「${escAttr(t.text)}」 이 업무 했나요?</div>
+  box.innerHTML=`<div class="tbp-t">🕘 ${dayTxt}${tbSegs(b.s,b.e).map(g=>tbHM(g[0])+'~'+tbHM(g[1])).join(' + ')}<br>「${escAttr(t.text)}」 이 업무 했나요?</div>
     <div class="tbp-b">
       <button class="btn-sm" data-a="later" style="background:var(--bg);color:var(--muted);">나중에</button>
       <button class="btn-sm" data-a="no" style="background:var(--bg);">안 함</button>
@@ -4751,12 +4799,16 @@ function showTimeBlockPrompt(b,t){
 function logTimeBlock(id){
   const b=timeBlocks.find(x=>String(x.id)===String(id)); if(!b) return;
   const t=tasks.find(x=>String(x.id)===String(b.taskId)); if(!t) return;
-  const hours=Math.round((b.e-b.s)/60*100)/100;
-  const entry={type:'task', project:t.project, projName:proj(t.project).name, task:t.text, date:b.date, hours, memo:'🕘 시간 계획', startTime:tbHM(b.s), endTime:tbHM(b.e)};
-  let logId=b.logId;
-  if(logId!=null&&weeklyLogs.some(l=>l.id===logId)) weeklyLogs=weeklyLogs.map(l=>l.id===logId?{...l,...entry}:l);
-  else { logId=Date.now()+Math.random(); weeklyLogs.push({id:logId,...entry}); }
-  timeBlocks=timeBlocks.map(x=>String(x.id)===String(id)?{...x,logged:true,logId}:x);
+  const hours=Math.round(tbWorkMin(b.s,b.e)/60*100)/100;
+  // V1.46: 점심을 빼고 오전·오후 구간별로 기록 (다시 기록하면 이전 기록을 바꿔 씀)
+  const oldIds=[...(Array.isArray(b.logIds)?b.logIds:[]), ...(b.logId!=null?[b.logId]:[])];
+  weeklyLogs=weeklyLogs.filter(l=>!oldIds.includes(l.id));
+  const logIds=tbSegs(b.s,b.e).map((g,i)=>{
+    const id2=Date.now()+Math.random()+i;
+    weeklyLogs.push({id:id2,type:'task', project:t.project, projName:proj(t.project).name, task:t.text, date:b.date, hours:Math.round((g[1]-g[0])/60*100)/100, memo:'🕘 시간 계획', startTime:tbHM(g[0]), endTime:tbHM(g[1])});
+    return id2;
+  });
+  timeBlocks=timeBlocks.map(x=>{ if(String(x.id)!==String(id)) return x; const y={...x,logged:true,logIds}; delete y.logId; return y; });
   saveData(); rerenderForTimeBlocks();
   showMiniToast(`⏱ 「${t.text}」 ${hours}h 기록했어요`,2200);
 }
@@ -7329,6 +7381,45 @@ function homeGoToday(){
   setLogDate(TODAY_STR);
 }
 
+/* V1.45: 홈 위쪽 카드 — 오늘 남은 일 / 기한 지남 / 이번 주 마감 / 분류 대기 / 이번 주 기록 */
+function renderHomeStats(ft){
+  const el=document.getElementById('home-stats'); if(!el) return;
+  const pr=t=>REMOVED_PRIORITY[t.priority]||t.priority;
+  const act=ft.filter(t=>t&&!t.done&&!t.parked);
+  const ymd=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const t0=new Date(TODAY_STR+'T00:00:00');
+  const tmr=new Date(t0); tmr.setDate(t0.getDate()+1);
+  const mon=new Date(t0); mon.setDate(t0.getDate()-((t0.getDay()+6)%7));
+  const sun=new Date(mon); sun.setDate(mon.getDate()+6);
+  const TMR=ymd(tmr), MON=ymd(mon), SUN=ymd(sun);
+  const daysBetween=(a,b)=>Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000);
+  const sortBySoon=(a,b)=>(a.end||'').localeCompare(b.end||'')||(+a.id||0)-(+b.id||0);
+  // 1) 오늘 할 일
+  const todayLeft=act.filter(t=>pr(t)==='A1');
+  const doneToday=ft.filter(t=>t&&t.done&&t.actualEnd===TODAY_STR).length;
+  // 2) 기한 지남
+  const over=act.filter(t=>isOverdue(t)).sort(sortBySoon);
+  const maxOver=over.length?daysBetween(over[0].end,TODAY_STR):0;
+  // 3) 이번 주 마감 (오늘~일요일)
+  const week=act.filter(t=>t.end&&t.end>=TODAY_STR&&t.end<=SUN).sort(sortBySoon);
+  const dToday=week.filter(t=>t.end===TODAY_STR).length, dTmr=week.filter(t=>t.end===TMR).length;
+  // 4) 분류 대기
+  const pend=(typeof pendingFlagTasks==='function'?pendingFlagTasks():[]);
+  // 5) 이번 주 기록
+  const wl=(weeklyLogs||[]).filter(l=>l&&l.date>=MON&&l.date<=SUN);
+  const r1=v=>Math.round(v*10)/10;
+  const hT=r1(wl.filter(l=>l.type!=='meeting').reduce((a,l)=>a+(+l.hours||0),0));
+  const hM=r1(wl.filter(l=>l.type==='meeting').reduce((a,l)=>a+(+l.hours||0),0));
+  const card=(n,color,label,sub,onclick,tip)=>`<div class="dash-card dash-stat hs-card${onclick?' hs-click':''}${n===0||n==='0h'?' hs-zero':''}" ${onclick?`onclick="${onclick}"`:''} title="${escAttr(tip||'')}">
+      <div class="n" style="color:${color}">${n}</div><div class="l">${label}</div>${sub?`<div class="hs-sub">${sub}</div>`:''}</div>`;
+  el.innerHTML=
+    card(todayLeft.length,'var(--primary-text)','📋 오늘 남은 일',`오늘 완료 ${doneToday}건`, todayLeft.length?`jumpToTask(${JSON.stringify(todayLeft[0].id)})`:'', '「오늘 할 일」 그룹에서 아직 안 끝난 업무')+
+    card(over.length,over.length?'var(--warn)':'var(--muted)','🔴 기한 지남',over.length?`가장 오래된 것 D+${maxOver}`:'없음', over.length?`jumpToTask(${JSON.stringify(over[0].id)})`:'', over.length?'누르면 가장 오래 지난 업무로 이동\n'+over.slice(0,8).map(t=>`· ${t.text} (${t.end})`).join('\n'):'마감일이 지난 업무 없음')+
+    card(week.length,week.length?'#d97706':'var(--muted)','⏰ 이번 주 마감',week.length?`오늘 ${dToday} · 내일 ${dTmr}`:`~${+SUN.slice(5,7)}/${+SUN.slice(8,10)} 없음`, week.length?`jumpToTask(${JSON.stringify(week[0].id)})`:'', week.length?`오늘~일요일(${+SUN.slice(5,7)}/${+SUN.slice(8,10)}) 마감\n`+week.slice(0,8).map(t=>`· ${t.text} (${t.end})`).join('\n'):'')+
+    card(pend.length,pend.length?'#0284c7':'var(--muted)','📧 분류 대기',pend.length?'눌러서 분류하기':'없음', pend.length?'showFlagTriage(true)':'', '플래그 메일·Teams 메시지 중 아직 우선순위를 안 정한 것')+
+    card(hT+hM+'h','#059669','⏱ 이번 주 기록',`업무 ${hT}h · 미팅 ${hM}h`, 'goTabByName(\'weekly\')', `${+MON.slice(5,7)}/${+MON.slice(8,10)}(월) ~ ${+SUN.slice(5,7)}/${+SUN.slice(8,10)}(일) 기록한 시간 — 누르면 주간 기록`);
+}
+function goTabByName(name){ const b=[...document.querySelectorAll('.tab-btn')].find(x=>(x.getAttribute('onclick')||'').includes("'"+name+"'")); if(b) switchTab(name,b); }
 function renderHome(){
   const ft=filteredTasks();
   const total=ft.length, done=ft.filter(t=>t.done).length;
@@ -7338,13 +7429,8 @@ function renderHome(){
   const avgHealth=activeTasks.length?Math.round(activeTasks.reduce((s,t)=>s+getHealthScore(t),0)/activeTasks.length):0;
   const hCol=healthColor(avgHealth);
 
-  // 통계 카드
-  document.getElementById('home-stats').innerHTML=`
-    <div class="dash-card dash-stat"><div class="n" style="color:var(--primary-text)">${total}</div><div class="l">전체 업무</div></div>
-    <div class="dash-card dash-stat"><div class="n" style="color:#10b981">${done}</div><div class="l">✅ 완료</div></div>
-    <div class="dash-card dash-stat"><div class="n" style="color:var(--primary-text)">${avgPct}%</div><div class="l">📊 평균 진행률</div></div>
-    <div class="dash-card dash-stat"><div class="n" style="color:${readable(hCol)}">${avgHealth>0?'+':''}${avgHealth}%</div><div class="l">${avgHealth>=0?'✅ 건강도':'⚠️ 건강도'}</div></div>
-    <div class="dash-card dash-stat"><div class="n" style="color:var(--warn)">${overdue}</div><div class="l">🔴 기한초과</div></div>`;
+  // 통계 카드 (V1.45: 바로 행동으로 이어지는 숫자만)
+  try{ renderHomeStats(ft); }catch(e){ console.warn(e); }
 
   // 마감 임박
   const todayD=new Date(TODAY.getFullYear(),TODAY.getMonth(),TODAY.getDate());
@@ -8181,8 +8267,18 @@ function toggleProjHours(pid){
 /* ══════════════════════════════════════
    🏷️ 버전 기록 — 새 버전을 낼 때 맨 위에 한 줄씩 추가
 ══════════════════════════════════════ */
-const APP_VERSION='V1.44';
+const APP_VERSION='V1.46';
 const APP_CHANGELOG=[
+  {v:'V1.46', date:'2026-11-27', items:[
+    '오늘 일정에 점심시간(12:00~13:00) 🍚 칸이 항상 표시되고, 빈 시간에서도 빠짐',
+    '업무 블록이 점심시간에 걸치면 점심을 건너뛰고 13:00부터 이어짐 (예: 11:00~14:30 → 11~12시 + 13~14:30, 업무 2.5h)',
+    '점심 안에 끌어다 놓으면 13:00부터 시작. 옮겨도 업무 시간 길이는 그대로 (점심만큼 뒤로 밀림)',
+    '「이 업무 했나요?」 기록도 점심을 뺀 시간으로, 오전·오후 두 줄로 기록',
+  ]},
+  {v:'V1.45', date:'2026-11-27', items:[
+    '홈 위쪽 숫자 카드 교체: 전체 업무·완료·평균 진행률·건강도 → 오늘 남은 일 / 기한 지남 / 이번 주 마감 / 분류 대기 / 이번 주 기록 시간',
+    '카드를 누르면 바로 해당 업무로 이동 (분류 대기는 분류 창, 기록 시간은 주간 기록 탭)',
+  ]},
   {v:'V1.44', date:'2026-11-27', items:[
     '할 일 정렬 순서 선택: 직접 순서(끌어서) / 등록순 / 최근 등록순 / 마감일순 / 프로젝트별 — 할 일 탭·홈 위쪽 「정렬」에서 고름',
     '우선순위 그룹(오늘·일주일·…)은 그대로 두고 그룹 안에서만 정렬. 타임라인도 같은 순서',
